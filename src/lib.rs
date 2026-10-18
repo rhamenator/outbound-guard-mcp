@@ -282,13 +282,31 @@ fn valid_dns_name(host: &str) -> bool {
         })
 }
 
-pub fn allowed_hosts_from_env() -> Vec<String> {
-    std::env::var("OUTBOUND_GUARD_ALLOWED_HOSTS")
-        .unwrap_or_default()
-        .split(',')
-        .map(|host| host.trim().to_ascii_lowercase())
-        .filter(|host| valid_dns_name(host))
-        .collect()
+pub fn parse_allowed_hosts(value: &str) -> Result<Vec<String>, &'static str> {
+    if value.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut hosts = Vec::new();
+    for raw in value.split(',') {
+        let host = raw.trim().to_ascii_lowercase();
+        if !valid_dns_name(&host) || host.parse::<IpAddr>().is_ok() {
+            return Err("OUTBOUND_GUARD_ALLOWED_HOSTS must contain only exact DNS hostnames separated by commas");
+        }
+        if !hosts.contains(&host) {
+            hosts.push(host);
+        }
+    }
+    Ok(hosts)
+}
+
+pub fn allowed_hosts_from_env() -> Result<Vec<String>, &'static str> {
+    match std::env::var("OUTBOUND_GUARD_ALLOWED_HOSTS") {
+        Ok(value) => parse_allowed_hosts(&value),
+        Err(std::env::VarError::NotPresent) => Ok(Vec::new()),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            Err("OUTBOUND_GUARD_ALLOWED_HOSTS must be valid UTF-8")
+        }
+    }
 }
 
 pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
@@ -514,5 +532,25 @@ mod tests {
             .rule,
             "EGRESS_HOST_NOT_ALLOWED"
         );
+    }
+    #[test]
+    fn allowlist_configuration_is_strict_and_deduplicated() {
+        assert!(parse_allowed_hosts("").unwrap().is_empty());
+        assert_eq!(
+            parse_allowed_hosts("Example.COM, example.com, api.example.com").unwrap(),
+            vec!["example.com", "api.example.com"]
+        );
+        for value in [
+            "example.com,",
+            ",example.com",
+            "example.com,,api.example.com",
+            "*.example.com",
+            "localhost",
+            "127.0.0.1",
+            "https://example.com",
+            "example.com:443",
+        ] {
+            assert!(parse_allowed_hosts(value).is_err(), "{value}");
+        }
     }
 }

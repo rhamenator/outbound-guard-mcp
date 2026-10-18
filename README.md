@@ -2,7 +2,7 @@
 
 Standalone outbound HTTP safety server for coding agents. **Experimental: the first runnable stdio server is not a production release.** The larger prototype lives on the [`codex/outbound-guard` branch of request-guard-mcp](https://github.com/rhamenator/request-guard-mcp/tree/codex/outbound-guard). This repository remains independently installable.
 
-The current `guarded_fetch` call performs GET or HEAD only. It requires an exact DNS hostname in `OUTBOUND_GUARD_ALLOWED_HOSTS`, rejects every DNS answer if any is non-public, and pins the validated answer set for the connection. Ambient proxies are disabled. Userinfo, URL queries, fragments, nonstandard ports, request headers and bodies, redirects, encoded responses, and HTML are rejected. The response is limited to 256 KiB of UTF-8 plain text or JSON and a ten-second total timeout. Denials return structured rule and remediation fields. No allowlist means no egress.
+The current `guarded_fetch` call performs GET or HEAD only. It requires an exact DNS hostname in `OUTBOUND_GUARD_ALLOWED_HOSTS`, rejects every DNS answer if any is non-public, and pins the validated answer set for the connection. Ambient proxies are disabled. Userinfo, URL queries, fragments, nonstandard ports, request headers and bodies, redirects, encoded responses, and HTML are rejected. The response is limited to 256 KiB of UTF-8 plain text or JSON, with a ten-second HTTP timeout after DNS resolution. Denials return structured rule and remediation fields. No allowlist means no egress. Invalid allowlist entries make the server fail at startup; the server never silently drops them.
 
 ```bash
 export OUTBOUND_GUARD_ALLOWED_HOSTS=example.com,api.example.com
