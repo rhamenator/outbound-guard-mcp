@@ -1,0 +1,3 @@
+# Work instructions
+
+Use shells, narrow `rg` searches, and bounded output to conserve tokens. This is a standalone MCP server, not a forked release of the inbound request classifier. Reuse or port the guarded egress logic from /home/rich/dev/request-guard-mcp/src/egress.rs and relevant ai-scraping-defense fixtures, but keep the projects independently installable. Prefer the standard library and a minimal, justified dependency set. Run focused tests while editing and full tests/build before each push. State the actual enforcement boundary and known limitations; do not claim production readiness until the plan's gates pass.
