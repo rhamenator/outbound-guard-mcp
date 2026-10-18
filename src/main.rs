@@ -60,8 +60,10 @@ fn handle(message: Value, hosts: &[String]) -> Option<Value> {
     if method == "notifications/initialized" {
         return None;
     }
-    if message.get("jsonrpc") != Some(&Value::String("2.0".into())) || id.is_null() {
-        return Some(rpc_error(id, -32600, "Invalid Request"));
+    let valid_id =
+        matches!(&id, Value::String(_)) || id.as_i64().is_some() || id.as_u64().is_some();
+    if message.get("jsonrpc") != Some(&Value::String("2.0".into())) || !valid_id {
+        return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
     }
     let result = match method {
         "initialize" => {
@@ -146,6 +148,11 @@ mod tests {
     #[test]
     fn missing_method_is_a_protocol_error() {
         let result = handle(json!({"jsonrpc":"2.0","id":1}), &[]).unwrap();
+        assert_eq!(result["error"]["code"], -32600);
+    }
+    #[test]
+    fn invalid_id_type_is_rejected() {
+        let result = handle(json!({"jsonrpc":"2.0","id":{"x":1},"method":"ping"}), &[]).unwrap();
         assert_eq!(result["error"]["code"], -32600);
     }
 }
