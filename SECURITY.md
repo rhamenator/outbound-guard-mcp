@@ -2,10 +2,10 @@
 
 ## Supported code
 
-Security fixes target the current `main` branch. The server is an advisory guard; it cannot intercept actions an MCP client routes elsewhere. Local stdio is the recommended transport. The optional HTTP POST endpoint needs token authentication for non-loopback binding, TLS termination, and network controls.
+This repository is an extraction in progress. It does not yet release a runnable outbound guard. Security fixes will target the current `main` branch once implementation begins. The experimental source baseline is in the `codex/outbound-guard` branch of `request-guard-mcp`.
+
+An MCP server can enforce policy only for requests routed through its tools. Host-level network controls are required for whole-agent egress restrictions. The security model and exact supported transports will be documented before a stable release.
 
 ## Report a vulnerability
 
 Use GitHub's private vulnerability reporting from the repository Security tab. If unavailable, email rich@yourfoxprodeveloper.com with the repository name, affected revision, impact, reproduction steps, and proposed mitigation. Do not open a public issue for an unpatched vulnerability or include real credentials or personal data. Expect acknowledgment within seven days.
-
-See [the security model](docs/security.md) for supported boundaries and limitations.
