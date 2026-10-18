@@ -1,5 +1,7 @@
 # Extraction and production-readiness plan
 
+The release gates are in [QUALITY_BAR.md](QUALITY_BAR.md).
+
 Source baseline: `request-guard-mcp` branch `codex/outbound-guard`, commit `4284678`. Its six tools, schemas, and egress design are an experimental implementation, not a completed standalone product.
 
 1. Extract a focused MCP server with stdio first and only required dependencies. Keep `guarded_fetch` atomic. Port request policy, secret scanning, pinned DNS, redirect validation, budgets, response limits, and redacted audit. Preserve stable rule codes and JSON tool results.
