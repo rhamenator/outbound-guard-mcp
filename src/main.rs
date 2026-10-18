@@ -99,7 +99,7 @@ fn handle(message: Value, hosts: &[String]) -> Option<Value> {
 }
 
 fn main() -> io::Result<()> {
-    let hosts = allowed_hosts_from_env();
+    let hosts = allowed_hosts_from_env().map_err(io::Error::other)?;
     let stdin = io::stdin();
     let mut reader = stdin.lock();
     let stdout = io::stdout();
