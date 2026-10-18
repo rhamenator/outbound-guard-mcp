@@ -81,6 +81,7 @@ fn public_v6(ip: Ipv6Addr) -> bool {
     // Conservative global-unicast policy. Exclude transition and documentation ranges.
     (first & 0xe000) == 0x2000
         && first != 0x2002
+        && !(first == 0x3fff && (segments[1] & 0xf000) == 0)
         && !(first == 0x2001 && (segments[1] <= 0x01ff || segments[1] == 0x0db8))
 }
 
@@ -445,10 +446,13 @@ mod tests {
             "10.1.2.3",
             "169.254.1.1",
             "100.64.1.1",
+            "192.88.99.2",
             "192.168.1.1",
             "::1",
             "::ffff:8.8.8.8",
             "2001:db8::1",
+            "3fff::1",
+            "3fff:0fff::1",
         ] {
             let result = validate(
                 &json!({"url":"https://example.com/"}),
@@ -469,6 +473,19 @@ mod tests {
                 .rule,
             "EGRESS_FORBIDDEN_ADDRESS"
         );
+        let mixed_v6 = Fake(vec![addr("2606:4700:4700::1111"), addr("3fff::1")]);
+        assert_eq!(
+            validate(
+                &json!({"url":"https://example.com/"}),
+                &allowed(),
+                &mixed_v6
+            )
+            .err()
+            .unwrap()
+            .rule,
+            "EGRESS_FORBIDDEN_ADDRESS"
+        );
+        assert!(public_ip("3fff:1000::1".parse().unwrap()));
     }
     #[test]
     fn validates_public_pinned_target() {
