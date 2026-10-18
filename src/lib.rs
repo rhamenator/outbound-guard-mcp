@@ -3,13 +3,20 @@
 use reqwest::{blocking::Client, header, redirect::Policy, Url};
 use serde_json::{json, Value};
 use std::{
-    io::Read,
+    io::{self, Read},
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+    thread,
     time::Duration,
 };
 
 const DEFAULT_RETURN_BYTES: usize = 64 * 1024;
 const MAX_RETURN_BYTES: usize = 256 * 1024;
+const DNS_TIMEOUT: Duration = Duration::from_secs(3);
+static DNS_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Denial {
@@ -33,9 +40,60 @@ pub trait Resolver {
 pub struct SystemResolver;
 impl Resolver for SystemResolver {
     fn resolve(&self, host: &str, port: u16) -> std::io::Result<Vec<SocketAddr>> {
-        (host, port)
-            .to_socket_addrs()
-            .map(|answers| answers.collect())
+        let host = host.to_owned();
+        resolve_bounded(&DNS_WORKER_ACTIVE, DNS_TIMEOUT, move || {
+            (host.as_str(), port)
+                .to_socket_addrs()
+                .map(|answers| answers.collect())
+        })
+    }
+}
+
+// getaddrinfo cannot be cancelled portably. Keep at most one outstanding OS lookup;
+// after a timeout, deny further requests until that worker has actually exited.
+fn resolve_bounded<F>(
+    gate: &'static AtomicBool,
+    timeout: Duration,
+    lookup: F,
+) -> io::Result<Vec<SocketAddr>>
+where
+    F: FnOnce() -> io::Result<Vec<SocketAddr>> + Send + 'static,
+{
+    if gate
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return Err(io::Error::new(io::ErrorKind::WouldBlock, "DNS worker busy"));
+    }
+    struct ReleaseGate(&'static AtomicBool);
+    impl Drop for ReleaseGate {
+        fn drop(&mut self) {
+            self.0.store(false, Ordering::Release);
+        }
+    }
+    let (sender, receiver) = mpsc::sync_channel(1);
+    if let Err(error) = thread::Builder::new()
+        .name("outbound-guard-dns".into())
+        .spawn(move || {
+            let release = ReleaseGate(gate);
+            let result = lookup();
+            drop(release);
+            let _ = sender.send(result);
+        })
+    {
+        gate.store(false, Ordering::Release);
+        return Err(error);
+    }
+    match receiver.recv_timeout(timeout) {
+        Ok(result) => result,
+        Err(mpsc::RecvTimeoutError::Timeout) => Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "DNS deadline exceeded",
+        )),
+        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::new(
+            io::ErrorKind::BrokenPipe,
+            "DNS worker exited without a result",
+        )),
     }
 }
 
@@ -238,12 +296,22 @@ pub fn validate<R: Resolver>(
             ))
         }
     };
-    let addresses = resolver.resolve(&host, port).map_err(|_| {
-        Denial::new(
-            "EGRESS_DNS_FAILURE",
-            "Try the approved hostname again later.",
-        )
-    })?;
+    let addresses = resolver
+        .resolve(&host, port)
+        .map_err(|error| match error.kind() {
+            io::ErrorKind::TimedOut => Denial::new(
+                "EGRESS_DNS_TIMEOUT",
+                "The DNS lookup exceeded its deadline; retry later.",
+            ),
+            io::ErrorKind::WouldBlock => Denial::new(
+                "EGRESS_DNS_BUSY",
+                "A previous DNS lookup is still running; retry later.",
+            ),
+            _ => Denial::new(
+                "EGRESS_DNS_FAILURE",
+                "Try the approved hostname again later.",
+            ),
+        })?;
     if addresses.is_empty() {
         return Err(Denial::new(
             "EGRESS_DNS_FAILURE",
@@ -427,6 +495,7 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::AtomicBool;
     struct Fake(Vec<SocketAddr>);
     impl Resolver for Fake {
         fn resolve(&self, _: &str, _: u16) -> std::io::Result<Vec<SocketAddr>> {
@@ -568,6 +637,61 @@ mod tests {
             "example.com:443",
         ] {
             assert!(parse_allowed_hosts(value).is_err(), "{value}");
+        }
+    }
+    #[test]
+    fn dns_deadline_fails_closed_without_spawning_more_workers() {
+        static TEST_GATE: AtomicBool = AtomicBool::new(false);
+        let (release_sender, release_receiver) = mpsc::channel();
+        let timed_out = resolve_bounded(&TEST_GATE, Duration::from_millis(20), move || {
+            release_receiver.recv().unwrap();
+            Ok(vec![addr("8.8.8.8")])
+        });
+        assert_eq!(timed_out.unwrap_err().kind(), io::ErrorKind::TimedOut);
+        let busy = resolve_bounded(&TEST_GATE, Duration::from_millis(20), || {
+            panic!("a second DNS worker must not start")
+        });
+        assert_eq!(busy.unwrap_err().kind(), io::ErrorKind::WouldBlock);
+        release_sender.send(()).unwrap();
+        for _ in 0..100 {
+            if !TEST_GATE.load(Ordering::Acquire) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(!TEST_GATE.load(Ordering::Acquire));
+        assert_eq!(
+            resolve_bounded(&TEST_GATE, Duration::from_secs(1), || Ok(vec![addr(
+                "8.8.8.8"
+            )]))
+            .unwrap(),
+            vec![addr("8.8.8.8")]
+        );
+    }
+    #[test]
+    fn dns_error_kinds_have_stable_denial_rules() {
+        struct ErrorResolver(io::ErrorKind);
+        impl Resolver for ErrorResolver {
+            fn resolve(&self, _: &str, _: u16) -> io::Result<Vec<SocketAddr>> {
+                Err(io::Error::from(self.0))
+            }
+        }
+        for (kind, rule) in [
+            (io::ErrorKind::TimedOut, "EGRESS_DNS_TIMEOUT"),
+            (io::ErrorKind::WouldBlock, "EGRESS_DNS_BUSY"),
+            (io::ErrorKind::Other, "EGRESS_DNS_FAILURE"),
+        ] {
+            assert_eq!(
+                validate(
+                    &json!({"url":"https://example.com/"}),
+                    &allowed(),
+                    &ErrorResolver(kind)
+                )
+                .err()
+                .unwrap()
+                .rule,
+                rule
+            );
         }
     }
 }
