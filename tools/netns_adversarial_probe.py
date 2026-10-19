@@ -21,6 +21,7 @@ RECORDS = {
     "second.test": [PUBLIC_FIXTURE],
     "rebind.test": [PUBLIC_FIXTURE],
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
+    "many-answers.test": [f"11.0.0.{n}" for n in range(1, 21)],
     "private.test": ["127.0.0.1"],
     "metadata.test": ["169.254.169.254"],
     "carrier.test": ["100.64.0.1"],
@@ -318,6 +319,9 @@ def main(binary):
             decision = call(binary, host, "plain")
             assert decision["rule"] == "EGRESS_FORBIDDEN_ADDRESS", (host, decision)
             assert not HTTP.hits, (host, HTTP.hits)
+        many = call(binary, "many-answers.test", "plain")
+        assert many["rule"] == "EGRESS_DNS_ANSWER_LIMIT", many
+        assert not HTTP.hits, HTTP.hits
         cases = [
             ("private.test", "plain", "EGRESS_FORBIDDEN_ADDRESS", []),
             ("mixed.test", "plain", "EGRESS_FORBIDDEN_ADDRESS", []),
@@ -409,7 +413,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 43 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: 44 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
