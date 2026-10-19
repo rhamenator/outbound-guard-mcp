@@ -153,6 +153,16 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"ok")
             return
+        if self.path in ("/stacked-transfer-coding", "/duplicate-transfer-coding"):
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "gzip, chunked" if self.path == "/stacked-transfer-coding" else "chunked")
+            if self.path == "/duplicate-transfer-coding":
+                self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            self.wfile.write(b"2\r\nok\r\n0\r\n\r\n")
+            return
         if self.path in ("/duplicate-type", "/duplicate-encoding"):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -415,6 +425,8 @@ def main(binary):
         for path, accepted_rules in (
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
+            ("stacked-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE"}),
+            ("duplicate-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-type", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
             ("duplicate-encoding", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
             ("chunked-large", {"EGRESS_RESPONSE_LIMIT"}),
@@ -439,7 +451,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 48 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: 50 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
