@@ -10,6 +10,7 @@ import struct
 import subprocess
 import sys
 import threading
+import time
 
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
@@ -58,6 +59,30 @@ class HTTP(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.hits.append(self.path)
+        if self.path == "/delayed":
+            time.sleep(11)
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"ok")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
+        if self.path == "/drip":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", "20")
+            self.end_headers()
+            for _ in range(20):
+                try:
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    break
+                time.sleep(1)
+            return
         if self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "http://private.test/plain")
@@ -109,6 +134,7 @@ def call(binary, host, path):
 def main(binary):
     dns = socketserver.ThreadingUDPServer(("127.0.0.1", 53), DNS)
     http_server = http.server.ThreadingHTTPServer((PUBLIC_FIXTURE, 80), HTTP)
+    http_server.daemon_threads = True
     for server in (dns, http_server):
         threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
@@ -128,7 +154,16 @@ def main(binary):
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
         assert DNS.rebind_a_queries >= 1
-        print(f"netns adversarial probe: 7 actual-socket decisions; private/mixed DNS opened no HTTP socket; "
+        for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
+                           ("drip", "EGRESS_RESPONSE_TIMEOUT")):
+            started = time.monotonic()
+            decision = call(binary, "allowed.test", path)
+            elapsed = time.monotonic() - started
+            assert decision["rule"] == rule, (path, decision)
+            assert "body_text" not in decision, (path, decision)
+            assert elapsed < 16, (path, elapsed)
+            assert HTTP.hits[-1] == f"/{path}"
+        print(f"netns adversarial probe: 9 actual-socket decisions; private/mixed DNS opened no HTTP socket; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}")
     finally:
         dns.shutdown()

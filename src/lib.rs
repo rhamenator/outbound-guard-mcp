@@ -17,6 +17,8 @@ use std::{
 const DEFAULT_RETURN_BYTES: usize = 64 * 1024;
 const MAX_RETURN_BYTES: usize = 256 * 1024;
 const DNS_TIMEOUT: Duration = Duration::from_secs(3);
+const HTTP_IDLE_TIMEOUT: Duration = Duration::from_secs(3);
+const HTTP_TOTAL_TIMEOUT: Duration = Duration::from_secs(10);
 const HOST_PER_MINUTE: usize = 60;
 const CALLS_PER_HOUR: usize = 1000;
 static DNS_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -455,7 +457,7 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
         .no_proxy()
         .redirect(Policy::none())
         .connect_timeout(Duration::from_secs(3))
-        .timeout(Duration::from_secs(10))
+        .timeout(HTTP_IDLE_TIMEOUT)
         .resolve_to_addrs(&target.host, &target.addresses)
         .build()
     {
@@ -473,6 +475,7 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
     } else {
         client.get(target.url.clone())
     };
+    let http_started = Instant::now();
     let mut response = match request.header(header::ACCEPT_ENCODING, "identity").send() {
         Ok(response) => response,
         Err(_) => {
@@ -527,24 +530,35 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
     }
     let status_code = response.status().as_u16();
     let mut body = Vec::new();
-    if response
-        .by_ref()
-        .take((target.max_return_bytes + 1) as u64)
-        .read_to_end(&mut body)
-        .is_err()
-    {
-        return Denial::new(
-            "EGRESS_READ_FAILURE",
-            "The bounded response could not be read.",
-        )
-        .value();
-    }
-    if body.len() > target.max_return_bytes {
-        return Denial::new(
-            "EGRESS_RESPONSE_LIMIT",
-            "Reduce the response size or raise the bounded per-call limit.",
-        )
-        .value();
+    let mut chunk = [0u8; 8192];
+    loop {
+        if http_started.elapsed() >= HTTP_TOTAL_TIMEOUT {
+            return Denial::new(
+                "EGRESS_RESPONSE_TIMEOUT",
+                "The response exceeded the total time limit.",
+            )
+            .value();
+        }
+        let remaining = target.max_return_bytes + 1 - body.len();
+        let read_len = remaining.min(chunk.len());
+        match response.read(&mut chunk[..read_len]) {
+            Ok(0) => break,
+            Ok(n) => body.extend_from_slice(&chunk[..n]),
+            Err(_) => {
+                return Denial::new(
+                    "EGRESS_READ_FAILURE",
+                    "The bounded response could not be read.",
+                )
+                .value();
+            }
+        }
+        if body.len() > target.max_return_bytes {
+            return Denial::new(
+                "EGRESS_RESPONSE_LIMIT",
+                "Reduce the response size or raise the bounded per-call limit.",
+            )
+            .value();
+        }
     }
     let text = match String::from_utf8(body) {
         Ok(text) => text,
