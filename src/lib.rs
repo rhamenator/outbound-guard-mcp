@@ -425,12 +425,16 @@ fn supported_content_type(value: &str) -> bool {
 }
 
 fn looks_like_html(text: &str) -> bool {
+    fn tag_boundary(byte: &u8) -> bool {
+        matches!(byte, b'>' | b'/' | b' ' | b'\t' | b'\r' | b'\n' | 0x0c)
+    }
     let start = text.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '\u{feff}');
     let bytes = start.as_bytes();
-    if [b"<!doctype html".as_slice(), b"<!--"].iter().any(|tag| {
+    if [b"<!doctype".as_slice(), b"<!--"].iter().any(|tag| {
         bytes
             .get(..tag.len())
             .is_some_and(|prefix| prefix.eq_ignore_ascii_case(tag))
+            && (tag == b"<!--" || bytes.get(tag.len()).is_some_and(tag_boundary))
     }) {
         return true;
     }
@@ -443,9 +447,7 @@ fn looks_like_html(text: &str) -> bool {
         bytes
             .get(..prefix.len())
             .is_some_and(|head| head.eq_ignore_ascii_case(prefix.as_bytes()))
-            && bytes
-                .get(prefix.len())
-                .is_some_and(|next| matches!(next, b'>' | b'/' | b' ' | b'\t' | b'\r' | b'\n'))
+            && bytes.get(prefix.len()).is_some_and(tag_boundary)
     })
 }
 
@@ -671,9 +673,11 @@ mod tests {
     fn leading_html_signatures_are_quarantined() {
         for text in [
             "<!DOCTYPE html><html></html>",
+            "<!DOCTYPE\u{000c}html>",
             " \u{feff}\n<HTML lang=en>",
             "<a style=\"display:none\" href=\"/trap\">hidden</a>",
             "<script>alert(1)</script>",
+            "<script\u{000c}src=x>",
             "<!-- hidden -->",
         ] {
             assert!(looks_like_html(text), "{text}");
