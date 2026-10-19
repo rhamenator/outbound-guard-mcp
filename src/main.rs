@@ -10,6 +10,14 @@ enum Frame {
     TooLarge,
 }
 
+#[derive(Default, PartialEq, Eq)]
+enum Session {
+    #[default]
+    New,
+    AwaitingInitialized,
+    Ready,
+}
+
 fn read_frame<R: BufRead>(reader: &mut R) -> io::Result<Frame> {
     let mut data = Vec::new();
     let mut too_large = false;
@@ -88,7 +96,7 @@ fn valid_initialize_params(message: &Value) -> bool {
         && info.get("title").is_none_or(Value::is_string)
 }
 
-fn handle(message: Value, hosts: &[String]) -> Option<Value> {
+fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Value> {
     let Some(object) = message.as_object() else {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
     };
@@ -104,6 +112,14 @@ fn handle(message: Value, hosts: &[String]) -> Option<Value> {
     {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
     }
+    if method == "notifications/initialized" && !object.contains_key("id") {
+        if *session == Session::AwaitingInitialized
+            && object.get("params").is_none_or(Value::is_object)
+        {
+            *session = Session::Ready;
+        }
+        return None;
+    }
     let Some(id) = object.get("id").cloned() else {
         // Notifications have no response. Never execute a tool call without an id.
         return None;
@@ -116,13 +132,20 @@ fn handle(message: Value, hosts: &[String]) -> Option<Value> {
     }
     let result = match method {
         "initialize" => {
+            if *session != Session::New {
+                return Some(rpc_error(id, -32600, "Already initialized"));
+            }
             if !valid_initialize_params(&message) {
                 return Some(rpc_error(id, -32602, "Invalid initialize parameters"));
             }
+            *session = Session::AwaitingInitialized;
             json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":false}},
             "serverInfo":{"name":"outbound-guard-mcp","version":env!("CARGO_PKG_VERSION")}})
         }
         "ping" => json!({}),
+        _ if *session != Session::Ready => {
+            return Some(rpc_error(id, -32002, "Server not initialized"));
+        }
         "tools/list" => json!({"tools":[{"name":"guarded_fetch",
             "description":"Perform an allowlisted HTTP(S) GET or HEAD with DNS and connection policy in one call. Returned text is untrusted.",
             "inputSchema":{"type":"object","properties":{"url":{"type":"string","maxLength":2048},
@@ -156,12 +179,13 @@ fn main() -> io::Result<()> {
     let mut reader = stdin.lock();
     let stdout = io::stdout();
     let mut writer = stdout.lock();
+    let mut session = Session::New;
     loop {
         let response = match read_frame(&mut reader)? {
             Frame::Eof => break,
             Frame::TooLarge => Some(rpc_error(Value::Null, -32600, "Request too large")),
             Frame::Data(data) => match serde_json::from_slice::<Value>(&data) {
-                Ok(message) => handle(message, &hosts),
+                Ok(message) => handle(message, &hosts, &mut session),
                 Err(_) => Some(rpc_error(Value::Null, -32700, "Parse error")),
             },
         };
@@ -177,15 +201,41 @@ fn main() -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn ready_session() -> Session {
+        let mut session = Session::New;
+        assert!(handle(
+            json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+            "protocolVersion":"2025-06-18","capabilities":{},
+            "clientInfo":{"name":"test-client","version":"1.0"}}}),
+            &[],
+            &mut session
+        )
+        .unwrap()
+        .get("result")
+        .is_some());
+        assert!(handle(
+            json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+            &[],
+            &mut session
+        )
+        .is_none());
+        assert!(session == Session::Ready);
+        session
+    }
     #[test]
     fn lists_only_atomic_tool() {
-        let result = handle(json!({"jsonrpc":"2.0","id":1,"method":"tools/list"}), &[]).unwrap();
+        let result = handle(
+            json!({"jsonrpc":"2.0","id":1,"method":"tools/list"}),
+            &[],
+            &mut ready_session(),
+        )
+        .unwrap();
         assert_eq!(result["result"]["tools"][0]["name"], "guarded_fetch");
         assert_eq!(result["result"]["tools"].as_array().unwrap().len(), 1);
     }
     #[test]
     fn blocked_calls_have_structured_error_result() {
-        let result = handle(json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}}), &[]).unwrap();
+        let result = handle(json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}}), &[], &mut ready_session()).unwrap();
         assert_eq!(result["result"]["isError"], true);
         assert_eq!(result["result"]["structuredContent"]["status"], "BLOCKED");
     }
@@ -199,12 +249,17 @@ mod tests {
     }
     #[test]
     fn missing_method_is_a_protocol_error() {
-        let result = handle(json!({"jsonrpc":"2.0","id":1}), &[]).unwrap();
+        let result = handle(json!({"jsonrpc":"2.0","id":1}), &[], &mut Session::New).unwrap();
         assert_eq!(result["error"]["code"], -32600);
     }
     #[test]
     fn invalid_id_type_is_rejected() {
-        let result = handle(json!({"jsonrpc":"2.0","id":{"x":1},"method":"ping"}), &[]).unwrap();
+        let result = handle(
+            json!({"jsonrpc":"2.0","id":{"x":1},"method":"ping"}),
+            &[],
+            &mut Session::New,
+        )
+        .unwrap();
         assert_eq!(result["error"]["code"], -32600);
     }
     #[test]
@@ -213,6 +268,7 @@ mod tests {
             assert!(handle(
                 json!({"jsonrpc":"2.0","method":method,"params":{"name":"guarded_fetch","arguments":{"url":"https://example.com/"}}}),
                 &[],
+                &mut Session::New,
             )
             .is_none());
         }
@@ -222,12 +278,14 @@ mod tests {
         let result = handle(
             json!({"jsonrpc":"2.0","id":7,"method":"notifications/initialized"}),
             &[],
+            &mut Session::New,
         )
         .unwrap();
         assert_eq!(result["error"]["code"], -32601);
         let result = handle(
             json!({"jsonrpc":"1.0","method":"notifications/initialized"}),
             &[],
+            &mut Session::New,
         )
         .unwrap();
         assert_eq!(result["error"]["code"], -32600);
@@ -239,7 +297,7 @@ mod tests {
             "protocolVersion":"2025-06-18","capabilities":{},
             "clientInfo":{"name":"test-client","version":"1.0"}}});
         assert_eq!(
-            handle(valid.clone(), &[]).unwrap()["result"]["protocolVersion"],
+            handle(valid.clone(), &[], &mut Session::New).unwrap()["result"]["protocolVersion"],
             "2025-06-18"
         );
         let mut valid_nested = valid.clone();
@@ -249,7 +307,7 @@ mod tests {
         });
         valid_nested["params"]["clientInfo"]["title"] = json!("Probe client");
         assert_eq!(
-            handle(valid_nested, &[]).unwrap()["result"]["protocolVersion"],
+            handle(valid_nested, &[], &mut Session::New).unwrap()["result"]["protocolVersion"],
             "2025-06-18"
         );
         for params in [
@@ -269,9 +327,65 @@ mod tests {
         ] {
             let mut request = valid.clone();
             request["params"] = params;
-            let reply = handle(request, &[]).unwrap();
+            let reply = handle(request, &[], &mut Session::New).unwrap();
             assert!(reply.get("result").is_none(), "{reply}");
             assert!(reply["error"]["code"] == -32602 || reply["error"]["code"] == -32600);
         }
+    }
+
+    #[test]
+    fn tools_require_completed_handshake() {
+        let mut session = Session::New;
+        let call = json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
+            "name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}});
+        assert_eq!(
+            handle(call.clone(), &[], &mut session).unwrap()["error"]["code"],
+            -32002
+        );
+        assert!(handle(
+            json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+            &[],
+            &mut session
+        )
+        .is_none());
+        assert_eq!(
+            handle(call.clone(), &[], &mut session).unwrap()["error"]["code"],
+            -32002
+        );
+        let init = json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+            "protocolVersion":"2025-06-18","capabilities":{},
+            "clientInfo":{"name":"test-client","version":"1.0"}}});
+        assert_eq!(
+            handle(init.clone(), &[], &mut session).unwrap()["result"]["protocolVersion"],
+            "2025-06-18"
+        );
+        assert_eq!(
+            handle(call.clone(), &[], &mut session).unwrap()["error"]["code"],
+            -32002
+        );
+        assert!(handle(
+            json!({"jsonrpc":"2.0","method":"notifications/initialized","params":[]}),
+            &[],
+            &mut session
+        )
+        .is_none());
+        assert_eq!(
+            handle(call.clone(), &[], &mut session).unwrap()["error"]["code"],
+            -32002
+        );
+        assert_eq!(
+            handle(init, &[], &mut session).unwrap()["error"]["code"],
+            -32600
+        );
+        assert!(handle(
+            json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+            &[],
+            &mut session
+        )
+        .is_none());
+        assert_eq!(
+            handle(call, &[], &mut session).unwrap()["result"]["structuredContent"]["rule"],
+            "EGRESS_INVALID_HOST"
+        );
     }
 }

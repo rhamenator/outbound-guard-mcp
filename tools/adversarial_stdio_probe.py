@@ -31,6 +31,10 @@ def main():
             "protocolVersion": "2025-06-18", "capabilities": {},
             "clientInfo": {"name": "stdio-probe", "version": "1.0"},
         }}),
+        frame({"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "guarded_fetch", "arguments": {"url": "http://127.0.0.1/"}}}),
+        frame({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+        frame({"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {"name": "guarded_fetch", "arguments": {"url": "http://127.0.0.1/"}}}),
+        frame({"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {"name": "guarded_fetch", "arguments": {"url": "https://example.com/" + marker}}}),
         frame([]),
     ]
     env = os.environ.copy()
@@ -40,21 +44,24 @@ def main():
         env=env, timeout=10, check=True,
     )
     replies = [json.loads(line) for line in result.stdout.splitlines()]
-    assert len(replies) == 11, f"expected 11 replies, got {len(replies)}"
-    assert [reply["id"] for reply in replies] == [None, None, 1, 2, 3, 4, None, 5, 6, 7, None]
+    assert len(replies) == 14, f"expected 14 replies, got {len(replies)}"
+    assert [reply["id"] for reply in replies] == [None, None, 1, 2, 3, 4, None, 5, 6, 7, 8, 9, 10, None]
     assert replies[0]["error"]["code"] == -32700
     assert replies[1]["error"]["code"] == -32600
     assert replies[2]["result"] == {}
-    assert replies[3]["result"]["structuredContent"]["rule"] == "EGRESS_INVALID_HOST"
-    assert replies[4]["result"]["structuredContent"]["rule"] == "EGRESS_SECRET_DETECTED"
-    assert replies[5]["error"]["code"] == -32601
+    assert replies[3]["error"]["code"] == -32002
+    assert replies[4]["error"]["code"] == -32002
+    assert replies[5]["error"]["code"] == -32002
     assert replies[6]["error"]["code"] == -32600
     assert replies[7]["result"] == {}
     assert replies[8]["error"]["code"] == -32602
     assert replies[9]["result"]["protocolVersion"] == "2025-06-18"
-    assert replies[10]["error"]["code"] == -32600
+    assert replies[10]["error"]["code"] == -32002
+    assert replies[11]["result"]["structuredContent"]["rule"] == "EGRESS_INVALID_HOST"
+    assert replies[12]["result"]["structuredContent"]["rule"] == "EGRESS_SECRET_DETECTED"
+    assert replies[13]["error"]["code"] == -32600
     assert marker.encode() not in result.stdout + result.stderr
-    print("stdio adversarial probe: 13 frames, 11 expected replies, no network or secret echo")
+    print("stdio adversarial probe: 17 frames, 14 expected replies, no network or secret echo")
 
 
 if __name__ == "__main__":
