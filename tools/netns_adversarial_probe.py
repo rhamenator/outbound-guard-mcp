@@ -23,6 +23,7 @@ RECORDS = {
 
 class DNS(socketserver.BaseRequestHandler):
     rebind_a_queries = 0
+    queries = 0
 
     def handle(self):
         data, sock = self.request
@@ -38,6 +39,7 @@ class DNS(socketserver.BaseRequestHandler):
         if offset + 5 > len(data):
             return
         name = ".".join(labels).lower()
+        type(self).queries += 1
         question = data[12:offset + 5]
         qtype = struct.unpack("!H", data[offset + 1:offset + 3])[0]
         addresses = RECORDS.get(name, []) if qtype == 1 else []
@@ -100,6 +102,31 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", "http://private.test/plain")
             self.end_headers()
+            return
+        if self.path == "/conflict-framing":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", "2")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            self.wfile.write(b"2\r\nok\r\n0\r\n\r\n")
+            return
+        if self.path == "/duplicate-length":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", "2")
+            self.send_header("Content-Length", "3")
+            self.end_headers()
+            self.wfile.write(b"ok")
+            return
+        if self.path == "/chunked-large":
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            body = b"x" * 70000
+            self.wfile.write(f"{len(body):x}\r\n".encode() + body + b"\r\n0\r\n\r\n")
             return
         if self.path == "/encoded":
             body = gzip.compress(b"fixture-ok")
@@ -167,6 +194,23 @@ def main(binary):
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
         assert DNS.rebind_a_queries >= 1
+        marker = "AKIAABCDEFGHIJKLMNOP"  # Synthetic AWS-shaped token.
+        before_queries, before_hits = DNS.queries, len(HTTP.hits)
+        secret_decision = call(binary, "allowed.test", marker)
+        assert secret_decision["rule"] == "EGRESS_SECRET_DETECTED", secret_decision
+        assert marker not in json.dumps(secret_decision)
+        assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
+        framing_results = {}
+        for path, accepted_rules in (
+            ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
+            ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
+            ("chunked-large", {"EGRESS_RESPONSE_LIMIT"}),
+        ):
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] in accepted_rules, (path, decision)
+            assert "body_text" not in decision, (path, decision)
+            assert HTTP.hits[-1] == f"/{path}"
+            framing_results[path] = decision["rule"]
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
                            ("drip", "EGRESS_RESPONSE_TIMEOUT"),
                            ("late-eof", "EGRESS_RESPONSE_TIMEOUT")):
@@ -177,8 +221,8 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 10 actual-socket decisions; private/mixed DNS opened no HTTP socket; "
-              f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}")
+        print(f"netns adversarial probe: 14 MCP decisions; private/mixed DNS and synthetic secret opened no HTTP socket; "
+              f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
         http_server.shutdown()

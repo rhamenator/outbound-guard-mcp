@@ -495,6 +495,21 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
     }
     if response
         .headers()
+        .get_all(header::CONTENT_LENGTH)
+        .iter()
+        .count()
+        > 1
+        || (response.headers().contains_key(header::CONTENT_LENGTH)
+            && response.headers().contains_key(header::TRANSFER_ENCODING))
+    {
+        return Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a response with unambiguous HTTP message framing.",
+        )
+        .value();
+    }
+    if response
+        .headers()
         .get(header::CONTENT_ENCODING)
         .is_some_and(|value| value != "identity")
     {
