@@ -52,18 +52,30 @@ fn rpc_error(id: Value, code: i32, message: &str) -> Value {
 }
 
 fn handle(message: Value, hosts: &[String]) -> Option<Value> {
-    let id = message.get("id").cloned().unwrap_or(Value::Null);
-    let method = match message.get("method").and_then(Value::as_str) {
-        Some(method) => method,
-        None => return Some(rpc_error(id, -32600, "Invalid Request")),
-    };
-    if method == "notifications/initialized" {
-        return None;
-    }
-    let valid_id =
-        matches!(&id, Value::String(_)) || id.as_i64().is_some() || id.as_u64().is_some();
-    if message.get("jsonrpc") != Some(&Value::String("2.0".into())) || !valid_id {
+    let Some(object) = message.as_object() else {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
+    };
+    if object.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
+        return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
+    }
+    let Some(method) = object.get("method").and_then(Value::as_str) else {
+        return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
+    };
+    if object
+        .get("params")
+        .is_some_and(|params| !params.is_object() && !params.is_array())
+    {
+        return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
+    }
+    let Some(id) = object.get("id").cloned() else {
+        // Notifications have no response. Never execute a tool call without an id.
+        return None;
+    };
+    if !matches!(&id, Value::String(_)) && id.as_i64().is_none() && id.as_u64().is_none() {
+        return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
+    }
+    if method.starts_with("notifications/") {
+        return Some(rpc_error(id, -32601, "Method not found"));
     }
     let result = match method {
         "initialize" => {
@@ -153,6 +165,31 @@ mod tests {
     #[test]
     fn invalid_id_type_is_rejected() {
         let result = handle(json!({"jsonrpc":"2.0","id":{"x":1},"method":"ping"}), &[]).unwrap();
+        assert_eq!(result["error"]["code"], -32600);
+    }
+    #[test]
+    fn notifications_never_execute_tools_or_get_responses() {
+        for method in ["notifications/initialized", "tools/call", "ping"] {
+            assert!(handle(
+                json!({"jsonrpc":"2.0","method":method,"params":{"name":"guarded_fetch","arguments":{"url":"https://example.com/"}}}),
+                &[],
+            )
+            .is_none());
+        }
+    }
+    #[test]
+    fn malformed_initialized_request_is_not_silently_accepted() {
+        let result = handle(
+            json!({"jsonrpc":"2.0","id":7,"method":"notifications/initialized"}),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(result["error"]["code"], -32601);
+        let result = handle(
+            json!({"jsonrpc":"1.0","method":"notifications/initialized"}),
+            &[],
+        )
+        .unwrap();
         assert_eq!(result["error"]["code"], -32600);
     }
 }

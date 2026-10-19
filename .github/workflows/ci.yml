@@ -22,3 +22,4 @@ jobs:
       - run: cargo test --locked
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo build --locked
+      - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
