@@ -279,6 +279,10 @@ def call_sequence(binary, targets):
     assert len(lines) == len(requests), lines
     responses = [json.loads(line) for line in lines]
     assert [response["id"] for response in responses] == list(range(1, len(requests) + 1)), responses
+    for (host, path, scheme), response in zip(targets, responses):
+        if response["result"]["structuredContent"].get("rule") == "EGRESS_SECRET_DETECTED":
+            assert f"{scheme}://{host}/{path}" not in result.stdout + result.stderr
+            assert path not in result.stdout + result.stderr
     return [response["result"]["structuredContent"] for response in responses]
 
 
@@ -341,12 +345,20 @@ def main(binary):
         assert injection["rule"] == "EGRESS_ALLOWED", injection
         assert injection["untrusted_content"] is True, injection
         assert "ignore previous instructions" in injection["body_text"], injection
-        marker = "AKIAABCDEFGHIJKLMNOP"  # Synthetic AWS-shaped token.
-        before_queries, before_hits = DNS.queries, len(HTTP.hits)
-        secret_decision = call(binary, "allowed.test", marker)
-        assert secret_decision["rule"] == "EGRESS_SECRET_DETECTED", secret_decision
-        assert marker not in json.dumps(secret_decision)
-        assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
+        secret_markers = (
+            "AKIAABCDEFGHIJKLMNOP",  # Synthetic AWS access key ID.
+            "ASIAABCDEFGHIJKLMNOP",  # Synthetic AWS temporary access key ID.
+            "ghp_ABCDEFGHIJKLMNOPQRST",  # Synthetic GitHub token shapes.
+            "gho_ABCDEFGHIJKLMNOPQRST",
+            "sk-ABCDEFGHIJKLMNOPQRST",  # Synthetic API key shape.
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",  # Entropy rule.
+        )
+        for marker in secret_markers:
+            before_queries, before_hits = DNS.queries, len(HTTP.hits)
+            secret_decision = call(binary, "allowed.test", marker)
+            assert secret_decision["rule"] == "EGRESS_SECRET_DETECTED", (marker[:4], secret_decision)
+            assert marker not in json.dumps(secret_decision)
+            assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
         framing_results = {}
         for path, accepted_rules in (
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
@@ -371,7 +383,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 35 MCP decisions; forbidden DNS, rebinding, and synthetic secret opened no HTTP socket; redirect traps not followed; HTML and fake media types denied; JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: 40 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; HTML and fake media types denied; JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
