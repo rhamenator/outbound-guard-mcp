@@ -566,6 +566,25 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
     }
     if response
         .headers()
+        .get_all(header::CONTENT_TYPE)
+        .iter()
+        .count()
+        > 1
+        || response
+            .headers()
+            .get_all(header::CONTENT_ENCODING)
+            .iter()
+            .count()
+            > 1
+    {
+        return Denial::new(
+            "EGRESS_AMBIGUOUS_RESPONSE_METADATA",
+            "Use one Content-Type and at most one Content-Encoding field.",
+        )
+        .value();
+    }
+    if response
+        .headers()
         .get(header::CONTENT_ENCODING)
         .is_some_and(|value| value != "identity")
     {
