@@ -6,9 +6,11 @@ import json
 import os
 import socket
 import socketserver
+import ssl
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -187,10 +189,46 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             pass
 
 
-def call(binary, host, path):
+class QuietTLSHTTP(http.server.ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, *_args):
+        # Expected when the client rejects the ephemeral test certificate.
+        pass
+
+
+def test_tls(binary):
+    with tempfile.TemporaryDirectory(prefix="outbound-guard-tls-") as folder:
+        cert, key = os.path.join(folder, "cert.pem"), os.path.join(folder, "key.pem")
+        subprocess.run(
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+             "-keyout", key, "-out", cert, "-days", "1", "-subj", "/CN=wrong.test"],
+            capture_output=True, check=True, timeout=10,
+        )
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(cert, key)
+        seen_sni = []
+        context.set_servername_callback(lambda _socket, name, _context: seen_sni.append(name))
+        server = QuietTLSHTTP((PUBLIC_FIXTURE, 443), HTTP)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            before_hits = len(HTTP.hits)
+            decision = call(binary, "allowed.test", "plain", scheme="https")
+            assert decision["rule"] == "EGRESS_NETWORK_FAILURE", decision
+            assert seen_sni == ["allowed.test"], seen_sni
+            assert len(HTTP.hits) == before_hits, HTTP.hits
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+
+def call(binary, host, path, scheme="http"):
     request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                "params": {"name": "guarded_fetch", "arguments":
-                          {"url": f"http://{host}/{path}", "max_return_bytes": 65536}}}
+                          {"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}}}
     env = os.environ.copy()
     env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = ",".join(RECORDS)
     # A working direct request proves these ambient proxy variables were ignored.
@@ -241,6 +279,7 @@ def main(binary):
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
         assert DNS.rebind_a_queries >= 1
+        test_tls(binary)
         marker = "AKIAABCDEFGHIJKLMNOP"  # Synthetic AWS-shaped token.
         before_queries, before_hits = DNS.queries, len(HTTP.hits)
         secret_decision = call(binary, "allowed.test", marker)
@@ -271,7 +310,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 26 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; "
+        print(f"netns adversarial probe: 27 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
