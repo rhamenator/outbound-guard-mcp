@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""Socket-level guarded_fetch checks inside a disposable, route-free network namespace."""
+import gzip
+import http.server
+import json
+import os
+import socket
+import socketserver
+import struct
+import subprocess
+import sys
+import threading
+
+PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
+RECORDS = {
+    "allowed.test": [PUBLIC_FIXTURE],
+    "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
+    "private.test": ["127.0.0.1"],
+}
+
+
+class DNS(socketserver.BaseRequestHandler):
+    def handle(self):
+        data, sock = self.request
+        if len(data) < 17:
+            return
+        offset = 12
+        labels = []
+        while offset < len(data) and data[offset]:
+            length = data[offset]
+            offset += 1
+            labels.append(data[offset:offset + length].decode("ascii", "ignore"))
+            offset += length
+        if offset + 5 > len(data):
+            return
+        name = ".".join(labels).lower()
+        question = data[12:offset + 5]
+        qtype = struct.unpack("!H", data[offset + 1:offset + 3])[0]
+        addresses = RECORDS.get(name, []) if qtype == 1 else []
+        flags = 0x8180 if name in RECORDS else 0x8183
+        header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
+        answers = b"".join(b"\xc0\x0c" + struct.pack("!HHIH", 1, 1, 60, 4) +
+                           socket.inet_aton(address) for address in addresses)
+        sock.sendto(header + question + answers, self.client_address)
+
+
+class HTTP(http.server.BaseHTTPRequestHandler):
+    hits = []
+
+    def log_message(self, *_args):
+        pass
+
+    def do_GET(self):
+        self.hits.append(self.path)
+        if self.path == "/redirect":
+            self.send_response(302)
+            self.send_header("Location", "http://private.test/plain")
+            self.end_headers()
+            return
+        if self.path == "/encoded":
+            body = gzip.compress(b"fixture-ok")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Encoding", "gzip")
+        elif self.path == "/large":
+            body = b"x" * 70000
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+        else:
+            body = b"fixture-ok"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        try:
+            self.wfile.write(body)
+        except BrokenPipeError:
+            pass
+
+
+def call(binary, host, path):
+    request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+               "params": {"name": "guarded_fetch", "arguments":
+                          {"url": f"http://{host}/{path}", "max_return_bytes": 65536}}}
+    env = os.environ.copy()
+    env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = ",".join(RECORDS)
+    result = subprocess.run([binary], input=json.dumps(request) + "\n", text=True,
+                            capture_output=True, timeout=20, env=env, check=True)
+    if result.stderr:
+        raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
+    lines = result.stdout.splitlines()
+    assert len(lines) == 1, lines
+    return json.loads(lines[0])["result"]["structuredContent"]
+
+
+def main(binary):
+    dns = socketserver.ThreadingUDPServer(("127.0.0.1", 53), DNS)
+    http_server = http.server.ThreadingHTTPServer((PUBLIC_FIXTURE, 80), HTTP)
+    for server in (dns, http_server):
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        cases = [
+            ("private.test", "plain", "EGRESS_FORBIDDEN_ADDRESS", []),
+            ("mixed.test", "plain", "EGRESS_FORBIDDEN_ADDRESS", []),
+            ("allowed.test", "plain", "EGRESS_ALLOWED", ["/plain"]),
+            ("allowed.test", "redirect", "EGRESS_REDIRECT_DENIED", ["/plain", "/redirect"]),
+            ("allowed.test", "encoded", "EGRESS_ENCODED_RESPONSE", ["/plain", "/redirect", "/encoded"]),
+            ("allowed.test", "large", "EGRESS_RESPONSE_LIMIT", ["/plain", "/redirect", "/encoded", "/large"]),
+        ]
+        for host, path, rule, hits in cases:
+            decision = call(binary, host, path)
+            assert decision["rule"] == rule, (host, path, decision)
+            assert HTTP.hits == hits, (host, path, HTTP.hits)
+            if rule == "EGRESS_ALLOWED":
+                assert decision["body_text"] == "fixture-ok"
+        print("netns adversarial probe: 6 actual-socket decisions; private/mixed DNS opened no HTTP socket")
+    finally:
+        dns.shutdown()
+        http_server.shutdown()
+        dns.server_close()
+        http_server.server_close()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])
