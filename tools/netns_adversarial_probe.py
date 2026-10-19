@@ -13,6 +13,7 @@ import sys
 import tempfile
 import threading
 import time
+import zlib
 
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
@@ -173,6 +174,13 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.send_header("Content-Encoding", "gzip")
+        elif self.path in ("/gzip-bomb", "/deflate-bomb"):
+            plain = b"x" * (8 * 1024 * 1024)
+            body = gzip.compress(plain) if self.path == "/gzip-bomb" else zlib.compress(plain)
+            assert len(body) < 16 * 1024
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Encoding", "gzip" if self.path == "/gzip-bomb" else "deflate")
         elif self.path == "/large":
             body = b"x" * 70000
             self.send_response(200)
@@ -280,6 +288,11 @@ def main(binary):
                 assert decision["body_text"] == "fixture-ok"
         assert DNS.rebind_a_queries >= 1
         test_tls(binary)
+        for path in ("gzip-bomb", "deflate-bomb"):
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == "EGRESS_ENCODED_RESPONSE", (path, decision)
+            assert "body_text" not in decision, (path, decision)
+            assert HTTP.hits[-1] == f"/{path}"
         marker = "AKIAABCDEFGHIJKLMNOP"  # Synthetic AWS-shaped token.
         before_queries, before_hits = DNS.queries, len(HTTP.hits)
         secret_decision = call(binary, "allowed.test", marker)
@@ -310,7 +323,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 27 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; TLS SNI preserved; "
+        print(f"netns adversarial probe: 29 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
