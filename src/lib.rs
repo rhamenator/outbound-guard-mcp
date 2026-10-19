@@ -542,7 +542,16 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
         let remaining = target.max_return_bytes + 1 - body.len();
         let read_len = remaining.min(chunk.len());
         match response.read(&mut chunk[..read_len]) {
-            Ok(0) => break,
+            Ok(0) => {
+                if http_started.elapsed() >= HTTP_TOTAL_TIMEOUT {
+                    return Denial::new(
+                        "EGRESS_RESPONSE_TIMEOUT",
+                        "The response exceeded the total time limit.",
+                    )
+                    .value();
+                }
+                break;
+            }
             Ok(n) => body.extend_from_slice(&chunk[..n]),
             Err(_) => {
                 return Denial::new(

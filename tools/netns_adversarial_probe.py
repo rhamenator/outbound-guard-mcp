@@ -83,6 +83,19 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                     break
                 time.sleep(1)
             return
+        if self.path == "/late-eof":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            for _ in range(10):
+                try:
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    break
+                time.sleep(1)
+            time.sleep(0.5)
+            return
         if self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "http://private.test/plain")
@@ -155,7 +168,8 @@ def main(binary):
                 assert decision["body_text"] == "fixture-ok"
         assert DNS.rebind_a_queries >= 1
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
-                           ("drip", "EGRESS_RESPONSE_TIMEOUT")):
+                           ("drip", "EGRESS_RESPONSE_TIMEOUT"),
+                           ("late-eof", "EGRESS_RESPONSE_TIMEOUT")):
             started = time.monotonic()
             decision = call(binary, "allowed.test", path)
             elapsed = time.monotonic() - started
@@ -163,7 +177,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 9 actual-socket decisions; private/mixed DNS opened no HTTP socket; "
+        print(f"netns adversarial probe: 10 actual-socket decisions; private/mixed DNS opened no HTTP socket; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}")
     finally:
         dns.shutdown()
