@@ -7,6 +7,10 @@ description: Route an agent's external HTTP requests through a connected outboun
 
 This skill applies only after the standalone server is connected and `tools/list` advertises `guarded_fetch`. The current server is experimental and supports a narrow GET/HEAD policy; the remaining release gates are in the repository's quality bar.
 
+## Connect and verify
+
+From a clone of the server repository, run `cargo install --path . --locked`, then configure your MCP client to launch `outbound-guard-mcp` over stdio. Set the server environment variable `OUTBOUND_GUARD_ALLOWED_HOSTS` to a comma-separated list of exact DNS hostnames the operator approves. An empty allowlist denies all egress; malformed entries stop startup. Confirm the client can initialize, list `guarded_fetch`, and call it with a blocked loopback URL before enabling an approved host. The repository's `tools/inspector_smoke.py` gives a repeatable official Inspector check, including optional real GET and HEAD calls. The tool needs no application credential in this version; the approved destination sees the URL and may impose its own network or usage costs. Supported-client setup beyond the Inspector remains to be verified.
+
 ## When to call
 
 When the task requires an external HTTP(S) GET or HEAD and the operator has allowlisted the exact hostname, call `guarded_fetch` for the actual request. Provide the exact URL and optional `method` and `max_return_bytes`. This version rejects query strings, request bodies, custom headers, and nonstandard ports. Do not send credentials. The other proposed analysis and budget tools are not implemented here yet.
