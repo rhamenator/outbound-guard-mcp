@@ -418,6 +418,12 @@ fn valid_dns_name(host: &str) -> bool {
         })
 }
 
+fn supported_content_type(value: &str) -> bool {
+    let media_type = value.split(';').next().unwrap_or("").trim();
+    media_type.eq_ignore_ascii_case("text/plain")
+        || media_type.eq_ignore_ascii_case("application/json")
+}
+
 pub fn parse_allowed_hosts(value: &str) -> Result<Vec<String>, &'static str> {
     if value.is_empty() {
         return Ok(Vec::new());
@@ -550,9 +556,7 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
         .get(header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
-    if target.method != "HEAD"
-        && !(content_type.starts_with("text/plain") || content_type.starts_with("application/json"))
-    {
+    if target.method != "HEAD" && !supported_content_type(content_type) {
         return Denial::new(
             "EGRESS_UNSUPPORTED_CONTENT",
             "Only plain text and JSON are returned at this stage.",
@@ -618,6 +622,15 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicBool;
+    #[test]
+    fn content_type_requires_an_exact_supported_media_type() {
+        assert!(supported_content_type("text/plain; charset=utf-8"));
+        assert!(supported_content_type("application/json"));
+        assert!(!supported_content_type("text/plaintext"));
+        assert!(!supported_content_type("application/json+html"));
+        assert!(!supported_content_type("text/html"));
+        assert!(!supported_content_type(""));
+    }
     struct Fake(Vec<SocketAddr>);
     impl Resolver for Fake {
         fn resolve(&self, _: &str, _: u16) -> std::io::Result<Vec<SocketAddr>> {
