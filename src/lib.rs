@@ -752,6 +752,84 @@ mod tests {
         assert!(public_ip("3fff:1000::1".parse().unwrap()));
     }
     #[test]
+    fn special_use_prefix_boundaries_stay_denied() {
+        // Independent boundary matrix from the IANA IPv4/IPv6 special-purpose registries.
+        // Sample both edges and the interior so a narrowed mask cannot admit part of a block.
+        let denied_v4 = [
+            ("0.0.0.0", 8),
+            ("10.0.0.0", 8),
+            ("100.64.0.0", 10),
+            ("127.0.0.0", 8),
+            ("169.254.0.0", 16),
+            ("172.16.0.0", 12),
+            ("192.0.0.0", 24),
+            ("192.0.2.0", 24),
+            ("192.88.99.0", 24),
+            ("192.168.0.0", 16),
+            ("198.18.0.0", 15),
+            ("198.51.100.0", 24),
+            ("203.0.113.0", 24),
+            ("224.0.0.0", 4),
+            ("240.0.0.0", 4),
+        ];
+        for (base, prefix) in denied_v4 {
+            let first = u32::from(base.parse::<Ipv4Addr>().unwrap());
+            let last = first | (u32::MAX >> prefix);
+            for value in [first, first + 1, first + (last - first) / 2, last - 1, last] {
+                let ip = Ipv4Addr::from(value);
+                assert!(!public_v4(ip), "{base}/{prefix} admitted {ip}");
+            }
+        }
+        for ip in [
+            "1.1.1.1",
+            "8.8.8.8",
+            "100.63.255.255",
+            "100.128.0.0",
+            "172.15.255.255",
+            "172.32.0.0",
+            "198.17.255.255",
+            "198.20.0.0",
+        ] {
+            assert!(public_v4(ip.parse().unwrap()), "{ip}");
+        }
+
+        let denied_v6 = [
+            ("::", 128),
+            ("::1", 128),
+            ("::ffff:0:0", 96),
+            ("64:ff9b:1::", 48),
+            ("100::", 64),
+            ("2001::", 23),
+            ("2001:db8::", 32),
+            ("2002::", 16),
+            ("3fff::", 20),
+            ("5f00::", 16),
+            ("fc00::", 7),
+            ("fe80::", 10),
+        ];
+        for (base, prefix) in denied_v6 {
+            let first = u128::from(base.parse::<Ipv6Addr>().unwrap());
+            let last = first
+                | if prefix == 128 {
+                    0
+                } else {
+                    u128::MAX >> prefix
+                };
+            let samples = if first == last {
+                vec![first]
+            } else {
+                vec![first, first + 1, first + (last - first) / 2, last - 1, last]
+            };
+            for value in samples {
+                let ip = Ipv6Addr::from(value);
+                assert!(!public_v6(ip), "{base}/{prefix} admitted {ip}");
+            }
+        }
+        for ip in ["2606:4700:4700::1111", "3fff:1000::1"] {
+            assert!(public_v6(ip.parse().unwrap()), "{ip}");
+        }
+    }
+    #[test]
     fn validates_public_pinned_target() {
         let result = validate(
             &json!({"url":"https://example.com/","method":"HEAD"}),
