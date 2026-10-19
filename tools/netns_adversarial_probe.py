@@ -286,7 +286,12 @@ def main(binary):
             assert HTTP.hits == hits, (host, path, HTTP.hits)
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
-        assert DNS.rebind_a_queries >= 1
+        assert DNS.rebind_a_queries == 1, DNS.rebind_a_queries
+        before_hits = len(HTTP.hits)
+        rebound = call(binary, "rebind.test", "plain")
+        assert rebound["rule"] == "EGRESS_FORBIDDEN_ADDRESS", rebound
+        assert DNS.rebind_a_queries == 2, DNS.rebind_a_queries
+        assert len(HTTP.hits) == before_hits, HTTP.hits
         test_tls(binary)
         for path in ("gzip-bomb", "deflate-bomb"):
             decision = call(binary, "allowed.test", path)
@@ -323,7 +328,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 29 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; TLS SNI preserved; "
+        print(f"netns adversarial probe: 30 MCP decisions; forbidden DNS, rebinding, and synthetic secret opened no HTTP socket; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
