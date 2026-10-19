@@ -19,6 +19,8 @@ const MAX_RETURN_BYTES: usize = 256 * 1024;
 const DNS_TIMEOUT: Duration = Duration::from_secs(3);
 const HTTP_IDLE_TIMEOUT: Duration = Duration::from_secs(3);
 const HTTP_TOTAL_TIMEOUT: Duration = Duration::from_secs(10);
+const MAX_RESPONSE_HEADERS: usize = 64;
+const MAX_RESPONSE_HEADER_BYTES: usize = 16 * 1024;
 const HOST_PER_MINUTE: usize = 60;
 const CALLS_PER_HOUR: usize = 1000;
 static DNS_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -486,6 +488,20 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
             .value()
         }
     };
+    if response.headers().len() > MAX_RESPONSE_HEADERS
+        || response
+            .headers()
+            .iter()
+            .map(|(name, value)| name.as_str().len() + value.as_bytes().len() + 4)
+            .try_fold(0usize, |total, size| total.checked_add(size))
+            .is_none_or(|total| total > MAX_RESPONSE_HEADER_BYTES)
+    {
+        return Denial::new(
+            "EGRESS_RESPONSE_HEADERS_LIMIT",
+            "Reduce response header count or size.",
+        )
+        .value();
+    }
     if response.status().is_redirection() {
         return Denial::new(
             "EGRESS_REDIRECT_DENIED",

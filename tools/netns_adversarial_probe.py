@@ -128,6 +128,21 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             body = b"x" * 70000
             self.wfile.write(f"{len(body):x}\r\n".encode() + body + b"\r\n0\r\n\r\n")
             return
+        if self.path in ("/many-headers", "/oversized-header"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            if self.path == "/many-headers":
+                for index in range(70):
+                    self.send_header(f"X-Fixture-{index}", "ok")
+            else:
+                self.send_header("X-Fixture-Large", "x" * (24 * 1024))
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            try:
+                self.wfile.write(b"ok")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
         if self.path == "/encoded":
             body = gzip.compress(b"fixture-ok")
             self.send_response(200)
@@ -205,6 +220,8 @@ def main(binary):
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("chunked-large", {"EGRESS_RESPONSE_LIMIT"}),
+            ("many-headers", {"EGRESS_RESPONSE_HEADERS_LIMIT"}),
+            ("oversized-header", {"EGRESS_RESPONSE_HEADERS_LIMIT", "EGRESS_NETWORK_FAILURE"}),
         ):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] in accepted_rules, (path, decision)
@@ -221,7 +238,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 14 MCP decisions; private/mixed DNS and synthetic secret opened no HTTP socket; "
+        print(f"netns adversarial probe: 16 MCP decisions; private/mixed DNS and synthetic secret opened no HTTP socket; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
