@@ -17,6 +17,7 @@ use std::{
 const DEFAULT_RETURN_BYTES: usize = 64 * 1024;
 const MAX_RETURN_BYTES: usize = 256 * 1024;
 const DNS_TIMEOUT: Duration = Duration::from_secs(3);
+const MAX_DNS_ADDRESSES: usize = 16;
 const HTTP_IDLE_TIMEOUT: Duration = Duration::from_secs(3);
 const HTTP_TOTAL_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_RESPONSE_HEADERS: usize = 64;
@@ -101,7 +102,7 @@ impl Resolver for SystemResolver {
         resolve_bounded(&DNS_WORKER_ACTIVE, DNS_TIMEOUT, move || {
             (host.as_str(), port)
                 .to_socket_addrs()
-                .map(|answers| answers.collect())
+                .map(|answers| answers.take(MAX_DNS_ADDRESSES + 1).collect())
         })
     }
 }
@@ -383,6 +384,12 @@ fn validate_with_reservation<R: Resolver, F: FnOnce(&str) -> Result<(), Denial>>
         return Err(Denial::new(
             "EGRESS_DNS_FAILURE",
             "The hostname returned no addresses.",
+        ));
+    }
+    if addresses.len() > MAX_DNS_ADDRESSES {
+        return Err(Denial::new(
+            "EGRESS_DNS_ANSWER_LIMIT",
+            "Reduce the hostname's DNS answer set to at most 16 addresses.",
         ));
     }
     if addresses
@@ -828,6 +835,26 @@ mod tests {
         for ip in ["2606:4700:4700::1111", "3fff:1000::1"] {
             assert!(public_v6(ip.parse().unwrap()), "{ip}");
         }
+    }
+    #[test]
+    fn oversized_dns_answer_set_is_denied_before_connection() {
+        let answers: Vec<_> = (1..=MAX_DNS_ADDRESSES + 1)
+            .map(|n| addr(&format!("11.0.0.{n}")))
+            .collect();
+        assert!(validate(
+            &json!({"url":"https://example.com/"}),
+            &allowed(),
+            &Fake(answers[..MAX_DNS_ADDRESSES].to_vec())
+        )
+        .is_ok());
+        let denial = validate(
+            &json!({"url":"https://example.com/"}),
+            &allowed(),
+            &Fake(answers),
+        )
+        .err()
+        .unwrap();
+        assert_eq!(denial.rule, "EGRESS_DNS_ANSWER_LIMIT");
     }
     #[test]
     fn validates_public_pinned_target() {
