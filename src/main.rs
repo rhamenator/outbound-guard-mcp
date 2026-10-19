@@ -55,21 +55,37 @@ fn valid_initialize_params(message: &Value) -> bool {
     let Some(params) = message.get("params").and_then(Value::as_object) else {
         return false;
     };
+    let Some(capabilities) = params.get("capabilities").and_then(Value::as_object) else {
+        return false;
+    };
+    let Some(info) = params.get("clientInfo").and_then(Value::as_object) else {
+        return false;
+    };
+    let known_capabilities_are_objects = ["roots", "sampling", "elicitation"]
+        .into_iter()
+        .all(|name| capabilities.get(name).is_none_or(Value::is_object));
+    let experimental_is_valid = capabilities.get("experimental").is_none_or(|value| {
+        value
+            .as_object()
+            .is_some_and(|entries| entries.values().all(Value::is_object))
+    });
+    let roots_is_valid = capabilities
+        .get("roots")
+        .and_then(Value::as_object)
+        .is_none_or(|roots| roots.get("listChanged").is_none_or(Value::is_boolean));
     params
         .get("protocolVersion")
         .and_then(Value::as_str)
         .is_some_and(|version| !version.is_empty())
-        && params.get("capabilities").is_some_and(Value::is_object)
-        && params
-            .get("clientInfo")
-            .and_then(Value::as_object)
-            .is_some_and(|info| {
-                ["name", "version"].into_iter().all(|field| {
-                    info.get(field)
-                        .and_then(Value::as_str)
-                        .is_some_and(|value| !value.is_empty())
-                })
-            })
+        && known_capabilities_are_objects
+        && experimental_is_valid
+        && roots_is_valid
+        && ["name", "version"].into_iter().all(|field| {
+            info.get(field)
+                .and_then(Value::as_str)
+                .is_some_and(|value| !value.is_empty())
+        })
+        && info.get("title").is_none_or(Value::is_string)
 }
 
 fn handle(message: Value, hosts: &[String]) -> Option<Value> {
@@ -226,6 +242,16 @@ mod tests {
             handle(valid.clone(), &[]).unwrap()["result"]["protocolVersion"],
             "2025-06-18"
         );
+        let mut valid_nested = valid.clone();
+        valid_nested["params"]["capabilities"] = json!({
+            "roots":{"listChanged":true}, "sampling":{}, "elicitation":{},
+            "experimental":{"vendor":{}}
+        });
+        valid_nested["params"]["clientInfo"]["title"] = json!("Probe client");
+        assert_eq!(
+            handle(valid_nested, &[]).unwrap()["result"]["protocolVersion"],
+            "2025-06-18"
+        );
         for params in [
             json!(null),
             json!([]),
@@ -234,6 +260,12 @@ mod tests {
             json!({"protocolVersion":"2025-06-18", "capabilities":[], "clientInfo":{"name":"client","version":"1"}}),
             json!({"protocolVersion":"2025-06-18", "capabilities":{}, "clientInfo":{"name":"client"}}),
             json!({"protocolVersion":"2025-06-18", "capabilities":{}, "clientInfo":{"name":"client","version":1}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{"roots":false}, "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{"roots":{"listChanged":"yes"}}, "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{"sampling":1}, "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{"elicitation":null}, "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{"experimental":{"x":false}}, "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{}, "clientInfo":{"name":"client","version":"1","title":2}}),
         ] {
             let mut request = valid.clone();
             request["params"] = params;
