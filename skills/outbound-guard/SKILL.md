@@ -5,7 +5,7 @@ description: Route an agent's external HTTP requests through a connected outboun
 
 # Outbound Guard
 
-This skill applies only after the standalone server is connected and `tools/list` advertises `guarded_fetch`. The current server is experimental and supports a narrow GET/HEAD policy. It applies a three-second HTTP idle timeout and checks a ten-second total response deadline between body reads; a single blocked read can extend the elapsed time by up to three seconds. The remaining release gates are in the repository's quality bar.
+This skill applies only after the standalone server is connected and `tools/list` advertises `guarded_fetch`. The current server is experimental and supports a narrow GET/HEAD policy. It applies a three-second HTTP idle timeout and checks a ten-second total response deadline between body reads; a single blocked read can extend the elapsed time by up to three seconds. Malformed response framing fails closed, either as `EGRESS_INVALID_FRAMING` or an earlier `EGRESS_NETWORK_FAILURE` from the HTTP parser. The remaining release gates are in the repository's quality bar.
 
 ## Connect and verify
 
