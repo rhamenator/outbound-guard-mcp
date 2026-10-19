@@ -566,6 +566,23 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
     }
     if response
         .headers()
+        .get_all(header::TRANSFER_ENCODING)
+        .iter()
+        .count()
+        > 1
+        || response
+            .headers()
+            .get(header::TRANSFER_ENCODING)
+            .is_some_and(|value| !value.as_bytes().eq_ignore_ascii_case(b"chunked"))
+    {
+        return Denial::new(
+            "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+            "Use a response with only chunked transfer coding or no transfer coding.",
+        )
+        .value();
+    }
+    if response
+        .headers()
         .get_all(header::CONTENT_TYPE)
         .iter()
         .count()
