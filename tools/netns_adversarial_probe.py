@@ -174,6 +174,16 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             body = b"x" * 70000
             self.wfile.write(f"{len(body):x}\r\n".encode() + body + b"\r\n0\r\n\r\n")
             return
+        if self.path in ("/chunked-bad-size", "/chunked-truncated"):
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            self.wfile.write(b"2\r\nok\r\n" + (b"Z\r\n" if self.path == "/chunked-bad-size" else b"4\r\nx"))
+            self.wfile.flush()
+            self.close_connection = True
+            return
         if self.path in ("/many-headers", "/oversized-header", "/parser-limit"):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -408,6 +418,8 @@ def main(binary):
             ("duplicate-type", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
             ("duplicate-encoding", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
             ("chunked-large", {"EGRESS_RESPONSE_LIMIT"}),
+            ("chunked-bad-size", {"EGRESS_READ_FAILURE", "EGRESS_NETWORK_FAILURE"}),
+            ("chunked-truncated", {"EGRESS_READ_FAILURE", "EGRESS_NETWORK_FAILURE"}),
             ("many-headers", {"EGRESS_RESPONSE_HEADERS_LIMIT"}),
             ("oversized-header", {"EGRESS_RESPONSE_HEADERS_LIMIT", "EGRESS_NETWORK_FAILURE"}),
             ("parser-limit", {"EGRESS_NETWORK_FAILURE"}),
@@ -427,7 +439,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 46 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: 48 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
