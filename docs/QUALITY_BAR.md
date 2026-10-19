@@ -22,6 +22,8 @@ Status: acceptance criteria, not a claim of completion. A stable release require
 - Fuzz or property tests cover URL parsing, IP ranges, framing boundaries, and schema inputs. Concurrency and resource tests prove bounded memory, file descriptors, and budget correctness.
 - A threat model maps each promised protection to the exact code path and test. Limits and bypass routes are plainly documented, especially traffic sent via other tools.
 
+The [current threat model](threat-model.md) maps the implemented narrow boundary and keeps unproven cases explicit. This does not close the adversarial release gate.
+
 ## 4. Product finish
 
 - Minimal justified dependencies, pinned CI actions, dependency review, CodeQL, reproducible package installation, checksums, GPL-3.0-or-later license/notice, changelog, versioning, security disclosure, support and contribution guides, and machine-readable registry metadata.
