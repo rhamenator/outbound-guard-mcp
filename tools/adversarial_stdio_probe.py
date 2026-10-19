@@ -27,6 +27,10 @@ def main():
         b"x" * 65537 + b"\n",  # oversized frame must be drained
         frame({"jsonrpc": "2.0", "id": 5, "method": "ping"}),
         frame({"jsonrpc": "2.0", "id": 6, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}}),
+        frame({"jsonrpc": "2.0", "id": 7, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "stdio-probe", "version": "1.0"},
+        }}),
         frame([]),
     ]
     env = os.environ.copy()
@@ -36,8 +40,8 @@ def main():
         env=env, timeout=10, check=True,
     )
     replies = [json.loads(line) for line in result.stdout.splitlines()]
-    assert len(replies) == 10, f"expected 10 replies, got {len(replies)}"
-    assert [reply["id"] for reply in replies] == [None, None, 1, 2, 3, 4, None, 5, 6, None]
+    assert len(replies) == 11, f"expected 11 replies, got {len(replies)}"
+    assert [reply["id"] for reply in replies] == [None, None, 1, 2, 3, 4, None, 5, 6, 7, None]
     assert replies[0]["error"]["code"] == -32700
     assert replies[1]["error"]["code"] == -32600
     assert replies[2]["result"] == {}
@@ -46,10 +50,11 @@ def main():
     assert replies[5]["error"]["code"] == -32601
     assert replies[6]["error"]["code"] == -32600
     assert replies[7]["result"] == {}
-    assert replies[8]["result"]["protocolVersion"] == "2025-06-18"
-    assert replies[9]["error"]["code"] == -32600
+    assert replies[8]["error"]["code"] == -32602
+    assert replies[9]["result"]["protocolVersion"] == "2025-06-18"
+    assert replies[10]["error"]["code"] == -32600
     assert marker.encode() not in result.stdout + result.stderr
-    print("stdio adversarial probe: 12 frames, 10 expected replies, no network or secret echo")
+    print("stdio adversarial probe: 13 frames, 11 expected replies, no network or secret echo")
 
 
 if __name__ == "__main__":

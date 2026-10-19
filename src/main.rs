@@ -51,6 +51,27 @@ fn rpc_error(id: Value, code: i32, message: &str) -> Value {
     json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
 }
 
+fn valid_initialize_params(message: &Value) -> bool {
+    let Some(params) = message.get("params").and_then(Value::as_object) else {
+        return false;
+    };
+    params
+        .get("protocolVersion")
+        .and_then(Value::as_str)
+        .is_some_and(|version| !version.is_empty())
+        && params.get("capabilities").is_some_and(Value::is_object)
+        && params
+            .get("clientInfo")
+            .and_then(Value::as_object)
+            .is_some_and(|info| {
+                ["name", "version"].into_iter().all(|field| {
+                    info.get(field)
+                        .and_then(Value::as_str)
+                        .is_some_and(|value| !value.is_empty())
+                })
+            })
+}
+
 fn handle(message: Value, hosts: &[String]) -> Option<Value> {
     let Some(object) = message.as_object() else {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
@@ -79,6 +100,9 @@ fn handle(message: Value, hosts: &[String]) -> Option<Value> {
     }
     let result = match method {
         "initialize" => {
+            if !valid_initialize_params(&message) {
+                return Some(rpc_error(id, -32602, "Invalid initialize parameters"));
+            }
             json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":false}},
             "serverInfo":{"name":"outbound-guard-mcp","version":env!("CARGO_PKG_VERSION")}})
         }
@@ -191,5 +215,31 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn initialize_requires_version_capabilities_and_client_identity() {
+        let valid = json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+            "protocolVersion":"2025-06-18","capabilities":{},
+            "clientInfo":{"name":"test-client","version":"1.0"}}});
+        assert_eq!(
+            handle(valid.clone(), &[]).unwrap()["result"]["protocolVersion"],
+            "2025-06-18"
+        );
+        for params in [
+            json!(null),
+            json!([]),
+            json!({"protocolVersion":"2025-06-18"}),
+            json!({"protocolVersion":"", "capabilities":{}, "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":[], "clientInfo":{"name":"client","version":"1"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{}, "clientInfo":{"name":"client"}}),
+            json!({"protocolVersion":"2025-06-18", "capabilities":{}, "clientInfo":{"name":"client","version":1}}),
+        ] {
+            let mut request = valid.clone();
+            request["params"] = params;
+            let reply = handle(request, &[]).unwrap();
+            assert!(reply.get("result").is_none(), "{reply}");
+            assert!(reply["error"]["code"] == -32602 || reply["error"]["code"] == -32600);
+        }
     }
 }
