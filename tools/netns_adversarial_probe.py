@@ -18,6 +18,23 @@ RECORDS = {
     "rebind.test": [PUBLIC_FIXTURE],
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
     "private.test": ["127.0.0.1"],
+    "metadata.test": ["169.254.169.254"],
+    "carrier.test": ["100.64.0.1"],
+    "documentation.test": ["192.0.2.1"],
+    "v6-loopback.test": [],
+    "v6-mapped.test": [],
+    "v6-private.test": [],
+    "v6-documentation.test": [],
+    "v6-transition.test": [],
+    "mixed-v6.test": [PUBLIC_FIXTURE],
+}
+V6_RECORDS = {
+    "v6-loopback.test": ["::1"],
+    "v6-mapped.test": ["::ffff:127.0.0.1"],
+    "v6-private.test": ["fc00::1"],
+    "v6-documentation.test": ["2001:db8::1"],
+    "v6-transition.test": ["2002::1"],
+    "mixed-v6.test": ["::1"],
 }
 
 
@@ -42,14 +59,18 @@ class DNS(socketserver.BaseRequestHandler):
         type(self).queries += 1
         question = data[12:offset + 5]
         qtype = struct.unpack("!H", data[offset + 1:offset + 3])[0]
-        addresses = RECORDS.get(name, []) if qtype == 1 else []
+        addresses = (RECORDS.get(name, []) if qtype == 1 else
+                     V6_RECORDS.get(name, []) if qtype == 28 else [])
         if name == "rebind.test" and qtype == 1:
             type(self).rebind_a_queries += 1
             addresses = [PUBLIC_FIXTURE] if self.rebind_a_queries == 1 else ["127.0.0.1"]
         flags = 0x8180 if name in RECORDS else 0x8183
         header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
-        answers = b"".join(b"\xc0\x0c" + struct.pack("!HHIH", 1, 1, 60, 4) +
-                           socket.inet_aton(address) for address in addresses)
+        answers = b"".join(
+            b"\xc0\x0c" + struct.pack("!HHIH", qtype, 1, 60, 4 if qtype == 1 else 16) +
+            socket.inet_pton(socket.AF_INET if qtype == 1 else socket.AF_INET6, address)
+            for address in addresses
+        )
         sock.sendto(header + question + answers, self.client_address)
 
 
@@ -195,6 +216,15 @@ def main(binary):
     for server in (dns, http_server):
         threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
+        forbidden_hosts = (
+            "metadata.test", "carrier.test", "documentation.test",
+            "v6-loopback.test", "v6-mapped.test", "v6-private.test",
+            "v6-documentation.test", "v6-transition.test", "mixed-v6.test",
+        )
+        for host in forbidden_hosts:
+            decision = call(binary, host, "plain")
+            assert decision["rule"] == "EGRESS_FORBIDDEN_ADDRESS", (host, decision)
+            assert not HTTP.hits, (host, HTTP.hits)
         cases = [
             ("private.test", "plain", "EGRESS_FORBIDDEN_ADDRESS", []),
             ("mixed.test", "plain", "EGRESS_FORBIDDEN_ADDRESS", []),
@@ -241,7 +271,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 17 MCP decisions; private/mixed DNS and synthetic secret opened no HTTP socket; "
+        print(f"netns adversarial probe: 26 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
