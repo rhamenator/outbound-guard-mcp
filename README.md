@@ -11,6 +11,19 @@ cargo run --locked
 
 Configure an MCP client to launch the executable over stdio with this environment variable. Its first `tools/list` result advertises `guarded_fetch`. The client must send the actual request through this tool for its policy to apply. It cannot intercept traffic sent through unrelated tools or processes. The `ai-scraping-defense` projects may connect to it optionally, as they may connect to any MCP server.
 
+## Install and verify a client connection
+
+From a clone of this repository, install the binary independently of the source checkout:
+
+```bash
+cargo install --path . --locked
+python3 tools/inspector_smoke.py "$(command -v outbound-guard-mcp)"
+```
+
+The smoke script uses the pinned official MCP Inspector CLI to verify `initialize`, strict `tools/list`, and a structured blocked `tools/call`. For an optional live GET and HEAD, run `python3 tools/inspector_smoke.py "$(command -v outbound-guard-mcp)" --live https://postman-echo.com/get`; this sends requests to that external service. The October 2026 fresh-install check passed both calls. The script passes `OUTBOUND_GUARD_ALLOWED_HOSTS` to the Inspector's spawned server with `-e`; exporting it only in the Inspector's parent shell did not configure the child in this test.
+
+Set your MCP client's stdio command to `outbound-guard-mcp` and its server environment to `OUTBOUND_GUARD_ALLOWED_HOSTS=the.exact.host`. No application credential is needed for the current GET/HEAD tool. The operator controls the allowlist and any network access costs; the tool sends the URL to the approved remote host. Client configuration formats differ, so verify `tools/list` and a guarded call in the chosen client before relying on it. Codex, Claude Code, and Cursor setup checks remain separate release gates.
+
 The initial server does **not** yet enforce a response header size cap, redirect revalidation, secret scanning in headers/bodies, trap detection, HTML scrubbing, or full MCP 2026-07-28 conformance. It does not expose those features as tools. These remain release gates in [QUALITY_BAR.md](docs/QUALITY_BAR.md). The returned plain text and JSON are untrusted data.
 
 The [companion skill](skills/outbound-guard/SKILL.md) tells a connected agent when and how to use the current tool. See [the extraction and verification plan](docs/PLAN.md). The project is GPL-3.0-or-later; see [LICENSE](LICENSE). Security reports follow [SECURITY.md](SECURITY.md).
