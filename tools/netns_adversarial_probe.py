@@ -14,12 +14,15 @@ import threading
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
+    "rebind.test": [PUBLIC_FIXTURE],
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
     "private.test": ["127.0.0.1"],
 }
 
 
 class DNS(socketserver.BaseRequestHandler):
+    rebind_a_queries = 0
+
     def handle(self):
         data, sock = self.request
         if len(data) < 17:
@@ -37,6 +40,9 @@ class DNS(socketserver.BaseRequestHandler):
         question = data[12:offset + 5]
         qtype = struct.unpack("!H", data[offset + 1:offset + 3])[0]
         addresses = RECORDS.get(name, []) if qtype == 1 else []
+        if name == "rebind.test" and qtype == 1:
+            type(self).rebind_a_queries += 1
+            addresses = [PUBLIC_FIXTURE] if self.rebind_a_queries == 1 else ["127.0.0.1"]
         flags = 0x8180 if name in RECORDS else 0x8183
         header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
         answers = b"".join(b"\xc0\x0c" + struct.pack("!HHIH", 1, 1, 60, 4) +
@@ -84,6 +90,13 @@ def call(binary, host, path):
                           {"url": f"http://{host}/{path}", "max_return_bytes": 65536}}}
     env = os.environ.copy()
     env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = ",".join(RECORDS)
+    # A working direct request proves these ambient proxy variables were ignored.
+    env["HTTP_PROXY"] = "http://127.0.0.1:9"
+    env["http_proxy"] = "http://127.0.0.1:9"
+    env["ALL_PROXY"] = "http://127.0.0.1:9"
+    env["all_proxy"] = "http://127.0.0.1:9"
+    env["NO_PROXY"] = ""
+    env["no_proxy"] = ""
     result = subprocess.run([binary], input=json.dumps(request) + "\n", text=True,
                             capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
@@ -106,6 +119,7 @@ def main(binary):
             ("allowed.test", "redirect", "EGRESS_REDIRECT_DENIED", ["/plain", "/redirect"]),
             ("allowed.test", "encoded", "EGRESS_ENCODED_RESPONSE", ["/plain", "/redirect", "/encoded"]),
             ("allowed.test", "large", "EGRESS_RESPONSE_LIMIT", ["/plain", "/redirect", "/encoded", "/large"]),
+            ("rebind.test", "plain", "EGRESS_ALLOWED", ["/plain", "/redirect", "/encoded", "/large", "/plain"]),
         ]
         for host, path, rule, hits in cases:
             decision = call(binary, host, path)
@@ -113,7 +127,9 @@ def main(binary):
             assert HTTP.hits == hits, (host, path, HTTP.hits)
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
-        print("netns adversarial probe: 6 actual-socket decisions; private/mixed DNS opened no HTTP socket")
+        assert DNS.rebind_a_queries >= 1
+        print(f"netns adversarial probe: 7 actual-socket decisions; private/mixed DNS opened no HTTP socket; "
+              f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}")
     finally:
         dns.shutdown()
         http_server.shutdown()
