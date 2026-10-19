@@ -234,9 +234,16 @@ def test_tls(binary):
 
 
 def call(binary, host, path, scheme="http"):
-    request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-               "params": {"name": "guarded_fetch", "arguments":
-                          {"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}}}
+    return call_sequence(binary, [(host, path, scheme)])[0]
+
+
+def call_sequence(binary, targets):
+    requests = [
+        {"jsonrpc": "2.0", "id": index, "method": "tools/call",
+         "params": {"name": "guarded_fetch", "arguments":
+                    {"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}}}
+        for index, (host, path, scheme) in enumerate(targets, 1)
+    ]
     env = os.environ.copy()
     env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = ",".join(RECORDS)
     # A working direct request proves these ambient proxy variables were ignored.
@@ -246,13 +253,15 @@ def call(binary, host, path, scheme="http"):
     env["all_proxy"] = "http://127.0.0.1:9"
     env["NO_PROXY"] = ""
     env["no_proxy"] = ""
-    result = subprocess.run([binary], input=json.dumps(request) + "\n", text=True,
+    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in requests), text=True,
                             capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
         raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
     lines = result.stdout.splitlines()
-    assert len(lines) == 1, lines
-    return json.loads(lines[0])["result"]["structuredContent"]
+    assert len(lines) == len(requests), lines
+    responses = [json.loads(line) for line in lines]
+    assert [response["id"] for response in responses] == list(range(1, len(requests) + 1)), responses
+    return [response["result"]["structuredContent"] for response in responses]
 
 
 def main(binary):
@@ -278,7 +287,6 @@ def main(binary):
             ("allowed.test", "redirect", "EGRESS_REDIRECT_DENIED", ["/plain", "/redirect"]),
             ("allowed.test", "encoded", "EGRESS_ENCODED_RESPONSE", ["/plain", "/redirect", "/encoded"]),
             ("allowed.test", "large", "EGRESS_RESPONSE_LIMIT", ["/plain", "/redirect", "/encoded", "/large"]),
-            ("rebind.test", "plain", "EGRESS_ALLOWED", ["/plain", "/redirect", "/encoded", "/large", "/plain"]),
         ]
         for host, path, rule, hits in cases:
             decision = call(binary, host, path)
@@ -286,7 +294,14 @@ def main(binary):
             assert HTTP.hits == hits, (host, path, HTTP.hits)
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
-        assert DNS.rebind_a_queries >= 1
+        before_hits = len(HTTP.hits)
+        first, rebound = call_sequence(binary, [("rebind.test", "plain", "http"),
+                                                ("rebind.test", "plain", "http")])
+        assert first["rule"] == "EGRESS_ALLOWED", first
+        assert first["body_text"] == "fixture-ok", first
+        assert rebound["rule"] == "EGRESS_FORBIDDEN_ADDRESS", rebound
+        assert DNS.rebind_a_queries == 2, DNS.rebind_a_queries
+        assert HTTP.hits[before_hits:] == ["/plain"], HTTP.hits
         test_tls(binary)
         for path in ("gzip-bomb", "deflate-bomb"):
             decision = call(binary, "allowed.test", path)
@@ -323,7 +338,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 29 MCP decisions; forbidden DNS and synthetic secret opened no HTTP socket; TLS SNI preserved; "
+        print(f"netns adversarial probe: 30 MCP decisions; forbidden DNS, rebinding, and synthetic secret opened no HTTP socket; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
