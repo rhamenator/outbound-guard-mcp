@@ -23,5 +23,6 @@ jobs:
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo build --locked
       - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
+      - run: python3 tools/stdio_resource_probe.py target/debug/outbound-guard-mcp
       - run: bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
       - run: python3 tools/inspector_smoke.py target/debug/outbound-guard-mcp
