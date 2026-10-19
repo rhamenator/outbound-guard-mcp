@@ -256,6 +256,13 @@ def call(binary, host, path, scheme="http"):
 
 
 def call_sequence(binary, targets):
+    handshake = [
+        {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "netns-probe", "version": "1.0"},
+        }},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+    ]
     requests = [
         {"jsonrpc": "2.0", "id": index, "method": "tools/call",
          "params": {"name": "guarded_fetch", "arguments":
@@ -271,13 +278,15 @@ def call_sequence(binary, targets):
     env["all_proxy"] = "http://127.0.0.1:9"
     env["NO_PROXY"] = ""
     env["no_proxy"] = ""
-    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in requests), text=True,
+    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in handshake + requests), text=True,
                             capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
         raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
     lines = result.stdout.splitlines()
-    assert len(lines) == len(requests), lines
+    assert len(lines) == len(requests) + 1, lines
     responses = [json.loads(line) for line in lines]
+    assert responses[0]["id"] == 0 and responses[0]["result"]["protocolVersion"] == "2025-06-18", responses
+    responses = responses[1:]
     assert [response["id"] for response in responses] == list(range(1, len(requests) + 1)), responses
     for (host, path, scheme), response in zip(targets, responses):
         if response["result"]["structuredContent"].get("rule") == "EGRESS_SECRET_DETECTED":
