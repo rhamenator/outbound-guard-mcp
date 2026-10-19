@@ -18,6 +18,7 @@ import zlib
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
+    "second.test": [PUBLIC_FIXTURE],
     "rebind.test": [PUBLIC_FIXTURE],
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
     "private.test": ["127.0.0.1"],
@@ -44,6 +45,7 @@ V6_RECORDS = {
 class DNS(socketserver.BaseRequestHandler):
     rebind_a_queries = 0
     queries = 0
+    names = []
 
     def handle(self):
         data, sock = self.request
@@ -60,6 +62,7 @@ class DNS(socketserver.BaseRequestHandler):
             return
         name = ".".join(labels).lower()
         type(self).queries += 1
+        type(self).names.append(name)
         question = data[12:offset + 5]
         qtype = struct.unpack("!H", data[offset + 1:offset + 3])[0]
         addresses = (RECORDS.get(name, []) if qtype == 1 else
@@ -125,6 +128,12 @@ class HTTP(http.server.BaseHTTPRequestHandler):
         if self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "http://private.test/plain")
+            self.end_headers()
+            return
+        if self.path in ("/redirect-loop", "/redirect-approved"):
+            self.send_response(307)
+            self.send_header("Location", "http://allowed.test/redirect-loop" if self.path == "/redirect-loop"
+                             else "http://second.test/should-not-hit")
             self.end_headers()
             return
         if self.path == "/conflict-framing":
@@ -302,6 +311,12 @@ def main(binary):
         assert rebound["rule"] == "EGRESS_FORBIDDEN_ADDRESS", rebound
         assert DNS.rebind_a_queries == 2, DNS.rebind_a_queries
         assert HTTP.hits[before_hits:] == ["/plain"], HTTP.hits
+        for path in ("redirect-loop", "redirect-approved"):
+            before_hits, before_names = len(HTTP.hits), len(DNS.names)
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == "EGRESS_REDIRECT_DENIED", (path, decision)
+            assert HTTP.hits[before_hits:] == [f"/{path}"], HTTP.hits
+            assert "second.test" not in DNS.names[before_names:], DNS.names[before_names:]
         test_tls(binary)
         for path in ("gzip-bomb", "deflate-bomb"):
             decision = call(binary, "allowed.test", path)
@@ -338,7 +353,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 30 MCP decisions; forbidden DNS, rebinding, and synthetic secret opened no HTTP socket; TLS SNI preserved; "
+        print(f"netns adversarial probe: 32 MCP decisions; forbidden DNS, rebinding, and synthetic secret opened no HTTP socket; redirect traps not followed; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
