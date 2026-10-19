@@ -3,20 +3,73 @@
 use reqwest::{blocking::Client, header, redirect::Policy, Url};
 use serde_json::{json, Value};
 use std::{
+    collections::{HashMap, VecDeque},
     io::{self, Read},
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc,
+        mpsc, LazyLock, Mutex,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 const DEFAULT_RETURN_BYTES: usize = 64 * 1024;
 const MAX_RETURN_BYTES: usize = 256 * 1024;
 const DNS_TIMEOUT: Duration = Duration::from_secs(3);
+const HOST_PER_MINUTE: usize = 60;
+const CALLS_PER_HOUR: usize = 1000;
 static DNS_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
+static EGRESS_BUDGET: LazyLock<Mutex<CallBudget>> =
+    LazyLock::new(|| Mutex::new(CallBudget::default()));
+
+#[derive(Default)]
+struct CallBudget {
+    per_host: HashMap<String, VecDeque<Instant>>,
+    all_calls: VecDeque<Instant>,
+}
+
+impl CallBudget {
+    fn reserve(&mut self, host: &str, now: Instant) -> bool {
+        self.all_calls
+            .retain(|at| now.saturating_duration_since(*at) < Duration::from_secs(3600));
+        self.per_host.retain(|_, calls| {
+            calls.retain(|at| now.saturating_duration_since(*at) < Duration::from_secs(60));
+            !calls.is_empty()
+        });
+        if self.all_calls.len() >= CALLS_PER_HOUR
+            || self
+                .per_host
+                .get(host)
+                .is_some_and(|calls| calls.len() >= HOST_PER_MINUTE)
+        {
+            return false;
+        }
+        self.all_calls.push_back(now);
+        self.per_host
+            .entry(host.to_owned())
+            .or_default()
+            .push_back(now);
+        true
+    }
+}
+
+fn reserve_egress_call(host: &str) -> Result<(), Denial> {
+    let mut budget = EGRESS_BUDGET.lock().map_err(|_| {
+        Denial::new(
+            "EGRESS_BUDGET_FAILURE",
+            "The local egress budget is unavailable; restart the server.",
+        )
+    })?;
+    if budget.reserve(host, Instant::now()) {
+        Ok(())
+    } else {
+        Err(Denial::new(
+            "EGRESS_RATE_LIMIT",
+            "Wait for the per-host minute or process-hour budget to reset.",
+        ))
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Denial {
@@ -190,6 +243,15 @@ pub fn validate<R: Resolver>(
     allowed_hosts: &[String],
     resolver: &R,
 ) -> Result<Target, Denial> {
+    validate_with_reservation(args, allowed_hosts, resolver, |_| Ok(()))
+}
+
+fn validate_with_reservation<R: Resolver, F: FnOnce(&str) -> Result<(), Denial>>(
+    args: &Value,
+    allowed_hosts: &[String],
+    resolver: &R,
+    reserve: F,
+) -> Result<Target, Denial> {
     let obj = args
         .as_object()
         .ok_or_else(|| Denial::new("EGRESS_INVALID_INPUT", "Provide a JSON object."))?;
@@ -296,6 +358,7 @@ pub fn validate<R: Resolver>(
             ))
         }
     };
+    reserve(&host)?;
     let addresses = resolver
         .resolve(&host, port)
         .map_err(|error| match error.kind() {
@@ -379,7 +442,12 @@ pub fn allowed_hosts_from_env() -> Result<Vec<String>, &'static str> {
 }
 
 pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
-    let target = match validate(args, allowed_hosts, &SystemResolver) {
+    let target = match validate_with_reservation(
+        args,
+        allowed_hosts,
+        &SystemResolver,
+        reserve_egress_call,
+    ) {
         Ok(target) => target,
         Err(denial) => return denial.value(),
     };
@@ -693,5 +761,45 @@ mod tests {
                 rule
             );
         }
+    }
+    #[test]
+    fn call_budget_is_atomic_across_host_and_hour_windows() {
+        let mut budget = CallBudget::default();
+        let now = Instant::now();
+        for _ in 0..HOST_PER_MINUTE {
+            assert!(budget.reserve("one.example", now));
+        }
+        assert!(!budget.reserve("one.example", now));
+        assert_eq!(budget.all_calls.len(), HOST_PER_MINUTE);
+        assert!(budget.reserve("two.example", now));
+        for index in 0..CALLS_PER_HOUR {
+            if budget.all_calls.len() == CALLS_PER_HOUR {
+                break;
+            }
+            let host = format!("host-{index}.example");
+            assert!(budget.reserve(&host, now));
+        }
+        assert_eq!(budget.all_calls.len(), CALLS_PER_HOUR);
+        assert!(!budget.reserve("new.example", now));
+        assert_eq!(budget.all_calls.len(), CALLS_PER_HOUR);
+        assert!(budget.reserve("one.example", now + Duration::from_secs(3600)));
+        assert_eq!(budget.all_calls.len(), 1);
+        assert_eq!(budget.per_host.len(), 1);
+    }
+    #[test]
+    fn budget_denial_happens_before_dns() {
+        struct PanicResolver;
+        impl Resolver for PanicResolver {
+            fn resolve(&self, _: &str, _: u16) -> io::Result<Vec<SocketAddr>> {
+                panic!("DNS was reached after budget denial")
+            }
+        }
+        let denied = validate_with_reservation(
+            &json!({"url":"https://example.com/"}),
+            &allowed(),
+            &PanicResolver,
+            |_| Err(Denial::new("EGRESS_RATE_LIMIT", "Retry later.")),
+        );
+        assert_eq!(denied.err().unwrap().rule, "EGRESS_RATE_LIMIT");
     }
 }
