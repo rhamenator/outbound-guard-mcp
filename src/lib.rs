@@ -25,6 +25,7 @@ const MAX_RESPONSE_HEADER_BYTES: usize = 16 * 1024;
 const HOST_PER_MINUTE: usize = 60;
 const CALLS_PER_HOUR: usize = 1000;
 const MAX_CA_BYTES: u64 = 64 * 1024;
+static FETCH_ACTIVE: AtomicBool = AtomicBool::new(false);
 static EXTRA_CA: LazyLock<Result<Option<reqwest::Certificate>, &'static str>> =
     LazyLock::new(load_extra_ca);
 
@@ -565,7 +566,32 @@ pub fn allowed_hosts_from_env() -> Result<Vec<String>, &'static str> {
 }
 
 pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
-    audited_fetch(&AUDIT, || guarded_fetch_inner(args, allowed_hosts))
+    audited_fetch(&AUDIT, || {
+        limited_fetch(&FETCH_ACTIVE, || guarded_fetch_inner(args, allowed_hosts))
+    })
+}
+
+// A permit spans validation, DNS, TLS, and response reading. Excess library
+// callers do not queue, reserve a budget slot, or start a resolver/socket.
+fn limited_fetch(active: &AtomicBool, fetch: impl FnOnce() -> Value) -> Value {
+    if active
+        .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+        .is_err()
+    {
+        return Denial::new(
+            "EGRESS_CONCURRENCY_LIMIT",
+            "Retry after the active fetch completes; each process permits one active fetch.",
+        )
+        .value();
+    }
+    struct Permit<'a>(&'a AtomicBool);
+    impl Drop for Permit<'_> {
+        fn drop(&mut self) {
+            self.0.store(false, Ordering::Release);
+        }
+    }
+    let _permit = Permit(active);
+    fetch()
 }
 
 fn audited_fetch(audit: &Mutex<AuditLog>, fetch: impl FnOnce() -> Value) -> Value {
@@ -1234,6 +1260,57 @@ mod tests {
             );
         }
     }
+    #[test]
+    fn concurrent_fetches_fail_before_execution_and_release_after_failure() {
+        let active = AtomicBool::new(false);
+        thread::scope(|scope| {
+            let (entered_tx, entered_rx) = mpsc::channel();
+            let (release_tx, release_rx) = mpsc::channel();
+            let active_ref = &active;
+            let holder = scope.spawn(move || {
+                limited_fetch(active_ref, || {
+                    entered_tx.send(()).unwrap();
+                    release_rx.recv().unwrap();
+                    Denial::new("EGRESS_HTTP_FAILURE", "Fixture failure.").value()
+                })
+            });
+            entered_rx.recv().unwrap();
+            let contenders: Vec<_> = (0..32)
+                .map(|_| {
+                    scope.spawn(|| {
+                        let audit = Mutex::new(AuditLog::default());
+                        let result = audited_fetch(&audit, || {
+                            limited_fetch(&active, || {
+                                panic!("excess fetch reached validation/budget/DNS/HTTP")
+                            })
+                        });
+                        assert_eq!(result["rule"], "EGRESS_CONCURRENCY_LIMIT");
+                        assert_eq!(
+                            audit.lock().unwrap().snapshot()["events"][0]["rule"],
+                            "EGRESS_CONCURRENCY_LIMIT"
+                        );
+                    })
+                })
+                .collect();
+            for contender in contenders {
+                contender.join().unwrap();
+            }
+            release_tx.send(()).unwrap();
+            assert_eq!(holder.join().unwrap()["rule"], "EGRESS_HTTP_FAILURE");
+        });
+        assert_eq!(
+            limited_fetch(&active, || json!({"status":"ALLOWED"}))["status"],
+            "ALLOWED"
+        );
+        let unwind =
+            std::panic::catch_unwind(|| limited_fetch(&active, || panic!("fixture panic")));
+        assert!(unwind.is_err());
+        assert_eq!(
+            limited_fetch(&active, || json!({"status":"ALLOWED"}))["status"],
+            "ALLOWED"
+        );
+    }
+
     #[test]
     fn call_budget_is_atomic_across_host_and_hour_windows() {
         let mut budget = CallBudget::default();

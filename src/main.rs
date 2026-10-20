@@ -219,6 +219,8 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    // These protocol tests share the production process-wide fetch permit.
+    static FETCH_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
     use super::*;
     fn ready_session() -> Session {
         let mut session = Session::New;
@@ -254,6 +256,7 @@ mod tests {
     }
     #[test]
     fn blocked_calls_have_structured_error_result() {
+        let _fetch_test = FETCH_TEST_LOCK.lock().unwrap();
         let result = handle(json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}}), &[], &mut ready_session()).unwrap();
         assert_eq!(result["result"]["isError"], true);
         assert_eq!(result["result"]["structuredContent"]["status"], "BLOCKED");
@@ -360,6 +363,7 @@ mod tests {
 
     #[test]
     fn tools_require_completed_handshake() {
+        let _fetch_test = FETCH_TEST_LOCK.lock().unwrap();
         let mut session = Session::New;
         let call = json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
             "name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}});

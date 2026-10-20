@@ -60,3 +60,5 @@ The [companion skill](skills/outbound-guard/SKILL.md) tells a connected agent wh
 ## Candidate packaging
 
 The [candidate packaging gate](docs/candidate-packaging.md) builds a Linux x86_64 archive with GPL license, project source, and provenance, plus a skill-only ZIP and SHA-256 checksums. It verifies the installed optimized executable with MCP, Inspector, and isolated hostile fixtures. These remain experimental local artifacts pending the release quality bar and human review.
+
+Each server process permits one active `guarded_fetch`, spanning validation, budget reservation, DNS, TLS, and response reading. Concurrent Rust library callers receive audited `EGRESS_CONCURRENCY_LIMIT` denials before budget reservation or network work; retry after the active call completes. Stdio dispatch remains sequential, so queued stdio messages are handled after the current call. The limit does not coordinate separate processes or bound a client’s input queue. A completed or failed fetch releases the permit.
