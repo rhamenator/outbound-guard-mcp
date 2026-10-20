@@ -17,7 +17,7 @@ import zipfile
 
 
 REPO = Path(__file__).resolve().parent.parent
-INPUTS = ["Cargo.toml", "Cargo.lock", "src", "README.md", "LICENSE", "SECURITY.md",
+INPUTS = ["Cargo.toml", "Cargo.lock", "src", "tests", "README.md", "LICENSE", "SECURITY.md",
           "skills", "tools", "docs", "rust-toolchain.toml"]
 
 
@@ -74,7 +74,7 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = git("archive", "--format=tar.gz", "--prefix=source/", revision, "--",
-        "Cargo.toml", "Cargo.lock", "src", "rust-toolchain.toml", "LICENSE", "README.md",
+        "Cargo.toml", "Cargo.lock", "src", "tests", "rust-toolchain.toml", "LICENSE", "README.md",
         "SECURITY.md", "tools", "docs", "skills")
     # Build from the committed snapshot, excluding untracked build.rs or Cargo config.
     with tempfile.TemporaryDirectory(prefix="outbound-guard-source-") as folder:

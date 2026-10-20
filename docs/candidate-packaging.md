@@ -19,3 +19,5 @@ The gate inspects archive membership and permissions, copies only the known exec
 After verification, CI retains the candidate archives and checksum manifest as an `experimental-candidate-linux-x86_64` workflow artifact for seven days. It uses the same pinned upload action as Request Guard. This is review storage, not a GitHub Release or marketplace listing.
 
 Archive timestamps and ownership are fixed, and ZIP membership is explicit. This makes packaging repeatable for identical build outputs; it does not prove byte-identical compilation across toolchains, dependency caches, or hosts. The gate does not close client compatibility, full protocol conformance, dependency attribution review, signing, offline builds, or human release approval. Each candidate must still pass the repository quality bar before a stable release or marketplace submission.
+
+The committed source snapshot includes `tests/`, including the generated IP-policy integration corpus, so address-policy evidence can be replayed from the candidate source archive.
