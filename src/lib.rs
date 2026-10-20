@@ -288,6 +288,10 @@ fn has_known_secret(text: &str) -> bool {
         (b"ASIA".as_slice(), 16),
         (b"ghp_".as_slice(), 20),
         (b"gho_".as_slice(), 20),
+        (b"github_pat_".as_slice(), 20),
+        (b"ghu_".as_slice(), 20),
+        (b"ghs_".as_slice(), 20),
+        (b"ghr_".as_slice(), 20),
         (b"sk-".as_slice(), 20),
     ] {
         for item in bytes.windows(prefix.len() + count) {
@@ -969,6 +973,39 @@ mod tests {
     fn addr(ip: &str) -> SocketAddr {
         SocketAddr::new(ip.parse().unwrap(), 443)
     }
+    #[test]
+    fn github_token_shapes_are_denied_before_budget_or_dns() {
+        struct NoDns;
+        impl Resolver for NoDns {
+            fn resolve(&self, _: &str, _: u16) -> io::Result<Vec<SocketAddr>> {
+                panic!("token reached DNS")
+            }
+        }
+        for prefix in ["github_pat_", "ghu_", "ghs_", "ghr_"] {
+            for suffix in ["A".repeat(20), "a0_-".repeat(9)] {
+                let token = format!("{prefix}{suffix}");
+                for path in [token.clone(), format!("docs/{token}/data")] {
+                    let args = json!({"url":format!("https://example.com/{path}")});
+                    let result = validate_with_reservation(&args, &allowed(), &NoDns, |_| {
+                        panic!("token reached budget reservation")
+                    });
+                    assert_eq!(result.err().unwrap().rule, "EGRESS_SECRET_DETECTED");
+                }
+            }
+            for path in [
+                format!("{prefix}{}", "A".repeat(19)),
+                format!("{prefix}guide"),
+            ] {
+                assert!(validate(
+                    &json!({"url":format!("https://example.com/{path}")}),
+                    &allowed(),
+                    &Fake(vec![addr("8.8.8.8")])
+                )
+                .is_ok());
+            }
+        }
+    }
+
     #[test]
     fn rejects_private_and_mixed_dns() {
         for ip in [
