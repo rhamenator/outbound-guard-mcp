@@ -1028,6 +1028,13 @@ mod tests {
         .unwrap();
         assert_eq!(result.addresses, vec![addr("8.8.8.8")]);
         assert_eq!(result.method, "HEAD");
+        let args =
+            serde_json::from_str(r#"{"url":"https://example.com/","max_return_bytes":1e400}"#)
+                .unwrap();
+        let result = validate_with_reservation(&args, &allowed(), &Fake(vec![]), |_| {
+            panic!("Oversized numeric limits must fail before reservation or DNS")
+        });
+        assert_eq!(result.err().unwrap().rule, "EGRESS_RESPONSE_LIMIT");
     }
     #[test]
     fn rejects_ambiguous_or_secret_urls() {

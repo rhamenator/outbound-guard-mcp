@@ -220,6 +220,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 "/json-empty": b'',
                 "/json-no-content": b'',
                 "/json-string": b'"<script>untrusted text</script>"',
+                "/json-large-number": b'{"value":1e400}',
             }[self.path]
             self.send_response(204 if self.path == "/json-no-content" else 200)
             self.send_header("Content-Type", "application/json")
@@ -429,7 +430,8 @@ def main(binary):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] == "EGRESS_INVALID_JSON", (path, decision)
             assert "body_text" not in decision, (path, decision)
-        for path, body in (("json-no-content", ""), ("json-string", '"<script>untrusted text</script>"')):
+        for path, body in (("json-no-content", ""), ("json-string", '"<script>untrusted text</script>"'),
+                           ("json-large-number", '{"value":1e400}')):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] == "EGRESS_ALLOWED", (path, decision)
             assert decision["body_text"] == body and decision["untrusted_content"] is True
@@ -477,7 +479,7 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 57 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: 58 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
