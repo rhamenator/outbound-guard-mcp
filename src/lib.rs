@@ -353,13 +353,13 @@ fn validate_with_reservation<R: Resolver, F: FnOnce(&str) -> Result<(), Denial>>
         .and_then(Value::as_str)
         .ok_or_else(|| Denial::new("EGRESS_INVALID_URL", "Provide an HTTP(S) URL."))?;
     if raw.len() > 2048
-        || raw
-            .bytes()
-            .any(|byte| byte.is_ascii_whitespace() || byte == b'\\' || byte == b'%')
+        || raw.bytes().any(|byte| {
+            byte.is_ascii_control() || byte.is_ascii_whitespace() || byte == b'\\' || byte == b'%'
+        })
     {
         return Err(Denial::new(
             "EGRESS_INVALID_URL",
-            "Use a short URL without whitespace, backslashes, or percent encoding.",
+            "Use a short URL without ASCII controls, whitespace, backslashes, or percent encoding.",
         ));
     }
     if has_known_secret(raw) || high_entropy_segment(raw) {
@@ -841,6 +841,25 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String]) -> Value {
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicBool;
+    #[test]
+    fn raw_url_controls_are_denied_before_reservation_or_dns() {
+        for byte in (0..=31).chain(std::iter::once(127)) {
+            let control = char::from(byte);
+            for url in [
+                format!("{control}https://example.com/plain"),
+                format!("https://example.com/plain{control}"),
+                format!("https://example.com/a{control}b"),
+            ] {
+                let result = validate_with_reservation(
+                    &json!({"url":url}),
+                    &allowed(),
+                    &Fake(vec![]),
+                    |_| panic!("Raw controls must fail before reservation or DNS"),
+                );
+                assert_eq!(result.err().unwrap().rule, "EGRESS_INVALID_URL");
+            }
+        }
+    }
     #[test]
     fn audit_failure_blocks_execution_or_suppresses_completed_body() {
         let audit = Mutex::new(AuditLog::default());
