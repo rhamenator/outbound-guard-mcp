@@ -49,7 +49,15 @@ def main():
     )["result"]
     assert blocked["isError"] is True
     assert blocked["structuredContent"]["rule"] == "EGRESS_INVALID_HOST"
-    print("Inspector 2.5.0: initialize, strict tools/list, blocked tools/call passed")
+    assert blocked["structuredContent"]["correlation_id"] == "egress-1"
+    uri = "outbound-guard://logs/audit.json"
+    resources = call(binary, "resources/list")["result"]["resources"]
+    assert [resource["uri"] for resource in resources] == [uri]
+    contents = call(binary, "resources/read", "--uri", uri)["result"]["contents"][0]
+    assert contents["mimeType"] == "application/json"
+    assert json.loads(contents["text"]) == {"capacity": 256, "scope": "process", "events": []}
+    # Each Inspector CLI invocation starts a fresh stdio process, hence an empty log.
+    print("Inspector 2.5.0: initialize, strict tools/list, blocked call, audit resource list/read passed")
     if args.live:
         url = urlsplit(args.live)
         if url.scheme != "https" or not url.hostname or url.port not in (None, 443) or url.query or url.fragment:

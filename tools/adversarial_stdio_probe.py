@@ -11,6 +11,45 @@ def frame(value):
     return json.dumps(value, separators=(",", ":")).encode() + b"\n"
 
 
+def audit_probe(binary, env, marker):
+    uri = "outbound-guard://logs/audit.json"
+    messages = [
+        {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "audit-probe", "version": "1.0"}}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+    ]
+    messages += [{"jsonrpc": "2.0", "id": index, "method": "tools/call", "params": {
+        "name": "guarded_fetch", "arguments": {"url": "https://example.com/" + marker}}}
+        for index in range(1, 301)]
+    messages += [
+        {"jsonrpc": "2.0", "id": 301, "method": "resources/list"},
+        {"jsonrpc": "2.0", "id": 302, "method": "resources/read", "params": {"uri": uri}},
+        {"jsonrpc": "2.0", "id": 303, "method": "resources/read", "params": {"uri": marker}},
+        {"jsonrpc": "2.0", "id": 304, "method": "resources/read"},
+    ]
+    result = subprocess.run([binary], input=b"".join(map(frame, messages)),
+                            capture_output=True, env=env, timeout=10, check=True)
+    assert marker.encode() not in result.stdout + result.stderr
+    replies = [json.loads(line) for line in result.stdout.splitlines()]
+    assert len(replies) == 305
+    assert replies[0]["result"]["capabilities"]["resources"] == {}
+    decisions = [reply["result"]["structuredContent"] for reply in replies[1:301]]
+    assert [value["correlation_id"] for value in decisions] == [f"egress-{n}" for n in range(1, 301)]
+    assert all(value["rule"] == "EGRESS_SECRET_DETECTED" for value in decisions)
+    assert replies[301]["result"]["resources"][0]["uri"] == uri
+    contents = replies[302]["result"]["contents"][0]
+    assert contents["uri"] == uri and contents["mimeType"] == "application/json"
+    audit = json.loads(contents["text"])
+    assert audit["capacity"] == 256 and audit["scope"] == "process"
+    assert audit["events"] == [{key: value[key] for key in ("correlation_id", "status", "rule")}
+                               for value in decisions[-256:]]
+    assert replies[303]["error"]["code"] == -32002
+    assert replies[304]["error"]["code"] == -32602
+    assert len(contents["text"]) < 40000
+    print("audit probe: 300 correlated denials, 256 redacted events retained, unknown/missing URIs rejected")
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: adversarial_stdio_probe.py PATH_TO_SERVER")
@@ -62,6 +101,7 @@ def main():
     assert replies[13]["error"]["code"] == -32600
     assert marker.encode() not in result.stdout + result.stderr
     print("stdio adversarial probe: 17 frames, 14 expected replies, no network or secret echo")
+    audit_probe(sys.argv[1], env, marker)
 
 
 if __name__ == "__main__":
