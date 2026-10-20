@@ -708,6 +708,10 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String]) -> Value {
         .split(';')
         .next()
         .is_some_and(|media_type| media_type.trim().eq_ignore_ascii_case("text/plain"));
+    let json_content = content_type
+        .split(';')
+        .next()
+        .is_some_and(|media_type| media_type.trim().eq_ignore_ascii_case("application/json"));
     let status_code = response.status().as_u16();
     let mut body = Vec::new();
     let mut chunk = [0u8; 8192];
@@ -763,6 +767,17 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String]) -> Value {
         return Denial::new(
             "EGRESS_HTML_MISLABELED",
             "Return actual plain text or JSON; leading HTML markup is not accepted.",
+        )
+        .value();
+    }
+    if json_content
+        && target.method != "HEAD"
+        && !(text.is_empty() && matches!(status_code, 204 | 205))
+        && serde_json::from_str::<Value>(&text).is_err()
+    {
+        return Denial::new(
+            "EGRESS_INVALID_JSON",
+            "Return one valid JSON value within the parser's nesting limit.",
         )
         .value();
     }
@@ -1013,6 +1028,13 @@ mod tests {
         .unwrap();
         assert_eq!(result.addresses, vec![addr("8.8.8.8")]);
         assert_eq!(result.method, "HEAD");
+        let args =
+            serde_json::from_str(r#"{"url":"https://example.com/","max_return_bytes":1e400}"#)
+                .unwrap();
+        let result = validate_with_reservation(&args, &allowed(), &Fake(vec![]), |_| {
+            panic!("Oversized numeric limits must fail before reservation or DNS")
+        });
+        assert_eq!(result.err().unwrap().rule, "EGRESS_RESPONSE_LIMIT");
     }
     #[test]
     fn rejects_ambiguous_or_secret_urls() {

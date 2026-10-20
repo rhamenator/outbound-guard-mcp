@@ -270,13 +270,19 @@ mod tests {
     }
     #[test]
     fn invalid_id_type_is_rejected() {
-        let result = handle(
-            json!({"jsonrpc":"2.0","id":{"x":1},"method":"ping"}),
-            &[],
-            &mut Session::New,
-        )
-        .unwrap();
-        assert_eq!(result["error"]["code"], -32600);
+        for id in [
+            json!({"x":1}),
+            serde_json::from_str("1e400").unwrap(),
+            serde_json::from_str("18446744073709551616").unwrap(),
+        ] {
+            let result = handle(
+                json!({"jsonrpc":"2.0","id":id,"method":"ping"}),
+                &[],
+                &mut Session::New,
+            )
+            .unwrap();
+            assert_eq!(result["error"]["code"], -32600);
+        }
     }
     #[test]
     fn notifications_never_execute_tools_or_get_responses() {

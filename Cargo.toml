@@ -8,7 +8,7 @@ description = "A guarded HTTP egress MCP server for coding agents"
 repository = "https://github.com/rhamenator/outbound-guard-mcp"
 
 [dependencies]
-serde_json = "1"
+serde_json = { version = "1", features = ["arbitrary_precision"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 
 [profile.release]
