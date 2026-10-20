@@ -24,6 +24,46 @@ const MAX_RESPONSE_HEADERS: usize = 64;
 const MAX_RESPONSE_HEADER_BYTES: usize = 16 * 1024;
 const HOST_PER_MINUTE: usize = 60;
 const CALLS_PER_HOUR: usize = 1000;
+const MAX_CA_BYTES: u64 = 64 * 1024;
+static EXTRA_CA: LazyLock<Result<Option<reqwest::Certificate>, &'static str>> =
+    LazyLock::new(load_extra_ca);
+
+fn load_extra_ca() -> Result<Option<reqwest::Certificate>, &'static str> {
+    let Some(path) = std::env::var_os("OUTBOUND_GUARD_EXTRA_CA_CERT") else {
+        return Ok(None);
+    };
+    let error = "OUTBOUND_GUARD_EXTRA_CA_CERT must name a regular file containing one valid PEM certificate, at most 64 KiB, without private keys";
+    if !std::fs::metadata(&path).map_err(|_| error)?.is_file() {
+        return Err(error);
+    }
+    let file = std::fs::File::open(path).map_err(|_| error)?;
+    if !file.metadata().map_err(|_| error)?.is_file() {
+        return Err(error);
+    }
+    let mut bytes = Vec::new();
+    file.take(MAX_CA_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| error)?;
+    if bytes.len() as u64 > MAX_CA_BYTES || bytes.windows(11).any(|part| part == b"PRIVATE KEY") {
+        return Err(error);
+    }
+    let mut certs = reqwest::Certificate::from_pem_bundle(&bytes).map_err(|_| error)?;
+    if certs.len() != 1 {
+        return Err(error);
+    }
+    let cert = certs.pop().ok_or(error)?;
+    // Certificate parsing can defer DER validation until the TLS client is built.
+    Client::builder()
+        .no_proxy()
+        .add_root_certificate(cert.clone())
+        .build()
+        .map_err(|_| error)?;
+    Ok(Some(cert))
+}
+
+pub fn validate_tls_configuration() -> Result<(), &'static str> {
+    EXTRA_CA.as_ref().map(|_| ()).map_err(|error| *error)
+}
 static DNS_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
 static EGRESS_BUDGET: LazyLock<Mutex<CallBudget>> =
     LazyLock::new(|| Mutex::new(CallBudget::default()));
@@ -557,6 +597,16 @@ fn audited_fetch(audit: &Mutex<AuditLog>, fetch: impl FnOnce() -> Value) -> Valu
 }
 
 fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String]) -> Value {
+    let extra_ca = match EXTRA_CA.as_ref() {
+        Ok(cert) => cert,
+        Err(_) => {
+            return Denial::new(
+                "EGRESS_TLS_CONFIG_FAILURE",
+                "Fix the operator CA certificate configuration and restart the server.",
+            )
+            .value()
+        }
+    };
     let target = match validate_with_reservation(
         args,
         allowed_hosts,
@@ -566,14 +616,16 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String]) -> Value {
         Ok(target) => target,
         Err(denial) => return denial.value(),
     };
-    let client = match Client::builder()
+    let mut builder = Client::builder()
         .no_proxy()
         .redirect(Policy::none())
         .connect_timeout(Duration::from_secs(3))
         .timeout(HTTP_IDLE_TIMEOUT)
-        .resolve_to_addrs(&target.host, &target.addresses)
-        .build()
-    {
+        .resolve_to_addrs(&target.host, &target.addresses);
+    if let Some(cert) = extra_ca {
+        builder = builder.add_root_certificate(cert.clone());
+    }
+    let client = match builder.build() {
         Ok(client) => client,
         Err(_) => {
             return Denial::new(

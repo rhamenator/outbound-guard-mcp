@@ -313,11 +313,86 @@ def test_tls(binary):
             thread.join(timeout=2)
 
 
-def call(binary, host, path, scheme="http"):
-    return call_sequence(binary, [(host, path, scheme)])[0]
+def test_trusted_tls(binary):
+    with tempfile.TemporaryDirectory(prefix="outbound-guard-ca-") as folder:
+        def path(name):
+            return os.path.join(folder, name)
+
+        def openssl(*args):
+            subprocess.run(["openssl", *args], capture_output=True, check=True, timeout=10)
+
+        openssl("req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+                "-keyout", path("ca.key"), "-out", path("ca.pem"), "-subj", "/CN=Fixture CA",
+                "-addext", "basicConstraints=critical,CA:TRUE",
+                "-addext", "keyUsage=critical,keyCertSign,cRLSign")
+        openssl("req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", path("leaf.key"),
+                "-out", path("leaf.csr"), "-subj", "/CN=Fixture Leaf")
+        for index, host in enumerate(("allowed.test", "wrong.test"), 1):
+            with open(path("extensions"), "w") as output:
+                output.write(f"subjectAltName=DNS:{host}\nbasicConstraints=critical,CA:FALSE\n"
+                             "keyUsage=critical,digitalSignature,keyEncipherment\n"
+                             "extendedKeyUsage=serverAuth\n")
+            openssl("x509", "-req", "-in", path("leaf.csr"), "-CA", path("ca.pem"),
+                    "-CAkey", path("ca.key"), "-set_serial", str(index), "-days", "1",
+                    "-extfile", path("extensions"), "-out", path(host + ".pem"))
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(path(host + ".pem"), path("leaf.key"))
+            seen_sni = []
+            context.set_servername_callback(lambda _socket, name, _context: seen_sni.append(name))
+            server = QuietTLSHTTP((PUBLIC_FIXTURE, 443), HTTP)
+            server.socket = context.wrap_socket(server.socket, server_side=True)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                before_hits = len(HTTP.hits)
+                decision = call(binary, "allowed.test", "plain", scheme="https", extra_ca=path("ca.pem"))
+                expected = "EGRESS_ALLOWED" if host == "allowed.test" else "EGRESS_NETWORK_FAILURE"
+                assert decision["rule"] == expected, (host, decision)
+                assert seen_sni == ["allowed.test"], seen_sni
+                assert len(HTTP.hits) - before_hits == (1 if host == "allowed.test" else 0)
+                if host == "allowed.test":
+                    assert decision["body_text"] == "fixture-ok", decision
+                    before_hits = len(HTTP.hits)
+                    untrusted = call(binary, "allowed.test", "plain", scheme="https")
+                    assert untrusted["rule"] == "EGRESS_NETWORK_FAILURE", untrusted
+                    assert len(HTTP.hits) == before_hits
+                else:
+                    assert "body_text" not in decision, decision
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+
+        for name, data in (("empty", b""), ("invalid", b"synthetic-CA-secret"),
+                           ("large", b"x" * 65537),
+                           ("bad-der", b"-----BEGIN CERTIFICATE-----\nAA==\n-----END CERTIFICATE-----\n")):
+            with open(path(name), "wb") as output:
+                output.write(data)
+        with open(path("ca.pem"), "rb") as source:
+            ca = source.read()
+        with open(path("bundle"), "wb") as output:
+            output.write(ca + ca)
+        os.mkfifo(path("fifo"))
+        bad_paths = ["", path("missing"), folder, path("fifo"), path("leaf.key")]
+        bad_paths += [path(name) for name in ("empty", "invalid", "large", "bad-der", "bundle")]
+        before_queries, before_hits = DNS.queries, len(HTTP.hits)
+        for bad_path in bad_paths:
+            env = os.environ.copy()
+            env["OUTBOUND_GUARD_EXTRA_CA_CERT"] = bad_path
+            result = subprocess.run([binary], input='', text=True, capture_output=True, env=env, timeout=5)
+            assert result.returncode != 0 and not result.stdout, bad_path
+            assert "OUTBOUND_GUARD_EXTRA_CA_CERT" in result.stderr
+            assert folder not in result.stderr and "synthetic-CA-secret" not in result.stderr
+        assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
+        print("trusted TLS probe: matching SAN accepted, same-CA mismatched SAN denied before HTTP, "
+              "unconfigured CA denied; 10 invalid CA configurations rejected at startup")
 
 
-def call_sequence(binary, targets):
+def call(binary, host, path, scheme="http", extra_ca=None):
+    return call_sequence(binary, [(host, path, scheme)], extra_ca=extra_ca)[0]
+
+
+def call_sequence(binary, targets, extra_ca=None):
     handshake = [
         {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
@@ -332,6 +407,9 @@ def call_sequence(binary, targets):
         for index, (host, path, scheme) in enumerate(targets, 1)
     ]
     env = os.environ.copy()
+    env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+    if extra_ca is not None:
+        env["OUTBOUND_GUARD_EXTRA_CA_CERT"] = extra_ca
     env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = ",".join(RECORDS)
     # A working direct request proves these ambient proxy variables were ignored.
     env["HTTP_PROXY"] = "http://127.0.0.1:9"
@@ -451,6 +529,7 @@ def main(binary):
             assert HTTP.hits[before_hits:] == [f"/{path}"], HTTP.hits
             assert "second.test" not in DNS.names[before_names:], DNS.names[before_names:]
         test_tls(binary)
+        test_trusted_tls(binary)
         for path in ("gzip-bomb", "deflate-bomb"):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] == "EGRESS_ENCODED_RESPONSE", (path, decision)
@@ -529,7 +608,7 @@ def main(binary):
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
         test_budgets(binary)
-        print(f"netns adversarial probe: 1181 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: 1184 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
