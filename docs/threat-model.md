@@ -33,4 +33,6 @@ The [Codex CLI](client-codex-cli.md) and [Claude Code](client-claude-code.md) sm
 
 Cursor remains untested. An official Linux Cursor CLI package was inspected and run temporarily on this host, but `agent status` reported **Not logged in** and the MCP listing did not complete. No Cursor tool call was observed; the temporary package and test configuration were removed. A signed-in Cursor client must perform its own discovery, blocked-call, and approved-call smoke test before the client gate can close.
 
-Other stable-release blockers include full MCP revision conformance, request and response resource/concurrency limits, broader secret handling, prompt-injection quarantine, schema/property fuzzing, reproducible release artifacts, and human review. They remain tracked in [QUALITY_BAR.md](QUALITY_BAR.md).
+Other stable-release blockers include full MCP revision conformance, request and response resource/concurrency limits, broader secret handling, prompt-injection quarantine, schema/property fuzzing, cross-host build reproducibility and signing, and human review. They remain tracked in [QUALITY_BAR.md](QUALITY_BAR.md).
+
+The [candidate packaging gate](candidate-packaging.md) tests a local optimized Linux x86_64 artifact after extraction, including the isolated hostile fixtures and official Inspector. Its companion skill ZIP contains only the committed SKILL.md and GPL license. Checksums and provenance identify the tested bytes; cross-host reproducible compilation, signing, dependency attribution, and human release approval remain open.

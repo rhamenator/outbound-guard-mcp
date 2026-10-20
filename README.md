@@ -56,3 +56,7 @@ The initial server rejects responses with more than 64 headers or 16 KiB of pars
 Stdio input frames are capped at 64 KiB. The [stdio resource probe](docs/adversarial-stdio.md) verifies recovery and bounded process memory for 160 MiB and 8 MiB hostile frames; the [isolated network probe](docs/adversarial-netns.md) records the current DNS and HTTP attack cases. The [threat model](docs/threat-model.md) maps current protections to code, evidence, and open gaps. These are partial release evidence.
 
 The [companion skill](skills/outbound-guard/SKILL.md) tells a connected agent when and how to use the current tool. See [the extraction and verification plan](docs/PLAN.md). The project is GPL-3.0-or-later; see [LICENSE](LICENSE). Security reports follow [SECURITY.md](SECURITY.md).
+
+## Candidate packaging
+
+The [candidate packaging gate](docs/candidate-packaging.md) builds a Linux x86_64 archive with GPL license, project source, and provenance, plus a skill-only ZIP and SHA-256 checksums. It verifies the installed optimized executable with MCP, Inspector, and isolated hostile fixtures. These remain experimental local artifacts pending the release quality bar and human review.
