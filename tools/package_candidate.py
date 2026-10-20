@@ -29,7 +29,7 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def installed_smoke(binary):
+def installed_smoke(binary, version):
     messages = [
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
@@ -49,6 +49,7 @@ def installed_smoke(binary):
     replies = [json.loads(line) for line in result.stdout.splitlines()]
     assert [reply["id"] for reply in replies] == [1, 2, 3, 4]
     assert replies[0]["result"]["protocolVersion"] == "2025-06-18"
+    assert replies[0]["result"]["serverInfo"] == {"name": "outbound-guard-mcp", "version": version}
     assert [tool["name"] for tool in replies[1]["result"]["tools"]] == ["guarded_fetch"]
     decision = replies[2]["result"]["structuredContent"]
     assert decision["rule"] == "EGRESS_INVALID_HOST" and replies[2]["result"]["isError"] is True
@@ -134,7 +135,7 @@ def main():
             installed.write_bytes(tar.extractfile(member).read())
         assert digest(installed.read_bytes()) == digest(binary)
         installed.chmod(0o755)
-        installed_smoke(installed)
+        installed_smoke(installed, version)
     for name, sha in checksums.items():
         assert digest((output / name).read_bytes()) == sha
     print(f"candidate verified: {archive.name}; skill ZIP has SKILL.md and GPL license; checksums, installed MCP/Inspector, and hostile fixtures passed")

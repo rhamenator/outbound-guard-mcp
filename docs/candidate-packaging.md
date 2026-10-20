@@ -1,6 +1,6 @@
 # Local candidate packaging gate
 
-This is experimental release evidence, not approval for a stable release or marketplace submission. The gate currently supports Linux x86_64 with Python 3.11+, the configured Rust toolchain and GNU target, Cargo dependencies, Node/npm, OpenSSL, and passwordless `sudo -n ip` for the isolated network fixture. It never creates tags, uploads files, or modifies registry listings.
+This is experimental release evidence, not approval for a stable release or marketplace submission. The gate currently supports Linux x86_64 with Python 3.11+, the configured Rust toolchain and GNU target, Cargo dependencies, Node/npm, OpenSSL, and passwordless `sudo -n ip` for the isolated network fixture. The packaging script never creates tags, uploads files, or modifies registry listings.
 
 Commit the intended source and documentation first, then use a new output directory:
 
