@@ -17,7 +17,7 @@ An operator may set the server environment variable `OUTBOUND_GUARD_EXTRA_CA_CER
 
 ## When to call
 
-When the task requires an external HTTP(S) GET or HEAD and the operator has allowlisted the exact hostname, call `guarded_fetch` for the actual request. Provide the exact URL and optional `method` and `max_return_bytes`. This version rejects query strings, request bodies, custom headers, and nonstandard ports. Do not send credentials. The other proposed analysis and budget tools are not implemented here yet.
+When the task requires an external HTTP(S) GET or HEAD and the operator has allowlisted the exact hostname, call `guarded_fetch` for the actual request. Provide the exact URL and optional `method` and `max_return_bytes`. This version rejects raw ASCII controls in URLs, query strings, request bodies, custom headers, and nonstandard ports. Do not send credentials. The other proposed analysis and budget tools are not implemented here yet.
 
 ## Interpret the result
 

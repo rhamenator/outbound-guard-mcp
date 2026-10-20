@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Socket-level guarded_fetch checks inside a disposable, route-free network namespace."""
 import gzip
+import hashlib
 import http.server
 import json
 import os
+import random
 import socket
 import socketserver
 import ssl
@@ -393,6 +395,12 @@ def call(binary, host, path, scheme="http", extra_ca=None):
 
 
 def call_sequence(binary, targets, extra_ca=None):
+    arguments = [{"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}
+                 for host, path, scheme in targets]
+    return call_arguments(binary, arguments, extra_ca)[0]
+
+
+def call_arguments(binary, arguments, extra_ca=None, redaction_markers=()):
     handshake = [
         {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
@@ -403,8 +411,8 @@ def call_sequence(binary, targets, extra_ca=None):
     requests = [
         {"jsonrpc": "2.0", "id": index, "method": "tools/call",
          "params": {"name": "guarded_fetch", "arguments":
-                    {"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}}}
-        for index, (host, path, scheme) in enumerate(targets, 1)
+                    args}}
+        for index, args in enumerate(arguments, 1)
     ]
     env = os.environ.copy()
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
@@ -420,25 +428,83 @@ def call_sequence(binary, targets, extra_ca=None):
     env["no_proxy"] = ""
     audit_request = {"jsonrpc": "2.0", "id": "audit-snapshot", "method": "resources/read",
                     "params": {"uri": "outbound-guard://logs/audit.json"}}
-    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in handshake + requests + [audit_request]), text=True,
+    discovery = {"jsonrpc": "2.0", "id": "schema", "method": "tools/list"}
+    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in handshake + [discovery] + requests + [audit_request]), text=True,
                             capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
         raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
     lines = result.stdout.splitlines()
-    assert len(lines) == len(requests) + 2, lines
+    assert len(lines) == len(requests) + 3, lines
     responses = [json.loads(line) for line in lines]
     assert responses[0]["id"] == 0 and responses[0]["result"]["protocolVersion"] == "2025-06-18", responses
     audit = json.loads(responses[-1]["result"]["contents"][0]["text"])
-    responses = responses[1:-1]
+    schema = responses[1]["result"]["tools"][0]["inputSchema"]
+    responses = responses[2:-1]
     assert [response["id"] for response in responses] == list(range(1, len(requests) + 1)), responses
     decisions = [response["result"]["structuredContent"] for response in responses]
     assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}
                                for decision in decisions[-256:]]
-    for (host, path, scheme), response in zip(targets, responses):
+    for args, response in zip(arguments, responses):
         if response["result"]["structuredContent"].get("rule") == "EGRESS_SECRET_DETECTED":
-            assert f"{scheme}://{host}/{path}" not in result.stdout + result.stderr
-            assert path not in result.stdout + result.stderr
-    return [response["result"]["structuredContent"] for response in responses]
+            assert args["url"] not in result.stdout + result.stderr
+            assert args["url"].split("/", 3)[-1] not in result.stdout + result.stderr
+    for marker in redaction_markers:
+        assert marker not in result.stdout + result.stderr
+    return decisions, schema
+
+
+def test_schema_mutations(binary):
+    _, schema = call_arguments(binary, [])
+    assert schema["type"] == "object" and schema["additionalProperties"] is False
+    seed = 0x4755415244
+    rng = random.Random(seed)
+    marker = "AKIAABCDEFGHIJKLMNOP"  # Synthetic input; must never be echoed.
+    baseline = {"url": "http://allowed.test/plain"}
+    cases = [None, True, 0, marker, [], [baseline]]
+    for required in schema["required"]:
+        cases.append({key: value for key, value in baseline.items() if key != required})
+    for name, spec in schema["properties"].items():
+        wrong_types = [None, True, 0, [], {}] if spec["type"] == "string" else [None, True, marker, 1.5, [], {}]
+        cases.extend({**baseline, name: value} for value in wrong_types)
+        if "maxLength" in spec:
+            prefix = baseline.get(name, "x")
+            cases.append({**baseline, name: prefix + "x" * (spec["maxLength"] + 1 - len(prefix))})
+        if "enum" in spec:
+            assert "POST" not in spec["enum"]
+            cases.append({**baseline, name: "POST"})
+        for boundary, delta in (("minimum", -1), ("maximum", 1)):
+            if boundary in spec:
+                cases.append({**baseline, name: spec[boundary] + delta})
+    for field in ("headers", "body", "proxy", "extra_ca", "timeout", "_meta"):
+        assert field not in schema["properties"]
+        cases.append({**baseline, field: {"nested": [marker, None, True]}})
+    base_count = len(cases)
+    for index in range(512):
+        selected = json.loads(json.dumps(rng.choice(cases[:base_count])))
+        if isinstance(selected, dict):
+            pairs = list(selected.items())
+            rng.shuffle(pairs)
+            selected = dict(pairs)
+            if index % 2:
+                selected[f"unexpected_{index}"] = [marker, {"noise": rng.randrange(1000000)}]
+        cases.append(selected)
+    for byte in [*range(32), 127]:
+        control = chr(byte)
+        cases.extend({"url": url} for url in (control + baseline["url"],
+                     baseline["url"] + control, baseline["url"] + "a" + control + "b"))
+    corpus_hash = hashlib.sha256(json.dumps(cases, sort_keys=True).encode()).hexdigest()
+    before_a, before_aaaa, before_hits = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
+    decisions, _ = call_arguments(binary, [baseline, *cases], redaction_markers=(marker,))
+    assert decisions[0]["rule"] == "EGRESS_ALLOWED"
+    for index, decision in enumerate(decisions[1:]):
+        assert decision["status"] == "BLOCKED", (seed, index, decision["rule"])
+        assert "body_text" not in decision
+    assert DNS.a_names[before_a:] == ["allowed.test"]
+    assert DNS.aaaa_names[before_aaaa:] == ["allowed.test"]
+    assert HTTP.hits[before_hits:] == ["/plain"]
+    print(f"schema mutation probe: {len(cases)} invalid inputs; seed={seed}; sha256={corpus_hash}; "
+          "baseline fetched, invalid inputs opened no DNS/HTTP and echoed no marker")
+    return len(decisions)
 
 
 def test_budgets(binary):
@@ -608,7 +674,8 @@ def main(binary):
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
         test_budgets(binary)
-        print(f"netns adversarial probe: 1184 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        generated = test_schema_mutations(binary)
+        print(f"netns adversarial probe: {1184 + generated} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
