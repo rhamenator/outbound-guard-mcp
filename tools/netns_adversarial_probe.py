@@ -318,16 +318,22 @@ def call_sequence(binary, targets):
     env["all_proxy"] = "http://127.0.0.1:9"
     env["NO_PROXY"] = ""
     env["no_proxy"] = ""
-    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in handshake + requests), text=True,
+    audit_request = {"jsonrpc": "2.0", "id": "audit-snapshot", "method": "resources/read",
+                    "params": {"uri": "outbound-guard://logs/audit.json"}}
+    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in handshake + requests + [audit_request]), text=True,
                             capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
         raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
     lines = result.stdout.splitlines()
-    assert len(lines) == len(requests) + 1, lines
+    assert len(lines) == len(requests) + 2, lines
     responses = [json.loads(line) for line in lines]
     assert responses[0]["id"] == 0 and responses[0]["result"]["protocolVersion"] == "2025-06-18", responses
-    responses = responses[1:]
+    audit = json.loads(responses[-1]["result"]["contents"][0]["text"])
+    responses = responses[1:-1]
     assert [response["id"] for response in responses] == list(range(1, len(requests) + 1)), responses
+    decisions = [response["result"]["structuredContent"] for response in responses]
+    assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}
+                               for decision in decisions]
     for (host, path, scheme), response in zip(targets, responses):
         if response["result"]["structuredContent"].get("rule") == "EGRESS_SECRET_DETECTED":
             assert f"{scheme}://{host}/{path}" not in result.stdout + result.stderr

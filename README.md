@@ -11,7 +11,24 @@ cargo run --locked
 
 Configure an MCP client to launch the executable over stdio with this environment variable. Its first `tools/list` result advertises `guarded_fetch`. The client must send the actual request through this tool for its policy to apply. It cannot intercept traffic sent through unrelated tools or processes. The `ai-scraping-defense` projects may connect to it optionally, as they may connect to any MCP server.
 
+## Audit decisions
+
+Each completed `guarded_fetch` result includes a process-local `correlation_id` such as `egress-1`. Read `outbound-guard://logs/audit.json` through MCP `resources/read` to inspect the last 256 completed decisions in that server process. The resource is advertised by `resources/list`; it contains only correlation IDs, status, and rule codes. It stores no URLs, RPC IDs, request arguments, or response text. The oldest event is evicted at capacity. Any client attached to that server process can read this log; no extra credential or filesystem permission is needed. Restart clears the log and restarts the ID sequence. This is a volatile diagnostic log, without timestamps, persistence, subscriptions, or tamper resistance. It covers executed guarded calls, not protocol errors or traffic through other tools. An unavailable audit log blocks new guarded fetches before network execution; a failure recording a completed fetch suppresses its returned body but cannot undo that fetch.
+
+Read the log using the same connected MCP session:
+
+```json
+{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"outbound-guard://logs/audit.json"}}
+```
+
+Each event has this shape:
+
+```json
+{"correlation_id":"egress-1","status":"BLOCKED","rule":"EGRESS_SECRET_DETECTED"}
+```
+
 ## Install and verify a client connection
+
 
 From a clone of this repository, install the binary independently of the source checkout:
 

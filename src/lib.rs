@@ -27,6 +27,45 @@ const CALLS_PER_HOUR: usize = 1000;
 static DNS_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
 static EGRESS_BUDGET: LazyLock<Mutex<CallBudget>> =
     LazyLock::new(|| Mutex::new(CallBudget::default()));
+const AUDIT_CAPACITY: usize = 256;
+pub const AUDIT_URI: &str = "outbound-guard://logs/audit.json";
+static AUDIT: LazyLock<Mutex<AuditLog>> = LazyLock::new(|| Mutex::new(AuditLog::default()));
+
+#[derive(Default)]
+struct AuditLog {
+    sequence: u64,
+    events: VecDeque<Value>,
+}
+
+impl AuditLog {
+    fn begin(&mut self) -> Option<String> {
+        self.sequence = self.sequence.checked_add(1)?;
+        Some(format!("egress-{}", self.sequence))
+    }
+
+    fn record(&mut self, correlation_id: &str, decision: &Value) {
+        if self.events.len() == AUDIT_CAPACITY {
+            self.events.pop_front();
+        }
+        // Whitelist fields: never retain URLs, arguments, response text, or RPC IDs.
+        self.events.push_back(json!({
+            "correlation_id": correlation_id,
+            "status": decision["status"],
+            "rule": decision["rule"],
+        }));
+    }
+
+    fn snapshot(&self) -> Value {
+        json!({"capacity": AUDIT_CAPACITY, "scope": "process", "events": self.events})
+    }
+}
+
+pub fn audit_snapshot() -> Result<Value, &'static str> {
+    AUDIT
+        .lock()
+        .map(|log| log.snapshot())
+        .map_err(|_| "Audit unavailable")
+}
 
 #[derive(Default)]
 struct CallBudget {
@@ -486,6 +525,38 @@ pub fn allowed_hosts_from_env() -> Result<Vec<String>, &'static str> {
 }
 
 pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
+    audited_fetch(&AUDIT, || guarded_fetch_inner(args, allowed_hosts))
+}
+
+fn audited_fetch(audit: &Mutex<AuditLog>, fetch: impl FnOnce() -> Value) -> Value {
+    let correlation_id = match audit.lock().ok().and_then(|mut log| log.begin()) {
+        Some(id) => id,
+        None => {
+            return Denial::new(
+                "EGRESS_AUDIT_FAILURE",
+                "Restart the server; the audit log is unavailable.",
+            )
+            .value()
+        }
+    };
+    let mut decision = fetch();
+    decision["correlation_id"] = json!(correlation_id);
+    match audit.lock() {
+        Ok(mut log) => log.record(&correlation_id, &decision),
+        Err(_) => {
+            let mut failure = Denial::new(
+                "EGRESS_AUDIT_FAILURE",
+                "Restart the server; the audit log is unavailable.",
+            )
+            .value();
+            failure["correlation_id"] = json!(correlation_id);
+            return failure;
+        }
+    }
+    decision
+}
+
+fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String]) -> Value {
     let target = match validate_with_reservation(
         args,
         allowed_hosts,
@@ -703,6 +774,46 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicBool;
+    #[test]
+    fn audit_failure_blocks_execution_or_suppresses_completed_body() {
+        let audit = Mutex::new(AuditLog::default());
+        let poison = || {
+            let _ = std::panic::catch_unwind(|| {
+                let _guard = audit.lock().unwrap();
+                panic!("injected audit failure");
+            });
+        };
+        let result = audited_fetch(&audit, || {
+            poison();
+            json!({"status":"SAFE", "rule":"EGRESS_ALLOWED", "body_text":"private payload"})
+        });
+        assert_eq!(result["rule"], "EGRESS_AUDIT_FAILURE");
+        assert_eq!(result["correlation_id"], "egress-1");
+        assert!(result.get("body_text").is_none());
+        let result = audited_fetch(&audit, || panic!("must not execute without audit"));
+        assert_eq!(result["rule"], "EGRESS_AUDIT_FAILURE");
+    }
+    #[test]
+    fn audit_evicts_old_events_and_retains_only_safe_fields() {
+        let mut log = AuditLog::default();
+        for index in 1..=300 {
+            let id = log.begin().unwrap();
+            assert_eq!(id, format!("egress-{index}"));
+            let decision = json!({"status":"SAFE", "rule":"EGRESS_ALLOWED",
+                "url":"https://sensitive.example/secret", "body_text":"private payload"});
+            log.record(&id, &decision);
+        }
+        let snapshot = log.snapshot();
+        assert_eq!(snapshot["events"].as_array().unwrap().len(), AUDIT_CAPACITY);
+        assert_eq!(snapshot["events"][0]["correlation_id"], "egress-45");
+        assert_eq!(snapshot["events"][255]["correlation_id"], "egress-300");
+        let text = snapshot.to_string();
+        assert!(!text.contains("sensitive.example"));
+        assert!(!text.contains("private payload"));
+        assert_eq!(snapshot["events"][0].as_object().unwrap().len(), 3);
+        log.sequence = u64::MAX;
+        assert!(log.begin().is_none());
+    }
     #[test]
     fn content_type_requires_an_exact_supported_media_type() {
         assert!(supported_content_type("text/plain; charset=utf-8"));

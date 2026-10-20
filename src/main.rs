@@ -1,4 +1,4 @@
-use outbound_guard_mcp::{allowed_hosts_from_env, guarded_fetch};
+use outbound_guard_mcp::{allowed_hosts_from_env, audit_snapshot, guarded_fetch, AUDIT_URI};
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
 
@@ -139,7 +139,7 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
                 return Some(rpc_error(id, -32602, "Invalid initialize parameters"));
             }
             *session = Session::AwaitingInitialized;
-            json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":false}},
+            json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":false},"resources":{}},
             "serverInfo":{"name":"outbound-guard-mcp","version":env!("CARGO_PKG_VERSION")}})
         }
         "ping" => json!({}),
@@ -152,7 +152,23 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
                 "method":{"type":"string","enum":["GET","HEAD"]},
                 "max_return_bytes":{"type":"integer","minimum":1,"maximum":262144}},
                 "required":["url"],"additionalProperties":false}}]}),
-        "resources/list" => json!({"resources":[]}),
+        "resources/list" => json!({"resources":[{"uri":AUDIT_URI,"name":"Egress audit log",
+            "description":"Last 256 completed guarded fetch decisions, redacted and process-local.","mimeType":"application/json"}]}),
+        "resources/templates/list" => json!({"resourceTemplates":[]}),
+        "resources/read" => {
+            let Some(uri) = message.pointer("/params/uri").and_then(Value::as_str) else {
+                return Some(rpc_error(id, -32602, "Invalid resource parameters"));
+            };
+            if uri != AUDIT_URI {
+                return Some(rpc_error(id, -32002, "Resource not found"));
+            }
+            match audit_snapshot() {
+                Ok(snapshot) => {
+                    json!({"contents":[{"uri":AUDIT_URI,"mimeType":"application/json","text":snapshot.to_string()}]})
+                }
+                Err(_) => return Some(rpc_error(id, -32603, "Audit unavailable")),
+            }
+        }
         "prompts/list" => json!({"prompts":[]}),
         "tools/call" => {
             let name = message.pointer("/params/name").and_then(Value::as_str);

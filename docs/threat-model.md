@@ -1,6 +1,6 @@
 # Current egress threat model
 
-This document maps the **implemented** stdio `guarded_fetch` GET/HEAD boundary to its tests. It describes the experimental `main` branch as of 2026-10-19. [QUALITY_BAR.md](QUALITY_BAR.md) is the stable-release acceptance list; an entry here is not a waiver of an open gate.
+This document maps the **implemented** stdio `guarded_fetch` GET/HEAD boundary to its tests. It describes the experimental `main` branch as of 2026-10-20. [QUALITY_BAR.md](QUALITY_BAR.md) is the stable-release acceptance list; an entry here is not a waiver of an open gate.
 
 ## Assets and boundaries
 
@@ -26,8 +26,10 @@ This document maps the **implemented** stdio `guarded_fetch` GET/HEAD boundary t
 
 ## Client and release evidence
 
+The process-local audit resource `outbound-guard://logs/audit.json` retains at most 256 completed decisions using a field whitelist (correlation ID, status, rule). `tools/adversarial_stdio_probe.py` checks 300 real MCP blocked calls for correlation, retention, eviction, and absence of synthetic tokens in results and stderr; a unit test also verifies that allowed-response URLs and body text are excluded. The official Inspector smoke checks resource discovery and reading. IDs are process-local, and restart loses all events. This is diagnostic evidence, without persistent storage, timestamps, subscriptions, or tamper resistance. Any client of the process can read the resource. Protocol failures and other tools are outside this log.
+
 The [Codex CLI](client-codex-cli.md) and [Claude Code](client-claude-code.md) smoke tests demonstrate real client discovery, a blocked call, and approved GET/HEAD. [Inspector](../tools/inspector_smoke.py) and the [isolated socket probe](adversarial-netns.md) cover protocol and hostile fixture slices. No test here proves whole-agent egress coverage.
 
 Cursor remains untested. An official Linux Cursor CLI package was inspected and run temporarily on this host, but `agent status` reported **Not logged in** and the MCP listing did not complete. No Cursor tool call was observed; the temporary package and test configuration were removed. A signed-in Cursor client must perform its own discovery, blocked-call, and approved-call smoke test before the client gate can close.
 
-Other stable-release blockers include full MCP revision conformance, trusted TLS mismatch evidence, request and response resource/concurrency limits, broader secret handling, prompt-injection quarantine, redacted audit/correlation records, schema/property fuzzing, reproducible release artifacts, and human review. They remain tracked in [QUALITY_BAR.md](QUALITY_BAR.md).
+Other stable-release blockers include full MCP revision conformance, trusted TLS mismatch evidence, request and response resource/concurrency limits, broader secret handling, prompt-injection quarantine, schema/property fuzzing, reproducible release artifacts, and human review. They remain tracked in [QUALITY_BAR.md](QUALITY_BAR.md).
