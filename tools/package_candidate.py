@@ -6,7 +6,7 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import platform
 import subprocess
 import sys
@@ -69,19 +69,34 @@ def main():
     subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", *INPUTS], cwd=REPO, check=True)
     revision = git("rev-parse", "HEAD").decode().strip()
     epoch = int(git("show", "-s", "--format=%ct", "HEAD"))
-    version = tomllib.loads(git("show", "HEAD:Cargo.toml").decode())["package"]["version"]
+    version = tomllib.loads(git("show", f"{revision}:Cargo.toml").decode())["package"]["version"]
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "-j", "2",
-                    "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
-                   cwd=REPO, check=True)
-    binary = (REPO / "target/x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
-    root = f"outbound-guard-mcp-{version}-candidate.{revision[:12]}-linux-x86_64"
-    files = {"bin/outbound-guard-mcp": binary}
-    files.update({name: git("show", f"HEAD:{name}") for name in ("README.md", "LICENSE", "SECURITY.md")})
-    files["source.tar.gz"] = git("archive", "--format=tar.gz", "--prefix=source/", "HEAD", "--",
+    source = git("archive", "--format=tar.gz", "--prefix=source/", revision, "--",
         "Cargo.toml", "Cargo.lock", "src", "rust-toolchain.toml", "LICENSE", "README.md",
         "SECURITY.md", "tools", "docs", "skills")
+    # Build from the committed snapshot, excluding untracked build.rs or Cargo config.
+    with tempfile.TemporaryDirectory(prefix="outbound-guard-source-") as folder:
+        with tarfile.open(fileobj=io.BytesIO(source)) as tar:
+            for entry in tar:
+                parts = PurePosixPath(entry.name).parts
+                assert parts and parts[0] == "source" and ".." not in parts
+                destination = Path(folder).joinpath(*parts)
+                if entry.isdir():
+                    destination.mkdir(parents=True, exist_ok=True)
+                else:
+                    assert entry.isfile(), "source snapshot must contain only files and directories"
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(tar.extractfile(entry).read())
+                    destination.chmod(entry.mode & 0o777)
+        subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "-j", "2",
+                        "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
+                       cwd=Path(folder) / "source", check=True)
+        binary = (REPO / "target/x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
+    root = f"outbound-guard-mcp-{version}-candidate.{revision[:12]}-linux-x86_64"
+    files = {"bin/outbound-guard-mcp": binary}
+    files.update({name: git("show", f"{revision}:{name}") for name in ("README.md", "LICENSE", "SECURITY.md")})
+    files["source.tar.gz"] = source
     files["provenance.json"] = (json.dumps({"revision": revision, "version": version,
         "candidate": True, "stable_release": False, "platform": "linux-x86_64",
         "license": "GPL-3.0-or-later", "binary_sha256": digest(binary)}, sort_keys=True) + "\n").encode()
@@ -93,20 +108,22 @@ def main():
                 entry.size, entry.mtime = len(data), epoch
                 entry.mode = 0o755 if name.startswith("bin/") else 0o644
                 tar.addfile(entry, io.BytesIO(data))
-    skill = git("show", "HEAD:skills/outbound-guard/SKILL.md")
+    skill = git("show", f"{revision}:skills/outbound-guard/SKILL.md")
     frontmatter = skill.decode().split("---", 2)[1]
     assert "\nname: outbound-guard\n" in frontmatter and "\ndescription:" in frontmatter
     assert b"/home/rich/" not in skill and b"experimental" in skill.lower()
     skill_zip = output / f"outbound-guard-skill-{revision[:12]}.zip"
     with zipfile.ZipFile(skill_zip, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
-        entry = zipfile.ZipInfo("outbound-guard/SKILL.md", (1980, 1, 1, 0, 0, 0))
-        entry.compress_type = zipfile.ZIP_DEFLATED
-        entry.external_attr = 0o100644 << 16
-        zipped.writestr(entry, skill)
+        for name, data in (("SKILL.md", skill), ("LICENSE", files["LICENSE"])):
+            entry = zipfile.ZipInfo("outbound-guard/" + name, (1980, 1, 1, 0, 0, 0))
+            entry.compress_type = zipfile.ZIP_DEFLATED
+            entry.external_attr = 0o100644 << 16
+            zipped.writestr(entry, data)
     checksums = {path.name: digest(path.read_bytes()) for path in (archive, skill_zip)}
     (output / "SHA256SUMS").write_text("".join(f"{sha}  {name}\n" for name, sha in checksums.items()))
     with zipfile.ZipFile(skill_zip) as zipped:
-        assert zipped.namelist() == ["outbound-guard/SKILL.md"] and zipped.testzip() is None
+        assert zipped.namelist() == ["outbound-guard/SKILL.md", "outbound-guard/LICENSE"]
+        assert zipped.testzip() is None
     # Extract only the known executable, never arbitrary archive paths or links.
     with tempfile.TemporaryDirectory(prefix="outbound-guard-install-") as folder:
         installed = Path(folder) / "outbound-guard-mcp"
@@ -120,7 +137,7 @@ def main():
         installed_smoke(installed)
     for name, sha in checksums.items():
         assert digest((output / name).read_bytes()) == sha
-    print(f"candidate verified: {archive.name}; skill ZIP has only SKILL.md; checksums, installed MCP/Inspector, and hostile fixtures passed")
+    print(f"candidate verified: {archive.name}; skill ZIP has SKILL.md and GPL license; checksums, installed MCP/Inspector, and hostile fixtures passed")
 
 
 if __name__ == "__main__":
