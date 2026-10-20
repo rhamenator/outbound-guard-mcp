@@ -33,6 +33,9 @@ RECORDS = {
     "v6-transition.test": [],
     "mixed-v6.test": [PUBLIC_FIXTURE],
 }
+HOURLY_HOSTS = [f"budget-{index}.test" for index in range(17)]
+RECORDS.update({host: [PUBLIC_FIXTURE] for host in HOURLY_HOSTS})
+RECORDS["budget-failure.test"] = []
 V6_RECORDS = {
     "v6-loopback.test": ["::1"],
     "v6-mapped.test": ["::ffff:127.0.0.1"],
@@ -47,6 +50,8 @@ class DNS(socketserver.BaseRequestHandler):
     rebind_a_queries = 0
     queries = 0
     names = []
+    a_names = []
+    aaaa_names = []
 
     def handle(self):
         data, sock = self.request
@@ -66,6 +71,10 @@ class DNS(socketserver.BaseRequestHandler):
         type(self).names.append(name)
         question = data[12:offset + 5]
         qtype = struct.unpack("!H", data[offset + 1:offset + 3])[0]
+        if qtype == 1:
+            type(self).a_names.append(name)
+        elif qtype == 28:
+            type(self).aaaa_names.append(name)
         addresses = (RECORDS.get(name, []) if qtype == 1 else
                      V6_RECORDS.get(name, []) if qtype == 28 else [])
         if name == "rebind.test" and qtype == 1:
@@ -346,12 +355,52 @@ def call_sequence(binary, targets):
     assert [response["id"] for response in responses] == list(range(1, len(requests) + 1)), responses
     decisions = [response["result"]["structuredContent"] for response in responses]
     assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}
-                               for decision in decisions]
+                               for decision in decisions[-256:]]
     for (host, path, scheme), response in zip(targets, responses):
         if response["result"]["structuredContent"].get("rule") == "EGRESS_SECRET_DETECTED":
             assert f"{scheme}://{host}/{path}" not in result.stdout + result.stderr
             assert path not in result.stdout + result.stderr
     return [response["result"]["structuredContent"] for response in responses]
+
+
+def test_budgets(binary):
+    # A fresh process isolates each budget; no sleeps, external routes, or real hosts.
+    before_hits, before_queries = len(HTTP.hits), len(DNS.a_names)
+    before_aaaa = len(DNS.aaaa_names)
+    targets = [("ALLOWED.TEST" if index % 2 else "allowed.test",
+                "json-truncated" if index % 2 else "plain", "http") for index in range(60)]
+    decisions = call_sequence(binary, targets + [("allowed.test", "plain", "http")])
+    assert [decision["rule"] for decision in decisions[:-1]] == [
+        "EGRESS_INVALID_JSON" if index % 2 else "EGRESS_ALLOWED" for index in range(60)]
+    assert decisions[-1]["rule"] == "EGRESS_RATE_LIMIT", decisions[-1]
+    assert "body_text" not in decisions[-1]
+    assert len(HTTP.hits) - before_hits == 60
+    assert DNS.a_names[before_queries:] == ["allowed.test"] * 60
+    assert DNS.aaaa_names[before_aaaa:] == ["allowed.test"] * 60
+
+    before_hits, before_queries = len(HTTP.hits), len(DNS.a_names)
+    before_aaaa = len(DNS.aaaa_names)
+    decisions = call_sequence(binary, [("budget-failure.test", "plain", "http")] * 61)
+    assert all(decision["rule"] == "EGRESS_DNS_FAILURE" for decision in decisions[:-1])
+    assert decisions[-1]["rule"] == "EGRESS_RATE_LIMIT", decisions[-1]
+    assert len(HTTP.hits) == before_hits
+    assert DNS.a_names[before_queries:] == ["budget-failure.test"] * 60
+    assert DNS.aaaa_names[before_aaaa:] == ["budget-failure.test"] * 60
+
+    before_hits, before_queries = len(HTTP.hits), len(DNS.a_names)
+    before_aaaa = len(DNS.aaaa_names)
+    targets = [(HOURLY_HOSTS[index % len(HOURLY_HOSTS)], "plain", "http") for index in range(1001)]
+    started = time.monotonic()
+    decisions = call_sequence(binary, targets)
+    elapsed = time.monotonic() - started
+    assert all(decision["rule"] == "EGRESS_ALLOWED" for decision in decisions[:-1])
+    assert decisions[-1]["rule"] == "EGRESS_RATE_LIMIT", decisions[-1]
+    assert "body_text" not in decisions[-1]
+    assert len(HTTP.hits) - before_hits == 1000
+    assert DNS.a_names[before_queries:] == [target[0] for target in targets[:-1]]
+    assert DNS.aaaa_names[before_aaaa:] == [target[0] for target in targets[:-1]]
+    print(f"live budget probe: per-host 60/61 (mixed-case hosts and failed HTTP), failed DNS 60/61, "
+          f"hourly 1000/1001 across 17 hosts in {elapsed:.2f}s; blocked calls opened no DNS or HTTP")
 
 
 def main(binary):
@@ -479,7 +528,8 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
-        print(f"netns adversarial probe: 58 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        test_budgets(binary)
+        print(f"netns adversarial probe: 1181 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
