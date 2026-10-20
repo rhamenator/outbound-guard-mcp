@@ -1,4 +1,6 @@
-use outbound_guard_mcp::{allowed_hosts_from_env, audit_snapshot, guarded_fetch, AUDIT_URI};
+use outbound_guard_mcp::{
+    allowed_hosts_from_env, audit_snapshot, guarded_fetch, validate_tls_configuration, AUDIT_URI,
+};
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
 
@@ -190,6 +192,7 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
 }
 
 fn main() -> io::Result<()> {
+    validate_tls_configuration().map_err(io::Error::other)?;
     let hosts = allowed_hosts_from_env().map_err(io::Error::other)?;
     let stdin = io::stdin();
     let mut reader = stdin.lock();

@@ -11,6 +11,14 @@ cargo run --locked
 
 Configure an MCP client to launch the executable over stdio with this environment variable. Its first `tools/list` result advertises `guarded_fetch`. The client must send the actual request through this tool for its policy to apply. It cannot intercept traffic sent through unrelated tools or processes. The `ai-scraping-defense` projects may connect to it optionally, as they may connect to any MCP server.
 
+## Optional operator CA certificate
+
+For an approved HTTPS service using a private certificate authority, set the server environment variable `OUTBOUND_GUARD_EXTRA_CA_CERT` to an operator-controlled PEM certificate file. The server needs read permission on that regular file; it must contain exactly one certificate, be at most 64 KiB, and contain no private key. Invalid configuration stops startup. The certificate is loaded once; restart after changing it. It adds trust for all approved HTTPS hosts in that process, alongside the built-in roots, with hostname verification still required. Protect the file from modification by agents or untrusted users. The tool arguments cannot select a certificate. No client certificate authentication is implemented.
+
+```bash
+export OUTBOUND_GUARD_EXTRA_CA_CERT=/path/to/operator-ca.pem
+```
+
 ## Audit decisions
 
 Each completed `guarded_fetch` result includes a process-local `correlation_id` such as `egress-1`. Read `outbound-guard://logs/audit.json` through MCP `resources/read` to inspect the last 256 completed decisions in that server process. The resource is advertised by `resources/list`; it contains only correlation IDs, status, and rule codes. It stores no URLs, RPC IDs, request arguments, or response text. The oldest event is evicted at capacity. Any client attached to that server process can read this log; no extra credential or filesystem permission is needed. Restart clears the log and restarts the ID sequence. This is a volatile diagnostic log, without timestamps, persistence, subscriptions, or tamper resistance. It covers executed guarded calls, not protocol errors or traffic through other tools. An unavailable audit log blocks new guarded fetches before network execution; a failure recording a completed fetch suppresses its returned body but cannot undo that fetch.
