@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Private helper: run only in the probe's disposable network namespace."""
+import sys,threading,socketserver,http.server,time,pathlib,json
+from netns_adversarial_probe import DNS,HTTP,PUBLIC_FIXTURE
+root=pathlib.Path(sys.argv[1])
+dns=socketserver.ThreadingUDPServer(('127.0.0.1',53),DNS)
+http=http.server.ThreadingHTTPServer((PUBLIC_FIXTURE,80),HTTP);http.daemon_threads=True
+for s in [dns,http]:threading.Thread(target=s.serve_forever,daemon=True).start()
+(root/'ready').touch()
+while True:
+ if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
+ if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
+ time.sleep(.01)

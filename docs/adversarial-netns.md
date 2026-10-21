@@ -149,3 +149,7 @@ Independent in-memory duplex-stream regressions also verify that exhausted read 
 
 
 The official-client fixture now runs the shared abort/schema/recovery/GET/HEAD scenario twice: legacy SDK 1.32.1 and modern SDK 2.3.1 pinned to 2026-07-28. Both must observe socket closure while the client stays alive. With both enabled, the full network corpus has 1,977 MCP decisions plus two library calls. These development packages do not enter the Rust/server dependency graph. The wire cancellation numeric case now sends request ID `1.0` and cancels with integer `1`, preserving the distinct string-ID control.
+
+## Saturated input queue
+
+The normal network suite now also runs `test_saturated_cancellation` for both protocol eras: nine 60,000-byte ordinary requests fill eight queue slots and one reader-held frame behind a live fetch. It records the known late-cancellation limitation, then requires terminal decision, all queued replies, audit, socket closure and subsequent recovery. RSS/FD samples and limits of this finite test are in [client-cancellation.md](client-cancellation.md). This does not claim strict cancellation priority at saturation.

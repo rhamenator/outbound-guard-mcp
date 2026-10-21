@@ -29,3 +29,5 @@ Fresh archive candidate `ec96881e4ca9` (after the independent cancellation revie
 Claude Code 2.1.301 used `--restricted --strict-mcp-config --allowedTools mcp__outbound_guard__guarded_fetch --tools "" --permission-mode dontAsk --no-session-persistence`. The client retained its existing authentication; temporary configuration exposed no other MCP server or built-in tool.
 
 This is candidate evidence, not final stable-release certification. Client UI cancellation, authenticated Cursor and the other quality-bar gates remain open.
+
+The [2026-10-21 control-path cancellation review](client-cancellation.md) records actual wire behavior separately from agent-turn interruption and deadline recovery. It does not certify desktop or terminal UI controls.

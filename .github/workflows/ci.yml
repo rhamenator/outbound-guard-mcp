@@ -27,6 +27,7 @@ jobs:
       - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/modern_stdio_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/protocol_id_probe.py target/debug/outbound-guard-mcp
+      - run: python3 -m py_compile tools/client_cancellation_probe.py tools/client_cancellation_fixture.py tools/client_wire_bridge.py
       - run: python3 tools/stdio_resource_probe.py target/debug/outbound-guard-mcp
       - run: npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund
       - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"

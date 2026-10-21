@@ -24,3 +24,5 @@ Fresh archive candidate `ec96881e4ca9` (after the independent cancellation revie
 Codex CLI 0.151.0 used an isolated ephemeral session with a read-only sandbox and `approval_policy = "never"`. The single configured tool had an explicit `tools.guarded_fetch.approval_mode = "approve"` policy; no approval or sandbox bypass was needed. This is a narrow test authorization, not a recommendation to approve unrelated tools. Normal user configuration and authentication were not modified.
 
 This is candidate evidence, not final stable-release certification. Client UI cancellation, authenticated Cursor and the other quality-bar gates remain open.
+
+The [2026-10-21 control-path cancellation review](client-cancellation.md) records actual wire behavior separately from agent-turn interruption and deadline recovery. It does not certify desktop or terminal UI controls.

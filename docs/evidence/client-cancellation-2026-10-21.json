@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-21",
+  "artifact_source_sha": "ec96881e4ca9f7dc6e11d0630433ba76173b4e69",
+  "status": "experimental; no human release approval",
+  "clients": [
+    {
+      "client": "claude",
+      "binary_sha256": "93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19",
+      "control_path": "stream-json interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": true,
+      "cancelled_fetch_replied": false,
+      "cancel_notifications": 1,
+      "http_methods": [
+        "GET",
+        "GET"
+      ],
+      "status_codes": [
+        200
+      ],
+      "fetches": 2,
+      "socket_closed_after_seconds": 1.01,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2.1.301"
+    },
+    {
+      "client": "codex",
+      "binary_sha256": "93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19",
+      "control_path": "app-server turn/interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET"
+      ],
+      "status_codes": [
+        200
+      ],
+      "fetches": 2,
+      "socket_closed_after_seconds": 3.017,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "0.151.0",
+      "additional_replay": {
+        "status": "inconclusive",
+        "reason": "upstream inference HTTP 429 Too Many Requests during recovery; further retries stopped"
+      }
+    },
+    {
+      "client": "cursor",
+      "binary_sha256": "93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19",
+      "control_path": "ACP session/cancel",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "HEAD"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "fetches": 4,
+      "socket_closed_after_seconds": 3.007,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2026.10.19-6bbf2c4"
+    }
+  ],
+  "queue_saturation": {
+    "protocol_eras": [
+      "2025-06-18",
+      "2026-07-28"
+    ],
+    "queued_frames": 8,
+    "reader_held_frames": 1,
+    "padding_bytes_per_request": 60000,
+    "observed_peak_rss_kib": [
+      8792,
+      8948
+    ],
+    "observed_peak_fds": [
+      7,
+      7
+    ],
+    "fetch_terminal_rule": "EGRESS_RESPONSE_TOO_SLOW",
+    "late_cancellation_processed_promptly": false,
+    "audit_and_recovery": true,
+    "scope": "finite sampled observations, not proven maxima or process-wide quotas"
+  },
+  "remaining": [
+    "Desktop Stop/terminal Escape coverage",
+    "Codex and Cursor control-path wire cancellation gap",
+    "Saturated-queue control priority",
+    "Other release and cross-repository gates in issue #65"
+  ]
+}
