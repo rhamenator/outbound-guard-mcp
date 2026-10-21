@@ -264,6 +264,30 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"ok")
             return
+        if self.path.startswith("/header-boundary-"):
+            size = int(self.path.removeprefix("/header-boundary-"))
+            prefix = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nX-Pad: "
+            suffix = b"\r\n\r\n"
+            head = prefix + b"x" * (size - len(prefix) - len(suffix)) + suffix
+            assert len(head) == size
+            try:
+                self.wfile.write(head + b"ok")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
+        if self.path in ("/chunk-overhead", "/chunk-trailers"):
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            body = ((b"1\r\nx\r\n") * 20000 + b"0\r\n\r\n"
+                    if self.path == "/chunk-overhead" else b"2\r\nok\r\n0\r\nX-Trailer: synthetic-trailer\r\n\r\n")
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
         if self.path == "/chunked-large":
             self.protocol_version = "HTTP/1.1"
             self.send_response(200)
@@ -294,8 +318,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             else:
                 self.send_header("X-Fixture-Large", "x" * (24 * 1024))
             self.send_header("Content-Length", "2")
-            self.end_headers()
             try:
+                self.end_headers()
                 self.wfile.write(b"ok")
             except (BrokenPipeError, ConnectionResetError):
                 pass
@@ -701,7 +725,7 @@ def test_head_requests(binary):
         ("head-encoded", {"EGRESS_ENCODED_RESPONSE"}),
         ("head-duplicate-type", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
         ("head-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
-        ("head-many-headers", {"EGRESS_RESPONSE_HEADERS_LIMIT"}),
+        ("head-many-headers", {"EGRESS_INVALID_FRAMING"}),
         ("head-delayed", {"EGRESS_NETWORK_FAILURE"}),
     ]
     before_hits, before_methods = len(HTTP.hits), len(HTTP.methods)
@@ -1034,6 +1058,20 @@ def main(binary, cancellation_probe):
             else:
                 assert "body_text" not in decision and "synthetic-mime-body" not in json.dumps(decision)
         print("MIME policy probe: six conflicting/ambiguous parameter cases denied without body; four UTF-8 controls returned intact")
+        before_queries, before_hits = DNS.queries, len(HTTP.hits)
+        long_request, _ = call_arguments(binary, [{"url":"http://allowed.test/" + "é" * 700}])
+        assert long_request[0]["rule"] == "EGRESS_REQUEST_LIMIT" and "body_text" not in long_request[0]
+        assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits), "oversized serialized request reached DNS/HTTP"
+        for path, rule in (("chunk-overhead", "EGRESS_RESPONSE_WIRE_LIMIT"), ("chunk-trailers", "EGRESS_UNSUPPORTED_TRAILERS")):
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == rule and "body_text" not in decision, (path, decision)
+        for size in (16383, 16384, 16385):
+            decision = call(binary, "allowed.test", f"header-boundary-{size}")
+            if size <= 16384:
+                assert decision["rule"] == "EGRESS_ALLOWED" and decision["body_text"] == "ok", (size, decision)
+            else:
+                assert decision["rule"] == "EGRESS_INVALID_FRAMING" and "body_text" not in decision, (size, decision)
+        print("wire budget probe: encoded request rejected before DNS/HTTP; small decoded body with excessive chunk overhead and response trailers denied without body")
         secret_markers = (
             "AKIAABCDEFGHIJKLMNOP",  # Synthetic AWS access key ID.
             "ASIAABCDEFGHIJKLMNOP",  # Synthetic AWS temporary access key ID.
@@ -1052,16 +1090,16 @@ def main(binary, cancellation_probe):
         for path, accepted_rules in (
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
-            ("stacked-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE"}),
-            ("duplicate-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE"}),
+            ("stacked-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE", "EGRESS_INVALID_FRAMING"}),
+            ("duplicate-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE", "EGRESS_INVALID_FRAMING"}),
             ("duplicate-type", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
             ("duplicate-encoding", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
             ("chunked-large", {"EGRESS_RESPONSE_LIMIT"}),
             ("chunked-bad-size", {"EGRESS_READ_FAILURE", "EGRESS_NETWORK_FAILURE"}),
             ("chunked-truncated", {"EGRESS_READ_FAILURE", "EGRESS_NETWORK_FAILURE"}),
-            ("many-headers", {"EGRESS_RESPONSE_HEADERS_LIMIT"}),
-            ("oversized-header", {"EGRESS_RESPONSE_HEADERS_LIMIT", "EGRESS_NETWORK_FAILURE"}),
-            ("parser-limit", {"EGRESS_NETWORK_FAILURE"}),
+            ("many-headers", {"EGRESS_INVALID_FRAMING"}),
+            ("oversized-header", {"EGRESS_INVALID_FRAMING"}),
+            ("parser-limit", {"EGRESS_INVALID_FRAMING"}),
         ):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] in accepted_rules, (path, decision)
@@ -1100,7 +1138,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1190 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

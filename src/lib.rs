@@ -1,6 +1,9 @@
 //! Atomic outbound GET/HEAD policy. Only this tool's own sockets are guarded.
 
-use reqwest::{blocking::Client as BlockingClient, header, redirect::Policy, Client, Url};
+mod transport;
+use http_body_util::BodyExt;
+use hyper::header;
+use rustls::pki_types::{pem::PemObject, CertificateDer};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, VecDeque},
@@ -13,6 +16,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use url::Url;
 
 const DEFAULT_RETURN_BYTES: usize = 64 * 1024;
 const MAX_RETURN_BYTES: usize = 256 * 1024;
@@ -26,10 +30,10 @@ const HOST_PER_MINUTE: usize = 60;
 const CALLS_PER_HOUR: usize = 1000;
 const MAX_CA_BYTES: u64 = 64 * 1024;
 static FETCH_ACTIVE: AtomicBool = AtomicBool::new(false);
-static EXTRA_CA: LazyLock<Result<Option<reqwest::Certificate>, &'static str>> =
+static EXTRA_CA: LazyLock<Result<Option<CertificateDer<'static>>, &'static str>> =
     LazyLock::new(load_extra_ca);
 
-fn load_extra_ca() -> Result<Option<reqwest::Certificate>, &'static str> {
+fn load_extra_ca() -> Result<Option<CertificateDer<'static>>, &'static str> {
     let Some(path) = std::env::var_os("OUTBOUND_GUARD_EXTRA_CA_CERT") else {
         return Ok(None);
     };
@@ -48,16 +52,15 @@ fn load_extra_ca() -> Result<Option<reqwest::Certificate>, &'static str> {
     if bytes.len() as u64 > MAX_CA_BYTES || bytes.windows(11).any(|part| part == b"PRIVATE KEY") {
         return Err(error);
     }
-    let mut certs = reqwest::Certificate::from_pem_bundle(&bytes).map_err(|_| error)?;
+    let mut certs = CertificateDer::pem_slice_iter(&bytes)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| error)?;
     if certs.len() != 1 {
         return Err(error);
     }
     let cert = certs.pop().ok_or(error)?;
-    // Certificate parsing can defer DER validation until the TLS client is built.
-    BlockingClient::builder()
-        .no_proxy()
-        .add_root_certificate(cert.clone())
-        .build()
+    rustls::RootCertStore::empty()
+        .add(cert.clone())
         .map_err(|_| error)?;
     Ok(Some(cert))
 }
@@ -461,6 +464,12 @@ fn validate_with_reservation<R: Resolver, F: FnOnce(&str) -> Result<(), Denial>>
             "Ask the operator to add this exact hostname to OUTBOUND_GUARD_ALLOWED_HOSTS.",
         ));
     }
+    if url.path().len() + host.len() + 128 > transport::MAX_REQUEST_BYTES {
+        return Err(Denial::new(
+            "EGRESS_REQUEST_LIMIT",
+            "Use a shorter URL; serialized request bytes are bounded to 4096.",
+        ));
+    }
     let method = match obj.get("method") {
         None => "GET",
         Some(Value::String(value)) if value == "GET" => "GET",
@@ -717,6 +726,9 @@ fn audited_fetch(audit: &Mutex<AuditLog>, fetch: impl FnOnce() -> Value) -> Valu
 }
 
 fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBool) -> Value {
+    if tokio::runtime::Handle::try_current().is_ok() {
+        return Denial::new("EGRESS_CLIENT_FAILURE", "Invoke the synchronous API outside an async runtime, for example from a blocking worker.").value();
+    }
     if let Some(denial) = cancelled(cancel) {
         return denial;
     }
@@ -776,55 +788,21 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
 
 async fn guarded_http_fetch(
     target: &Target,
-    extra_ca: &Option<reqwest::Certificate>,
+    extra_ca: &Option<CertificateDer<'static>>,
     cancel: &AtomicBool,
 ) -> Value {
-    let mut builder = Client::builder()
-        .no_proxy()
-        .redirect(Policy::none())
-        .connect_timeout(Duration::from_secs(3))
-        .timeout(HTTP_TOTAL_TIMEOUT)
-        .read_timeout(HTTP_IDLE_TIMEOUT)
-        .resolve_to_addrs(&target.host, &target.addresses);
-    if let Some(cert) = extra_ca {
-        builder = builder.add_root_certificate(cert.clone());
-    }
-    let client = match builder.build() {
-        Ok(client) => client,
-        Err(_) => {
-            return Denial::new(
-                "EGRESS_CLIENT_FAILURE",
-                "Check the local TLS and network configuration.",
-            )
-            .value()
-        }
-    };
-    let request = if target.method == "HEAD" {
-        client.head(target.url.clone())
-    } else {
-        client.get(target.url.clone())
-    };
     let http_started = Instant::now();
     if let Some(denial) = cancelled(cancel) {
         return denial;
     }
-    let sent = request
-        .header(header::ACCEPT_ENCODING, "identity")
-        .send()
-        .await;
+    let mut guarded = match transport::send(target, extra_ca).await {
+        Ok(response) => response,
+        Err(denial) => return denial.value(),
+    };
     if let Some(denial) = cancelled(cancel) {
         return denial;
     }
-    let mut response = match sent {
-        Ok(response) => response,
-        Err(_) => {
-            return Denial::new(
-                "EGRESS_NETWORK_FAILURE",
-                "The approved endpoint could not be reached securely.",
-            )
-            .value()
-        }
-    };
+    let response = &mut guarded.response;
     if response.headers().len() > MAX_RESPONSE_HEADERS
         || response
             .headers()
@@ -908,9 +886,13 @@ async fn guarded_http_fetch(
         )
         .value();
     }
-    if response
-        .content_length()
-        .is_some_and(|length| length > target.max_return_bytes as u64)
+    if target.method != "HEAD"
+        && response
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<u64>().ok())
+            .is_some_and(|length| length > target.max_return_bytes as u64)
     {
         return Denial::new(
             "EGRESS_RESPONSE_LIMIT",
@@ -953,7 +935,20 @@ async fn guarded_http_fetch(
             )
             .value();
         }
-        let read = response.chunk().await;
+        let read = match response.body_mut().frame().await {
+            None => Ok(None),
+            Some(Ok(frame)) => match frame.into_data() {
+                Ok(bytes) => Ok(Some(bytes)),
+                Err(_) => {
+                    return Denial::new(
+                        "EGRESS_UNSUPPORTED_TRAILERS",
+                        "Return response metadata in headers, not trailers.",
+                    )
+                    .value()
+                }
+            },
+            Some(Err(error)) => Err(error),
+        };
         if let Some(denial) = cancelled(cancel) {
             return denial;
         }
@@ -991,6 +986,9 @@ async fn guarded_http_fetch(
                 body.extend_from_slice(&chunk);
             }
             Err(_) => {
+                if let Some(denial) = guarded.flags.denial() {
+                    return denial.value();
+                }
                 return Denial::new(
                     "EGRESS_READ_FAILURE",
                     "The bounded response could not be read.",
@@ -998,6 +996,9 @@ async fn guarded_http_fetch(
                 .value();
             }
         }
+    }
+    if let Some(denial) = guarded.flags.denial() {
+        return denial.value();
     }
     let text = match String::from_utf8(body) {
         Ok(text) => text,
@@ -1132,6 +1133,23 @@ mod tests {
         log.sequence = u64::MAX;
         assert!(log.begin().is_none());
     }
+    #[test]
+    fn async_context_is_rejected_before_validation_without_panicking() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let decision = runtime.block_on(async {
+            guarded_fetch_inner(
+                &json!({"url":"http://127.0.0.1/"}),
+                &[],
+                &AtomicBool::new(false),
+            )
+        });
+        assert_eq!(decision["rule"], "EGRESS_CLIENT_FAILURE");
+        assert!(decision.get("body_text").is_none());
+    }
+
     #[test]
     fn content_type_requires_an_exact_supported_media_type() {
         assert!(supported_content_type("text/plain; charset=utf-8"));
