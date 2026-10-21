@@ -17,7 +17,7 @@ import zipfile
 
 
 REPO = Path(__file__).resolve().parent.parent
-INPUTS = ["Cargo.toml", "Cargo.lock", "src", "tests", "README.md", "LICENSE", "SECURITY.md",
+INPUTS = ["Cargo.toml", "Cargo.lock", "src", "tests", "examples", "README.md", "LICENSE", "SECURITY.md",
           "skills", "tools", "docs", "rust-toolchain.toml"]
 
 
@@ -29,7 +29,7 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def installed_smoke(binary, version):
+def installed_smoke(binary, version, cancellation_probe):
     messages = [
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
@@ -57,7 +57,7 @@ def installed_smoke(binary, version):
     assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}]
     subprocess.run([sys.executable, str(REPO / "tools/adversarial_stdio_probe.py"), str(binary)],
                    cwd=REPO, env=env, check=True, timeout=30)
-    subprocess.run(["bash", str(REPO / "tools/netns_adversarial_probe.sh"), str(binary)],
+    subprocess.run(["bash", str(REPO / "tools/netns_adversarial_probe.sh"), str(binary), str(cancellation_probe)],
                    cwd=REPO, env=env, check=True, timeout=180)
     subprocess.run([sys.executable, str(REPO / "tools/inspector_smoke.py"), str(binary)],
                    cwd=binary.parent, env=env, check=True, timeout=180)
@@ -133,7 +133,7 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = git("archive", "--format=tar.gz", "--prefix=source/", revision, "--",
-        "Cargo.toml", "Cargo.lock", "src", "tests", "rust-toolchain.toml", "LICENSE", "README.md",
+        "Cargo.toml", "Cargo.lock", "src", "tests", "examples", "rust-toolchain.toml", "LICENSE", "README.md",
         "SECURITY.md", "tools", "docs", "skills")
     # Build from the committed snapshot, excluding untracked build.rs or Cargo config.
     with tempfile.TemporaryDirectory(prefix="outbound-guard-source-") as folder:
@@ -149,10 +149,11 @@ def main():
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     destination.write_bytes(tar.extractfile(entry).read())
                     destination.chmod(entry.mode & 0o777)
-        subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "-j", "2",
+        subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "--bins", "--examples", "-j", "2",
                         "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
                        cwd=Path(folder) / "source", check=True)
         binary = (REPO / "target/x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
+        cancellation_probe = REPO / "target/x86_64-unknown-linux-gnu/release/examples/cancel_fetch_probe"
         dependencies = dependency_files(Path(folder) / "source")
     root = f"outbound-guard-mcp-{version}-candidate.{revision[:12]}-linux-x86_64"
     files = {"bin/outbound-guard-mcp": binary, **dependencies}
@@ -198,7 +199,7 @@ def main():
                 assert entry.isfile() and tar.extractfile(entry).read() == data, "dependency asset changed in package"
         assert digest(installed.read_bytes()) == digest(binary)
         installed.chmod(0o755)
-        installed_smoke(installed, version)
+        installed_smoke(installed, version, cancellation_probe)
     for name, sha in checksums.items():
         assert digest((output / name).read_bytes()) == sha
     print(f"candidate verified: {archive.name}; skill ZIP has SKILL.md and GPL license; checksums, installed MCP/Inspector, and hostile fixtures passed")

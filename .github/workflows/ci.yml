@@ -22,7 +22,7 @@ jobs:
       - run: cargo test --locked
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: cargo clippy --all-targets --locked -- -D warnings
-      - run: cargo build --locked
+      - run: cargo build --locked --bins --examples
       - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/stdio_resource_probe.py target/debug/outbound-guard-mcp
       - run: bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
