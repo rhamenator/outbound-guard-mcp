@@ -18,6 +18,19 @@ import threading
 import time
 import zlib
 
+MIME_CASES = [
+    ("text/plain; charset=iso-8859-1", False),
+    ("application/json; charset=utf-16", False),
+    ("text/plain; charset=utf-8; charset=utf-8", False),
+    ("text/plain; profile=custom", False),
+    ('text/plain; charset="utf-8', False),
+    ("text/plain;", False),
+    ("text/plain", True),
+    ("application/json", True),
+    ('Text/Plain; CHARSET="UTF-8"', True),
+    ("application/json; charset = utf-8", True),
+]
+
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
@@ -345,6 +358,11 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.send_header("Content-Encoding", "gzip" if self.path == "/gzip-bomb" else "deflate")
+        elif self.path.startswith("/mime-policy-"):
+            index = int(self.path.removeprefix("/mime-policy-"))
+            body = b'"synthetic-mime-body"'
+            self.send_response(200)
+            self.send_header("Content-Type", MIME_CASES[index][0])
         elif self.path == "/large":
             body = b"x" * 70000
             self.send_response(200)
@@ -1008,6 +1026,14 @@ def main(binary, cancellation_probe):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] == "EGRESS_ALLOWED", (path, decision)
             assert decision["body_text"] == body and decision["untrusted_content"] is True
+        for index, (media_type, accepted) in enumerate(MIME_CASES):
+            decision = call(binary, "allowed.test", f"mime-policy-{index}")
+            assert decision["rule"] == ("EGRESS_ALLOWED" if accepted else "EGRESS_UNSUPPORTED_CONTENT"), (media_type, decision)
+            if accepted:
+                assert decision["body_text"] == '"synthetic-mime-body"' and decision["untrusted_content"] is True
+            else:
+                assert "body_text" not in decision and "synthetic-mime-body" not in json.dumps(decision)
+        print("MIME policy probe: six conflicting/ambiguous parameter cases denied without body; four UTF-8 controls returned intact")
         secret_markers = (
             "AKIAABCDEFGHIJKLMNOP",  # Synthetic AWS access key ID.
             "ASIAABCDEFGHIJKLMNOP",  # Synthetic AWS temporary access key ID.
@@ -1073,7 +1099,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1190 + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1190 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
