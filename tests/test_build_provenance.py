@@ -26,7 +26,7 @@ class BuildEvidenceTests(unittest.TestCase):
         self.assertNotIn('--privileged', command)
         self.assertNotIn('/var/run/docker.sock', ' '.join(command))
         script = command[-1]
-        self.assertLess(script.index('grep -qx'), script.index('exec nice'))
+        self.assertLess(script.index('grep -Fqx'), script.index('exec nice'))
 
     def test_internal_path_flags_preserve_argument_boundaries_and_reject_overrides(self):
         env = {'CARGO_HOME': '/cache with spaces', 'KEEP': 'unchanged'}

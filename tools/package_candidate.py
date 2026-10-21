@@ -178,6 +178,7 @@ def container_command(source_root, target_dir, cache_dir, uid, gid, compiler):
             '--mount', f'type=bind,source={cache_dir},target=/build/cargo',
             '--workdir', '/build/source', '--env', 'CARGO_HOME=/build/cargo',
             '--env', 'RUSTUP_HOME=/usr/local/rustup', '--env', 'CARGO_BUILD_JOBS=2',
+            '--env', f'RUSTUP_TOOLCHAIN={compiler}-x86_64-unknown-linux-gnu',
             '--env', 'LC_ALL=C', '--env', 'TZ=UTC',
             '--env', f'EXPECTED_RUST_VERSION={compiler}',
             '--env', 'CARGO_ENCODED_RUSTFLAGS=' + '\x1f'.join(
@@ -185,8 +186,8 @@ def container_command(source_root, target_dir, cache_dir, uid, gid, compiler):
             BUILDER_IMAGE, 'sh', '-ec',
             'rustc -vV > /build/target/rustc-version.txt\n'
             'cargo --version > /build/target/cargo-version.txt\n'
-            'grep -qx "release: $EXPECTED_RUST_VERSION" /build/target/rustc-version.txt\n'
-            'grep -q "^cargo $EXPECTED_RUST_VERSION " /build/target/cargo-version.txt\n'
+            'grep -Fqx "release: $EXPECTED_RUST_VERSION" /build/target/rustc-version.txt\n'
+            'case "$(cat /build/target/cargo-version.txt)" in "cargo $EXPECTED_RUST_VERSION "*) ;; *) exit 1 ;; esac\n'
             'cc --version > /build/target/cc-version.txt\n'
             'ldd --version > /build/target/libc-version.txt\n'
             'exec nice -n 10 cargo build --release --locked --bins --examples -j 2 '
