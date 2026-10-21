@@ -16,6 +16,7 @@ use std::{
 const MAX_LINE: usize = 64 * 1024;
 const FRAME_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_TIMEOUT: Duration = Duration::from_secs(3);
+const INPUT_QUEUE_CAPACITY: usize = 8;
 
 fn frame_timeout() -> io::Error {
     io::Error::new(io::ErrorKind::TimedOut, "Input frame deadline exceeded")
@@ -684,9 +685,10 @@ fn main() -> io::Result<()> {
     let reader_pending = Arc::clone(&pending);
     let frame_clock = Arc::new(Mutex::new(None));
     let reader_clock = Arc::clone(&frame_clock);
-    // A rendezvous channel retains no queued frames. The reader can hold one
-    // pending non-control frame; backpressure then pauses further input reads.
-    let (tx, rx) = mpsc::sync_channel::<io::Result<Incoming>>(0);
+    // Bounded read-ahead lets control notifications pass ordinary requests
+    // queued behind a running fetch. Beyond eight queued frames and the one
+    // held by this reader, input backpressure still applies.
+    let (tx, rx) = mpsc::sync_channel::<io::Result<Incoming>>(INPUT_QUEUE_CAPACITY);
     let input_thread = thread::Builder::new()
         .name("mcp-stdin".into())
         .spawn(move || {

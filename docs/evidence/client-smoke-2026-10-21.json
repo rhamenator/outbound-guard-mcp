@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-21",
+  "status": "experimental candidate; human release approval not granted",
+  "source_sha": "ec96881e4ca9f7dc6e11d0630433ba76173b4e69",
+  "platform": "Linux x86_64 GNU",
+  "binary_sha256": "93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19",
+  "package_sha256": "2c5c6c1a5cc285b4111394fedb02d560cc69454b650ae9ac5b53f2230b8ef1f1",
+  "skill_sha256": "67ade5f7cd7b2f00f78240d5555a63d541fbe0eac4cacce185f905a129c6f1e0",
+  "installation": "fresh archive extraction outside checkout; isolated temporary client configuration",
+  "server_env": {
+    "OUTBOUND_GUARD_ALLOWED_HOSTS": "postman-echo.com"
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "permissions": "restricted; strict-mcp-config; only guarded_fetch allowed; permission-mode dontAsk; no session persistence",
+      "calls": [
+        {
+          "tool": "mcp__outbound_guard__guarded_fetch",
+          "arguments": {
+            "url": "http://127.0.0.1/"
+          },
+          "status": "BLOCKED",
+          "rule": "EGRESS_INVALID_HOST"
+        },
+        {
+          "tool": "mcp__outbound_guard__guarded_fetch",
+          "arguments": {
+            "url": "https://postman-echo.com/get",
+            "method": "GET"
+          },
+          "status": "SAFE",
+          "rule": "EGRESS_ALLOWED",
+          "status_code": 200,
+          "untrusted_content": true
+        },
+        {
+          "tool": "mcp__outbound_guard__guarded_fetch",
+          "arguments": {
+            "url": "https://postman-echo.com/get",
+            "method": "HEAD"
+          },
+          "status": "SAFE",
+          "rule": "EGRESS_ALLOWED",
+          "status_code": 200,
+          "untrusted_content": true
+        }
+      ]
+    },
+    "codex": {
+      "version": "0.151.0",
+      "permissions": "isolated CODEX_HOME; ephemeral; read-only sandbox; approval_policy never; only guarded_fetch explicitly approved in tool policy; no approval/sandbox bypass",
+      "calls": [
+        {
+          "tool": "guarded_fetch",
+          "arguments": {
+            "url": "http://127.0.0.1/"
+          },
+          "status": "BLOCKED",
+          "rule": "EGRESS_INVALID_HOST"
+        },
+        {
+          "tool": "guarded_fetch",
+          "arguments": {
+            "url": "https://postman-echo.com/get",
+            "method": "GET"
+          },
+          "status": "SAFE",
+          "rule": "EGRESS_ALLOWED",
+          "status_code": 200,
+          "untrusted_content": true
+        },
+        {
+          "tool": "guarded_fetch",
+          "arguments": {
+            "url": "https://postman-echo.com/get",
+            "method": "HEAD"
+          },
+          "status": "SAFE",
+          "rule": "EGRESS_ALLOWED",
+          "status_code": 200,
+          "untrusted_content": true
+        }
+      ]
+    }
+  },
+  "firewall": "temporary rule for exact extracted executable added before replay and removed afterward",
+  "limitations": [
+    "Public endpoint availability may change; destination received the request URL.",
+    "No claim that other tools or processes are intercepted.",
+    "Client-specific cancellation UI was not tested.",
+    "Cursor executable not installed; authenticated Cursor matrix remains open.",
+    "Separate independent read-only review found cancellation interleaving; finite read-ahead correction tested; saturation remains documented."
+  ]
+}
