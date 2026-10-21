@@ -746,6 +746,46 @@ def test_stdio_cancellation(binary):
           "notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered")
 
 
+def test_sdk_cancellation(binary):
+    sdk_dir = os.environ.get("OUTBOUND_GUARD_TEST_SDK_DIR")
+    if not sdk_dir:
+        print("official SDK cancellation: not requested (set OUTBOUND_GUARD_TEST_SDK_DIR)")
+        return 0
+    HTTP.cancel_started.clear()
+    HTTP.cancel_closed.clear()
+    before_hits = len(HTTP.hits)
+    env = os.environ.copy()
+    env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+    process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"], os.path.join(sdk_dir, "cancel.mjs"), binary],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True, env=env)
+    def receive(expected):
+        assert select.select([process.stdout], [], [], 8)[0], "SDK cancellation timed out"
+        assert process.stdout.readline().strip() == expected
+    try:
+        receive("FETCH_STARTED")
+        assert HTTP.cancel_started.wait(4), "SDK fetch did not reach streaming fixture"
+        started = time.monotonic()
+        process.stdin.write("abort\n")
+        process.stdin.flush()
+        receive("CANCELLED_AND_RECOVERED")
+        elapsed = time.monotonic() - started
+        assert elapsed < 5
+        assert HTTP.cancel_closed.wait(4) and process.poll() is None
+        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
+        process.stdin.write("finish\n")
+        process.stdin.flush()
+        stdout, stderr = process.communicate(timeout=8)
+        assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
+        print(f"official SDK 1.32.1 cancellation: AbortSignal rejected; audited cancellation, "
+              f"socket closed while client live, recovery passed ({elapsed:.2f}s)")
+        return 2
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+
+
 def main(binary, cancellation_probe):
     dns = socketserver.ThreadingUDPServer(("127.0.0.1", 53), DNS)
     http_server = http.server.ThreadingHTTPServer((PUBLIC_FIXTURE, 80), HTTP)
@@ -875,9 +915,10 @@ def main(binary, cancellation_probe):
         github_cases = test_github_secrets(binary)
         test_cancellation(cancellation_probe)
         test_stdio_cancellation(binary)
+        sdk_cases = test_sdk_cancellation(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
-        print(f"netns adversarial probe: {1188 + generated + github_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1188 + generated + github_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

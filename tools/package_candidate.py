@@ -57,8 +57,11 @@ def installed_smoke(binary, version, cancellation_probe):
     assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}]
     subprocess.run([sys.executable, str(REPO / "tools/adversarial_stdio_probe.py"), str(binary)],
                    cwd=REPO, env=env, check=True, timeout=30)
+    probe_env = env.copy()
+    if "OUTBOUND_GUARD_TEST_SDK_DIR" in os.environ:
+        probe_env["OUTBOUND_GUARD_TEST_SDK_DIR"] = os.environ["OUTBOUND_GUARD_TEST_SDK_DIR"]
     subprocess.run(["bash", str(REPO / "tools/netns_adversarial_probe.sh"), str(binary), str(cancellation_probe)],
-                   cwd=REPO, env=env, check=True, timeout=180)
+                   cwd=REPO, env=probe_env, check=True, timeout=180)
     subprocess.run([sys.executable, str(REPO / "tools/inspector_smoke.py"), str(binary)],
                    cwd=binary.parent, env=env, check=True, timeout=180)
 

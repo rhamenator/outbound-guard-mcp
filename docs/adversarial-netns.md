@@ -47,3 +47,22 @@ A bounded stdin-reader thread now recognizes the implemented 2025-06-18 [cancell
 Two fresh-process wire cases cancel a slow response after its first byte, using string and integer IDs. Wrong-ID-type, initialize-ID, malformed-reason and malformed-metadata notifications must leave the socket open. A valid matching notification must yield no cancelled-call reply, allow a subsequent ping, close the peer socket while the server stays alive, and record one redacted cancellation. A late/duplicate notification must not prevent a normal fetch reusing the completed request ID. A request-shaped cancellation with its own ID must get a method error. The cases add four MCP tool decisions (1,854 total), alongside the two separate library decisions.
 
 The reader uses a zero-capacity handoff, holds at most one pending non-control frame, and retains at most two tool IDs (executing and waiting). Fetches and other RPC handling remain sequential; a pending ordinary frame can backpressure later notifications. EOF drains already received work rather than cancelling it. These bounds preserve batch-client behavior and avoid an unbounded input queue, but clients should keep one fetch outstanding for timely cancellation. Blocking I/O remains cooperative; spent rate reservations are not refunded. Infinite frames, output backpressure, real-client abort behavior, every cancellation timing/DNS/TLS phase, and full newer-revision conformance remain open gates. Inspector compatibility is tested separately; the wire probe is not a Cursor/Codex/Claude abort certification.
+
+
+## Official SDK AbortSignal
+
+To include the development-only official TypeScript SDK test, install its exact dependency graph from the committed npm lockfile before entering the route-free namespace:
+
+```sh
+npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund
+export OUTBOUND_GUARD_TEST_SDK_DIR="$PWD/tools/mcp-sdk-probe"
+bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
+```
+
+Node.js 18 or newer and npm are required for this optional local probe. CI requires it for both the debug executable and freshly installed optimized candidate. Acquisition contacts the npm registry outside the isolated fixture; no registry access occurs inside the namespace. These are test dependencies, not server dependencies, and no npm installation is needed to run the Rust server or skill. The source archive carries the test manifest and lockfile; node_modules and SDK executables are not distributed in the server archive.
+
+The SDK 1.32.1 Client and StdioClientTransport perform the handshake and a real guarded fetch. After the fixture observes its first response byte, the harness instructs the client to abort its AbortController. The SDK must reject the local promise and send its own cancellation notification. A subsequent SDK ping acts as a server completion barrier, and resources/read must show exactly one EGRESS_CANCELLED audit event. A normal fetch then succeeds. The fixture verifies the cancelled peer socket closed while the SDK/server remain alive, checks exactly two HTTP requests, and requires the sequence to complete within five seconds of abort. This adds two MCP decisions (1,856 total with this probe enabled), alongside two direct library decisions. Without the environment variable, the runner explicitly reports this probe was not requested.
+
+This covers one official SDK version over stdio during plaintext response streaming. It does not close the separate Cursor/Codex/Claude UI abort gate, all cancellation timing phases, or newer protocol conformance. Existing wire tests separately check exact ID matching, malformed notifications, reply suppression, and reason redaction.
+
+Local replay on 2026-10-21 passed against the debug build: SDK abort/audit/recovery completed in 1.02 seconds, all 1,856 MCP decisions plus two library decisions passed, and the three budget subprocesses stayed at or below seven sampled descriptors and 11,056 KiB VmHWM under a 64-FD hard limit. These are bounded fixture observations, not general production memory or latency guarantees.
