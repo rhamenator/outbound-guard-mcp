@@ -48,3 +48,5 @@ GitLab/PyPI token-shaped URL material can produce EGRESS_SECRET_DETECTED before 
 Inspector 2.5.0 tests cover legacy mode and automatic discovery fallback to MCP 2025-06-18. A client pinned to modern 2026-07-28 fails negotiation; this server does not implement that revision yet. In Inspector, configure protocolEra in the server configuration file; its unsupported --protocol-era CLI option is silently ignored.
 
 A plain-text response beginning with a recognized HTML fragment root (including div/span containers, forms, images or templates) is rejected with EGRESS_HTML_MISLABELED and no body. Ask the operator for an approved plain-text or JSON endpoint. This check does not render a DOM, evaluate hidden CSS, remove every hidden link, or sanitize arbitrary text/JSON instructions.
+
+Approved DNS names are resolved as absolute names so local search domains cannot silently extend them. Configure the complete intended hostname in the allowlist and URL, without a trailing dot; the server adds a terminal dot only for its internal lookup and preserves the original HTTP Host/TLS SNI. Local resolver/hosts configuration remains an operator trust boundary.

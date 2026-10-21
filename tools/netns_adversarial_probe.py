@@ -21,6 +21,7 @@ import zlib
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
+    "allowed.test.search-trap.test": ["127.0.0.1"],
     "second.test": [PUBLIC_FIXTURE],
     "rebind.test": [PUBLIC_FIXTURE],
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
@@ -961,6 +962,9 @@ def main(binary, cancellation_probe):
         sdk_cases = test_sdk_cancellation(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
+        assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
+        print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
+              "original Host/SNI and pinned destinations preserved")
         print(f"netns adversarial probe: {1190 + len(root_tags) + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
