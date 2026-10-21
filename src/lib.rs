@@ -317,6 +317,20 @@ fn has_known_secret(text: &str) -> bool {
         (b"ghs_".as_slice(), 20),
         (b"ghr_".as_slice(), 20),
         (b"sk-".as_slice(), 20),
+        (b"glpat-".as_slice(), 20),
+        (b"gloas-".as_slice(), 20),
+        (b"gldt-".as_slice(), 20),
+        (b"glrt-".as_slice(), 20),
+        (b"glrtr-".as_slice(), 20),
+        (b"glcbt-".as_slice(), 20),
+        (b"glptt-".as_slice(), 20),
+        (b"glft-".as_slice(), 20),
+        (b"glimt-".as_slice(), 20),
+        (b"glagent-".as_slice(), 20),
+        (b"glwt-".as_slice(), 20),
+        (b"glsoat-".as_slice(), 20),
+        (b"glffct-".as_slice(), 20),
+        (b"pypi-".as_slice(), 20),
     ] {
         for item in bytes.windows(prefix.len() + count) {
             if item.starts_with(prefix)
@@ -1094,14 +1108,33 @@ mod tests {
         SocketAddr::new(ip.parse().unwrap(), 443)
     }
     #[test]
-    fn github_token_shapes_are_denied_before_budget_or_dns() {
+    fn provider_token_shapes_are_denied_before_budget_or_dns() {
         struct NoDns;
         impl Resolver for NoDns {
             fn resolve(&self, _: &str, _: u16) -> io::Result<Vec<SocketAddr>> {
                 panic!("token reached DNS")
             }
         }
-        for prefix in ["github_pat_", "ghu_", "ghs_", "ghr_"] {
+        for prefix in [
+            "github_pat_",
+            "ghu_",
+            "ghs_",
+            "ghr_",
+            "glpat-",
+            "gloas-",
+            "gldt-",
+            "glrt-",
+            "glrtr-",
+            "glcbt-",
+            "glptt-",
+            "glft-",
+            "glimt-",
+            "glagent-",
+            "glwt-",
+            "glsoat-",
+            "glffct-",
+            "pypi-",
+        ] {
             for suffix in ["A".repeat(20), "a0_-".repeat(9)] {
                 let token = format!("{prefix}{suffix}");
                 for path in [token.clone(), format!("docs/{token}/data")] {
