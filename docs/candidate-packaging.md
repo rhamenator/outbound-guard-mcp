@@ -23,3 +23,5 @@ Archive timestamps and ownership are fixed, and ZIP membership is explicit. This
 The committed source snapshot includes `tests/`, including the generated IP-policy integration corpus, so address-policy evidence can be replayed from the candidate source archive.
 
 Installed candidates also run the complete stdio adversarial probe, including malformed request metadata, handshake preservation, audit redaction, and the no-tool-dispatch regression.
+
+Candidate archives include a [locked dependency inventory and upstream notices](dependencies.md#candidate-inventory-and-notices). Each notice is checked against its cached crate archive after the archive checksum is matched to Cargo.lock. The standalone skill ZIP continues to contain only its SKILL.md and the project GPL license.
