@@ -98,6 +98,25 @@ fn valid_initialize_params(message: &Value) -> bool {
         && info.get("title").is_none_or(Value::is_string)
 }
 
+fn valid_mcp_params(message: &Value, request: bool) -> bool {
+    let Some(params) = message.get("params") else {
+        return true;
+    };
+    let Some(params) = params.as_object() else {
+        return false;
+    };
+    let Some(meta) = params.get("_meta") else {
+        return true;
+    };
+    let Some(meta) = meta.as_object() else {
+        return false;
+    };
+    !request
+        || meta
+            .get("progressToken")
+            .is_none_or(|token| token.is_string() || token.is_number())
+}
+
 fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Value> {
     let Some(object) = message.as_object() else {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
@@ -115,9 +134,7 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
     }
     if method == "notifications/initialized" && !object.contains_key("id") {
-        if *session == Session::AwaitingInitialized
-            && object.get("params").is_none_or(Value::is_object)
-        {
+        if *session == Session::AwaitingInitialized && valid_mcp_params(&message, false) {
             *session = Session::Ready;
         }
         return None;
@@ -131,6 +148,9 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
     }
     if method.starts_with("notifications/") {
         return Some(rpc_error(id, -32601, "Method not found"));
+    }
+    if !valid_mcp_params(&message, true) {
+        return Some(rpc_error(id, -32602, "Invalid MCP parameters"));
     }
     let result = match method {
         "initialize" => {
@@ -317,6 +337,79 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn malformed_mcp_metadata_does_not_dispatch_or_advance_handshake() {
+        for params in [
+            json!([]),
+            json!({"_meta":null}),
+            json!({"_meta":[]}),
+            json!({"_meta":"marker"}),
+            json!({"_meta":{"progressToken":null}}),
+            json!({"_meta":{"progressToken":true}}),
+            json!({"_meta":{"progressToken":{}}}),
+            json!({"_meta":{"progressToken":[]}}),
+        ] {
+            for method in [
+                "ping",
+                "tools/list",
+                "tools/call",
+                "resources/read",
+                "initialize",
+            ] {
+                let mut session = if method == "initialize" {
+                    Session::New
+                } else {
+                    Session::Ready
+                };
+                let mut request_params = params.clone();
+                if let Some(fields) = request_params.as_object_mut() {
+                    if method == "initialize" {
+                        fields.insert("protocolVersion".into(), json!("2025-06-18"));
+                        fields.insert("capabilities".into(), json!({}));
+                        fields.insert("clientInfo".into(), json!({"name":"test", "version":"1"}));
+                    } else if method == "resources/read" {
+                        fields.insert("uri".into(), json!(AUDIT_URI));
+                    } else if method == "tools/call" {
+                        fields.insert("name".into(), json!("guarded_fetch"));
+                        fields.insert("arguments".into(), json!({"url":"http://127.0.0.1/"}));
+                    }
+                }
+                let reply = handle(
+                    json!({"jsonrpc":"2.0","id":42,"method":method,"params":request_params}),
+                    &[],
+                    &mut session,
+                )
+                .unwrap();
+                assert_eq!(reply["id"], 42);
+                assert_eq!(reply["error"]["code"], -32602, "{reply}");
+                if method == "initialize" {
+                    assert!(session == Session::New);
+                }
+            }
+        }
+        for meta in [json!(null), json!([]), json!("marker")] {
+            let mut session = Session::AwaitingInitialized;
+            assert!(handle(
+                json!({"jsonrpc":"2.0","method":"notifications/initialized",
+                "params":{"_meta":meta}}),
+                &[],
+                &mut session
+            )
+            .is_none());
+            assert!(session == Session::AwaitingInitialized);
+        }
+        for token in [json!("progress"), json!(0), json!(-1), json!(1.5)] {
+            let reply = handle(
+                json!({"jsonrpc":"2.0","id":43,"method":"ping",
+                "params":{"_meta":{"progressToken":token,"example/custom":[null,true]}}}),
+                &[],
+                &mut Session::Ready,
+            )
+            .unwrap();
+            assert_eq!(reply["result"], json!({}));
+        }
     }
 
     #[test]

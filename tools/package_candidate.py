@@ -55,6 +55,8 @@ def installed_smoke(binary, version):
     assert decision["rule"] == "EGRESS_INVALID_HOST" and replies[2]["result"]["isError"] is True
     audit = json.loads(replies[3]["result"]["contents"][0]["text"])
     assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}]
+    subprocess.run([sys.executable, str(REPO / "tools/adversarial_stdio_probe.py"), str(binary)],
+                   cwd=REPO, env=env, check=True, timeout=30)
     subprocess.run(["bash", str(REPO / "tools/netns_adversarial_probe.sh"), str(binary)],
                    cwd=REPO, env=env, check=True, timeout=180)
     subprocess.run([sys.executable, str(REPO / "tools/inspector_smoke.py"), str(binary)],
