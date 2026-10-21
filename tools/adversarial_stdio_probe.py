@@ -2,6 +2,7 @@
 """Bounded, network-free adversarial probe for the built stdio MCP server."""
 
 import json
+from stdio_exchange import run as paced_run, exchange
 import os
 import subprocess
 import sys
@@ -28,7 +29,7 @@ def audit_probe(binary, env, marker):
         {"jsonrpc": "2.0", "id": 303, "method": "resources/read", "params": {"uri": marker}},
         {"jsonrpc": "2.0", "id": 304, "method": "resources/read"},
     ]
-    result = subprocess.run([binary], input=b"".join(map(frame, messages)),
+    result = paced_run([binary], input=b"".join(map(frame, messages)),
                             capture_output=True, env=env, timeout=10, check=True)
     assert marker.encode() not in result.stdout + result.stderr
     replies = [json.loads(line) for line in result.stdout.splitlines()]
@@ -75,7 +76,7 @@ def metadata_probe(binary, env, marker):
     messages.append({"jsonrpc":"2.0", "id":104,"method":"resources/read",
         "params":{"uri":"outbound-guard://logs/audit.json"}})
     expected.append((104,None))
-    result = subprocess.run([binary],input=b"".join(map(frame,messages)),capture_output=True,
+    result = paced_run([binary],input=b"".join(map(frame,messages)),capture_output=True,
                             env=env,timeout=10,check=True)
     assert not result.stderr and marker.encode() not in result.stdout
     replies = [json.loads(line) for line in result.stdout.splitlines()]
@@ -124,7 +125,7 @@ def framing_boundary_probe(binary, env):
     payload = b"".join(b'{"jsonrpc":"2.0","id":1,"method":"' + value + b'"}\n' +
                        frame({"jsonrpc":"2.0", "id":100 + index, "method":"ping"})
                        for index, value in enumerate(invalid))
-    result = subprocess.run([binary], input=payload, capture_output=True, env=env,
+    result = paced_run([binary], input=payload, capture_output=True, env=env,
                             timeout=10, check=True)
     assert not result.stderr
     replies = [json.loads(line) for line in result.stdout.splitlines()]
@@ -165,7 +166,7 @@ def main():
     ]
     env = os.environ.copy()
     env.pop("OUTBOUND_GUARD_ALLOWED_HOSTS", None)
-    result = subprocess.run(
+    result = paced_run(
         [sys.argv[1]], input=b"".join(messages), capture_output=True,
         env=env, timeout=10, check=True,
     )

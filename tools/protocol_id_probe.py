@@ -5,6 +5,7 @@ No network, packages, authentication, or persistent client configuration require
 """
 from decimal import Decimal
 import json
+from stdio_exchange import run as paced_run, exchange
 import os
 from pathlib import Path
 import random
@@ -34,7 +35,7 @@ def main(binary):
                     'method': 'resources/read', 'params': {'_meta': META,
                     'uri': 'outbound-guard://logs/audit.json'}}) + '\n')
     env = {k: v for k, v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
-    result = subprocess.run([str(Path(binary).resolve())], input=''.join(messages),
+    result = paced_run([str(Path(binary).resolve())], input=''.join(messages),
                             capture_output=True, text=True, timeout=20, env=env, check=True)
     assert not result.stderr, 'unexpected server diagnostics'
     replies = [json.loads(line, parse_int=Decimal, parse_float=Decimal)

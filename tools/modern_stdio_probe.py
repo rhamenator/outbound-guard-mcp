@@ -2,6 +2,7 @@
 """Network-free modern/legacy stdio conformance slice for the built server."""
 import copy
 import json
+from stdio_exchange import run as paced_run, exchange
 import os
 import subprocess
 import sys
@@ -70,7 +71,7 @@ def main(binary):
     add('tools/list')  # A modern request must not depend on the legacy session.
     payload = b''.join(json.dumps(message).encode() + b'\n' for message in messages)
     env = {key:value for key,value in os.environ.items() if not key.startswith('OUTBOUND_GUARD_')}
-    result = subprocess.run([binary], input=payload, capture_output=True, env=env, timeout=15, check=True)
+    result = paced_run([binary], input=payload, capture_output=True, env=env, timeout=15, check=True)
     assert not result.stderr and b'SYNTHETIC_META_MARKER' not in result.stdout
     replies = [json.loads(line) for line in result.stdout.splitlines()]
     assert len(replies) == len(expected), (len(replies), len(expected))

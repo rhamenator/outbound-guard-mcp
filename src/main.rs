@@ -37,6 +37,7 @@ enum Frame {
     Eof,
     Data(Vec<u8>),
     TooLarge,
+    Busy(Value),
 }
 
 #[derive(Default, PartialEq, Eq)]
@@ -649,6 +650,36 @@ fn apply_cancellation(message: &Value, pending: &Mutex<Vec<PendingFetch>>) -> io
     Ok(true)
 }
 
+fn busy_reply(frame: &Frame) -> Option<Value> {
+    let Frame::Data(data) = frame else {
+        return None;
+    };
+    let message: Value = serde_json::from_slice(data).ok()?;
+    if message.get("jsonrpc").and_then(Value::as_str) != Some("2.0")
+        || message.get("method").and_then(Value::as_str).is_none()
+        || message.get("result").is_some()
+        || message.get("error").is_some()
+    {
+        return None;
+    }
+    let id = message.get("id").filter(|id| valid_id(id))?.clone();
+    let mut reply = rpc_error(id, -32000, "Server input capacity reached");
+    reply["error"]["data"] = json!({"rule":"MCP_INPUT_BUSY",
+        "remediation":"Wait for outstanding replies, then retry this request. This request was not executed."});
+    Some(reply)
+}
+
+fn check_input_error(error: &Mutex<Option<io::Error>>) -> io::Result<()> {
+    if let Some(error) = error
+        .lock()
+        .map_err(|_| io::Error::other("Input state unavailable"))?
+        .take()
+    {
+        return Err(error);
+    }
+    Ok(())
+}
+
 fn main() -> io::Result<()> {
     let mut arguments = std::env::args_os().skip(1);
     let first = arguments.next();
@@ -685,10 +716,13 @@ fn main() -> io::Result<()> {
     let reader_pending = Arc::clone(&pending);
     let frame_clock = Arc::new(Mutex::new(None));
     let reader_clock = Arc::clone(&frame_clock);
-    // Bounded read-ahead lets control notifications pass ordinary requests
-    // queued behind a running fetch. Beyond eight queued frames and the one
-    // held by this reader, input backpressure still applies.
+    // The reader never waits for ordinary admission: full input receives a
+    // bounded busy reply instead. Exhausting both queues fails closed, cancelling
+    // admitted fetches rather than hiding control messages behind backpressure.
     let (tx, rx) = mpsc::sync_channel::<io::Result<Incoming>>(INPUT_QUEUE_CAPACITY);
+    let (busy_tx, busy_rx) = mpsc::sync_channel::<Value>(INPUT_QUEUE_CAPACITY);
+    let input_error = Arc::new(Mutex::new(None));
+    let reader_error = Arc::clone(&input_error);
     let input_thread = thread::Builder::new()
         .name("mcp-stdin".into())
         .spawn(move || {
@@ -725,16 +759,45 @@ fn main() -> io::Result<()> {
                             }
                         }
                     }
-                    tx.send(Ok(Incoming { frame, cancel })).map_err(|_| {
-                        io::Error::new(io::ErrorKind::BrokenPipe, "Dispatcher stopped")
-                    })?;
+                    let incoming = Ok(Incoming { frame, cancel });
+                    // EOF cannot hide a later control frame; drain accepted work.
+                    if eof {
+                        tx.send(incoming)
+                            .map_err(|_| io::Error::other("Dispatcher stopped"))?;
+                    } else {
+                        match tx.try_send(incoming) {
+                            Ok(()) => {}
+                            Err(mpsc::TrySendError::Full(Ok(incoming))) => {
+                                reader_pending
+                                    .lock()
+                                    .map_err(|_| {
+                                        io::Error::other("Cancellation registry unavailable")
+                                    })?
+                                    .retain(|fetch| !Arc::ptr_eq(&fetch.cancel, &incoming.cancel));
+                                let reply = busy_reply(&incoming.frame).ok_or_else(|| {
+                                    io::Error::other("Input overload limit exceeded")
+                                })?;
+                                busy_tx.try_send(reply).map_err(|_| {
+                                    io::Error::other("Input overload limit exceeded")
+                                })?;
+                            }
+                            Err(_) => return Err(io::Error::other("Dispatcher stopped")),
+                        }
+                    }
                     if eof {
                         return Ok(());
                     }
                 }
             };
             if let Err(error) = run() {
-                let _ = tx.send(Err(error));
+                if let Ok(mut state) = reader_error.lock() {
+                    *state = Some(error);
+                }
+                if let Ok(pending) = reader_pending.lock() {
+                    for fetch in pending.iter() {
+                        fetch.cancel.store(true, Ordering::Release);
+                    }
+                }
             }
         })?;
     // One writer and one outstanding response. The dispatcher waits for flush
@@ -759,18 +822,39 @@ fn main() -> io::Result<()> {
             }
         })?;
     let mut session = Session::New;
+    let mut input_eof = false;
     loop {
+        check_input_error(&input_error)?;
         let Incoming { frame, cancel } = loop {
+            check_input_error(&input_error)?;
+            if let Ok(reply) = busy_rx.try_recv() {
+                break Incoming {
+                    frame: Frame::Busy(reply),
+                    cancel: Arc::new(AtomicBool::new(false)),
+                };
+            }
+            if input_eof {
+                break Incoming {
+                    frame: Frame::Eof,
+                    cancel: Arc::new(AtomicBool::new(false)),
+                };
+            }
             match rx.recv_timeout(Duration::from_millis(100)) {
                 Ok(incoming) => break incoming?,
                 Err(mpsc::RecvTimeoutError::Timeout) => check_frame_clock(&frame_clock)?,
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    return Err(io::Error::other("Input reader stopped"))
+                    check_input_error(&input_error)?;
+                    return Err(io::Error::other("Input reader stopped"));
                 }
             }
         };
         let response = match frame {
-            Frame::Eof => break,
+            Frame::Eof if input_eof => break,
+            Frame::Eof => {
+                input_eof = true;
+                None
+            }
+            Frame::Busy(reply) => Some(reply),
             Frame::TooLarge if session == Session::Modern => {
                 Some(modern_error(None, -32600, "Request too large"))
             }
@@ -783,6 +867,7 @@ fn main() -> io::Result<()> {
                 Err(_) => Some(rpc_error(Value::Null, -32700, "Parse error")),
             },
         };
+        check_input_error(&input_error)?;
         pending
             .lock()
             .map_err(|_| io::Error::other("Cancellation registry unavailable"))?
@@ -826,6 +911,30 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn overload_replies_preserve_ids_without_reflecting_payloads() {
+        for id in [json!("request"), json!(9007199254740993_u64)] {
+            let frame = Frame::Data(
+                json!({"jsonrpc":"2.0", "id":id, "method":"tools/call",
+                "params":{"name":"guarded_fetch", "arguments":{"url":"SYNTHETIC_PRIVATE_PAYLOAD"}}})
+                .to_string()
+                .into_bytes(),
+            );
+            let reply = busy_reply(&frame).unwrap();
+            assert_eq!(reply["id"], id);
+            assert_eq!(reply["error"]["data"]["rule"], "MCP_INPUT_BUSY");
+            assert!(!reply.to_string().contains("SYNTHETIC_PRIVATE_PAYLOAD"));
+        }
+        for value in [
+            json!({"jsonrpc":"2.0","method":"ping"}),
+            json!({"jsonrpc":"2.0","id":null,"method":"ping"}),
+            json!({"jsonrpc":"2.0","id":true,"method":"ping"}),
+            json!({"jsonrpc":"2.0","id":1,"method":"ping","result":{}}),
+        ] {
+            assert!(busy_reply(&Frame::Data(value.to_string().into_bytes())).is_none());
+        }
+    }
+
     #[test]
     fn numeric_ids_compare_without_rounding_or_exponent_expansion() {
         for (left, right) in [
@@ -1002,6 +1111,7 @@ mod tests {
                         "capacity={capacity} frame={index}"
                     ),
                     Frame::Eof => panic!("early EOF: capacity={capacity} frame={index}"),
+                    Frame::Busy(_) => panic!("reader produced an internal reply"),
                 }
             }
             assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Eof));
@@ -1014,6 +1124,7 @@ mod tests {
                 Frame::Eof => assert_eq!(length, 0),
                 Frame::Data(actual) => assert_eq!(actual.len(), MAX_LINE),
                 Frame::TooLarge => assert_eq!(length, MAX_LINE + 1),
+                Frame::Busy(_) => panic!("reader produced an internal reply"),
             }
             assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Eof));
         }

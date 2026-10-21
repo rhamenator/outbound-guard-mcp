@@ -5,6 +5,7 @@ from pathlib import Path
 import hashlib
 import http.server
 import json
+from stdio_exchange import run as paced_run, exchange
 import os
 import random
 import select
@@ -557,10 +558,10 @@ def resource_limited_run(binary, payload, env):
     monitor = threading.Thread(target=sample, daemon=True)
     monitor.start()
     try:
-        stdout, stderr = process.communicate(payload, timeout=20)
+        stdout, stderr = exchange(process, payload, timeout=20)
     except BaseException:
         process.kill()
-        process.communicate()
+        process.wait()
         raise
     finally:
         stopped.set()
@@ -615,7 +616,7 @@ def call_arguments(binary, arguments, extra_ca=None, redaction_markers=(), resou
     if resource_probe:
         result = resource_limited_run(binary, payload, env)
     else:
-        result = subprocess.run([binary], input=payload, text=True,
+        result = paced_run([binary], input=payload, text=True,
                                 capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
         raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
@@ -925,7 +926,7 @@ def test_stdio_cancellation(binary):
 
 
 def test_saturated_cancellation(binary):
-    """Record bounded backpressure, including the control-delay limitation."""
+    """Saturated ordinary admission cannot hide cancellation; busy work is not executed."""
     for modern in (False, True):
         HTTP.cancel_started.clear()
         HTTP.cancel_closed.clear()
@@ -961,13 +962,15 @@ def test_saturated_cancellation(binary):
                  "arguments":{"url":"http://allowed.test/cancel-drip"}})
             assert HTTP.cancel_started.wait(4)
             started = time.monotonic()
-            # Eight queued + one reader-held frame hide the later notification.
-            for i in range(9):
+            # Eight admitted frames plus one rejected fetch must not hide cancellation.
+            for i in range(8):
                 send(f"queued-{i}", "tools/list", {"padding":"x" * 60000})
+            send("queued-8", "tools/call", {"name":"guarded_fetch", "padding":"x" * 60000,
+                 "arguments":{"url":"http://allowed.test/SYNTHETIC_BUSY_MARKER"}})
             send(None, "notifications/cancelled", {"requestId":"fetch"})
             peak_rss = peak_fds = 0
             observed = []
-            while len(observed) < 10:
+            while len(observed) < 9:
                 try:
                     observed.append(replies.get(timeout=0.05))
                 except queue.Empty:
@@ -977,14 +980,20 @@ def test_saturated_cancellation(binary):
                     if line.startswith("VmRSS:"):
                         peak_rss = max(peak_rss, int(line.split()[1]))
                 peak_fds = max(peak_fds, len(list(Path(f"/proc/{process.pid}/fd").iterdir())))
-            assert [r["id"] for r in observed] == ["fetch"] + [f"queued-{i}" for i in range(9)]
-            assert observed[0]["result"]["structuredContent"]["rule"] == "EGRESS_RESPONSE_TOO_SLOW"
+            assert {r["id"] for r in observed} == {f"queued-{i}" for i in range(9)}
+            rejected = next(r for r in observed if r["id"] == "queued-8")
+            assert rejected["error"]["code"] == -32000
+            assert rejected["error"]["data"]["rule"] == "MCP_INPUT_BUSY"
+            assert "SYNTHETIC_BUSY_MARKER" not in json.dumps(observed)
+            assert all("result" in r for r in observed if r["id"] != "queued-8")
+            assert time.monotonic() - started < 5
             assert peak_rss < 65536 and peak_fds < 64, (peak_rss, peak_fds)
             assert HTTP.cancel_closed.wait(4)
             send("audit", "resources/read", {"uri":"outbound-guard://logs/audit.json"})
             audit = json.loads(replies.get(timeout=4)["result"]["contents"][0]["text"])
-            assert [event["rule"] for event in audit["events"]] == ["EGRESS_RESPONSE_TOO_SLOW"]
-            send("recovered", "tools/call", {"name":"guarded_fetch",
+            assert [event["rule"] for event in audit["events"]] == ["EGRESS_CANCELLED"]
+            send(None, "notifications/cancelled", {"requestId":"queued-8"})
+            send("queued-8", "tools/call", {"name":"guarded_fetch",
                  "arguments":{"url":"http://allowed.test/plain"}})
             assert replies.get(timeout=4)["result"]["structuredContent"]["rule"] == "EGRESS_ALLOWED"
             process.stdin.close()
@@ -992,11 +1001,50 @@ def test_saturated_cancellation(binary):
             reader.join(timeout=2)
             assert process.returncode == 0 and not process.stderr.read() and replies.empty()
             print(f"queue saturation {'modern' if modern else 'legacy'}: bounded recovery; "
-                  f"late cancellation stayed backpressured; RSS={peak_rss} KiB, FDs={peak_fds}")
+                  f"busy denial, priority cancellation and rejected-ID reuse; RSS={peak_rss} KiB, FDs={peak_fds}")
         finally:
             if process.poll() is None:
                 process.kill()
                 process.wait()
+
+
+def test_input_overload(binary):
+    for modern in (False, True):
+        HTTP.cancel_started.clear()
+        HTTP.cancel_closed.clear()
+        env = dict(os.environ, OUTBOUND_GUARD_ALLOWED_HOSTS="allowed.test")
+        env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+        process = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, env=env)
+        try:
+            if modern:
+                meta = {"io.modelcontextprotocol/protocolVersion":"2026-07-28", "io.modelcontextprotocol/clientCapabilities":{}}
+                opener = {"jsonrpc":"2.0", "id":"init", "method":"server/discover", "params":{"_meta":meta}}
+            else:
+                meta = None
+                opener = {"jsonrpc":"2.0", "id":"init", "method":"initialize", "params":{
+                    "protocolVersion":"2025-06-18", "capabilities":{}, "clientInfo":{"name":"overload", "version":"1"}}}
+            process.stdin.write(json.dumps(opener)+"\n");process.stdin.flush()
+            assert json.loads(process.stdout.readline())["id"] == "init"
+            if not modern:
+                process.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
+            params = {"name":"guarded_fetch", "arguments":{"url":"http://allowed.test/cancel-drip"}}
+            if modern:params["_meta"] = meta
+            process.stdin.write(json.dumps({"jsonrpc":"2.0", "id":"fetch", "method":"tools/call", "params":params})+"\n");process.stdin.flush()
+            assert HTTP.cancel_started.wait(4)
+            requests = [{"jsonrpc":"2.0", "id":f"flood-{i}", "method":"tools/list", "params":{"_meta":meta} if modern else {}} for i in range(25)]
+            try:
+                process.stdin.write("".join(json.dumps(m)+"\n" for m in requests));process.stdin.flush()
+            except BrokenPipeError:
+                pass  # Immediate fail-closed admission overflow is expected.
+            process.wait(timeout=5)
+            assert process.returncode != 0
+            stderr=process.stderr.read()
+            assert "Input overload limit exceeded" in stderr and "flood-" not in stderr
+            assert HTTP.cancel_closed.wait(4)
+        finally:
+            if process.poll() is None:process.kill();process.wait()
+    print("input overload: both eras terminate with fixed diagnostic and close live fetch; queues remain bounded")
 
 
 def test_sdk_cancellation(binary, modern=False):
@@ -1215,6 +1263,7 @@ def main(binary, cancellation_probe):
         test_cancellation(cancellation_probe)
         test_stdio_cancellation(binary)
         test_saturated_cancellation(binary)
+        test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
