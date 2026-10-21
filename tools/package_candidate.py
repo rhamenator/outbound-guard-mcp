@@ -131,6 +131,29 @@ def dependency_files(source_root):
     return files
 
 
+def reject_build_overrides(environ):
+    """Fail before running tools; report names, never sensitive override values."""
+    explicit = {"RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "RUSTDOCFLAGS", "RUSTC", "RUSTDOC",
+                "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER", "RUSTC_BOOTSTRAP",
+                "CARGO_BUILD_RUSTC", "CARGO_BUILD_RUSTDOC", "CARGO_BUILD_RUSTFLAGS",
+                "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER"}
+    blocked = sorted(key for key, value in environ.items() if value and (
+        key in explicit or key.startswith("CARGO_PROFILE_") or
+        (key.startswith("CARGO_TARGET_") and key.endswith(("_LINKER", "_RUNNER", "_RUSTFLAGS")))))
+    if blocked:
+        raise RuntimeError("Candidate build rejects compiler overrides: " + ", ".join(blocked))
+
+
+def build_evidence(source_root, source):
+    return {"target": "x86_64-unknown-linux-gnu", "profile": "release", "locked": True,
+            "jobs": 2, "toolchain_channel": tomllib.loads((source_root / "rust-toolchain.toml").read_text())["toolchain"]["channel"],
+            "rustc_verbose_version": subprocess.check_output(["rustc", "-vV"], cwd=source_root).decode().strip(),
+            "cargo_version": subprocess.check_output(["cargo", "--version"], cwd=source_root).decode().strip(),
+            "cargo_lock_sha256": digest((source_root / "Cargo.lock").read_bytes()),
+            "source_archive_sha256": digest(source),
+            "environment_policy": "reject explicit compiler/wrapper/profile/target-linker overrides; not hermetic"}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new output directory")
@@ -141,6 +164,7 @@ def main():
     revision = git("rev-parse", "HEAD").decode().strip()
     epoch = int(git("show", "-s", "--format=%ct", "HEAD"))
     version = tomllib.loads(git("show", f"{revision}:Cargo.toml").decode())["package"]["version"]
+    reject_build_overrides(os.environ)
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = git("archive", "--format=tar.gz", "--prefix=source/", revision, "--",
@@ -160,6 +184,7 @@ def main():
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     destination.write_bytes(tar.extractfile(entry).read())
                     destination.chmod(entry.mode & 0o777)
+        evidence = build_evidence(Path(folder) / "source", source)
         subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "--bins", "--examples", "-j", "2",
                         "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
                        cwd=Path(folder) / "source", check=True)
@@ -172,7 +197,7 @@ def main():
     files["source.tar.gz"] = source
     files["provenance.json"] = (json.dumps({"revision": revision, "version": version,
         "candidate": True, "stable_release": False, "platform": "linux-x86_64",
-        "license": "GPL-3.0-or-later", "binary_sha256": digest(binary)}, sort_keys=True) + "\n").encode()
+        "license": "GPL-3.0-or-later", "binary_sha256": digest(binary), "build": evidence}, sort_keys=True) + "\n").encode()
     archive = output / (root + ".tar.gz")
     with archive.open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
         with tarfile.open(fileobj=compressed, mode="w") as tar:
