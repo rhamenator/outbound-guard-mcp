@@ -4,7 +4,7 @@ Status: experimental; no stable release approved. [Tracking issue #65](https://g
 
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
-| Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Review every quality-bar criterion, including hard wire/decoded/total bounds, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
+| Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
 | Protocol | [Stdio regressions and Inspector](adversarial-stdio.md) | Full MCP 2026-07-28; the working server remains legacy 2025-06-18. Tested modern refusal is not modern support. |
 | Clients | Historical [Codex CLI](client-codex-cli.md) and [Claude Code](client-claude-code.md) probes; official SDK fixtures | Repeat against final candidate; authenticated Cursor checks and required client-specific cancellation evidence remain open. |
 | Adversarial | Controlled hostile fixtures, seeded mutation/property corpora, bounded process probes | Review actual attack coverage and toolset; finite passing corpora alone do not close the adversarial gate. |

@@ -253,3 +253,50 @@ pub async fn send(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[test]
+    fn stream_read_budget_stops_before_consuming_excess_bytes() {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let (mut peer, socket) = tokio::io::duplex(64);
+                peer.write_all(b"abcdef").await.unwrap();
+                drop(peer);
+                let flags = Arc::new(Flags::default());
+                let mut guarded = BudgetIo::new(socket, 4, 4, Arc::clone(&flags));
+                let mut received = Vec::new();
+                assert!(guarded.read_to_end(&mut received).await.is_err());
+                assert_eq!(received, b"abcd");
+                let mut rest = Vec::new();
+                guarded.inner.read_to_end(&mut rest).await.unwrap();
+                assert_eq!(rest, b"ef");
+                assert_eq!(flags.denial().unwrap().rule, "EGRESS_RESPONSE_WIRE_LIMIT");
+            });
+    }
+
+    #[test]
+    fn stream_write_budget_never_emits_excess_bytes() {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let (socket, mut peer) = tokio::io::duplex(64);
+                let flags = Arc::new(Flags::default());
+                let mut guarded = BudgetIo::new(socket, 4, 4, Arc::clone(&flags));
+                assert!(guarded.write_all(b"abcdef").await.is_err());
+                drop(guarded);
+                let mut received = Vec::new();
+                peer.read_to_end(&mut received).await.unwrap();
+                assert_eq!(received, b"abcd");
+                assert_eq!(flags.denial().unwrap().rule, "EGRESS_REQUEST_LIMIT");
+            });
+    }
+}

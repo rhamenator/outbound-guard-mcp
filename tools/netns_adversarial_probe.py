@@ -318,8 +318,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             else:
                 self.send_header("X-Fixture-Large", "x" * (24 * 1024))
             self.send_header("Content-Length", "2")
-            self.end_headers()
             try:
+                self.end_headers()
                 self.wfile.write(b"ok")
             except (BrokenPipeError, ConnectionResetError):
                 pass
