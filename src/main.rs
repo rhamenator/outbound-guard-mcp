@@ -1,8 +1,16 @@
 use outbound_guard_mcp::{
-    allowed_hosts_from_env, audit_snapshot, guarded_fetch, validate_tls_configuration, AUDIT_URI,
+    allowed_hosts_from_env, audit_snapshot, guarded_fetch_cancellable, validate_tls_configuration,
+    AUDIT_URI,
 };
 use serde_json::{json, Value};
-use std::io::{self, BufRead, Write};
+use std::{
+    io::{self, BufRead, Write},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc, Mutex,
+    },
+    thread,
+};
 
 const MAX_LINE: usize = 64 * 1024;
 
@@ -117,7 +125,17 @@ fn valid_mcp_params(message: &Value, request: bool) -> bool {
             .is_none_or(|token| token.is_string() || token.is_number())
 }
 
+#[cfg(test)]
 fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Value> {
+    handle_cancellable(message, hosts, session, &AtomicBool::new(false))
+}
+
+fn handle_cancellable(
+    message: Value,
+    hosts: &[String],
+    session: &mut Session,
+    cancel: &AtomicBool,
+) -> Option<Value> {
     let Some(object) = message.as_object() else {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
     };
@@ -201,7 +219,10 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
                 .pointer("/params/arguments")
                 .cloned()
                 .unwrap_or(Value::Null);
-            let decision = guarded_fetch(&args, hosts);
+            let decision = guarded_fetch_cancellable(&args, hosts, cancel);
+            if decision["rule"] == "EGRESS_CANCELLED" {
+                return None;
+            }
             let blocked = decision.get("status").and_then(Value::as_str) != Some("SAFE");
             json!({"isError":blocked,"structuredContent":decision,
                 "content":[{"type":"text","text":decision.to_string()}]})
@@ -211,29 +232,132 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
     Some(json!({"jsonrpc":"2.0","id":id,"result":result}))
 }
 
+struct PendingFetch {
+    id: Value,
+    cancel: Arc<AtomicBool>,
+}
+struct Incoming {
+    frame: Frame,
+    cancel: Arc<AtomicBool>,
+}
+fn valid_id(id: &Value) -> bool {
+    id.is_string() || id.as_i64().is_some() || id.as_u64().is_some()
+}
+fn apply_cancellation(message: &Value, pending: &Mutex<Vec<PendingFetch>>) -> io::Result<bool> {
+    if message.get("method").and_then(Value::as_str) != Some("notifications/cancelled")
+        || message.get("id").is_some()
+    {
+        return Ok(false);
+    }
+    // Malformed/unknown cancellation notifications are fire-and-forget. Never
+    // retain or echo the optional reason, which can contain sensitive content.
+    if message.get("jsonrpc").and_then(Value::as_str) != Some("2.0")
+        || !valid_mcp_params(message, false)
+        || message
+            .pointer("/params/reason")
+            .is_some_and(|reason| !reason.is_string())
+    {
+        return Ok(true);
+    }
+    let Some(id) = message
+        .pointer("/params/requestId")
+        .filter(|id| valid_id(id))
+    else {
+        return Ok(true);
+    };
+    for fetch in pending
+        .lock()
+        .map_err(|_| io::Error::other("Cancellation registry unavailable"))?
+        .iter()
+    {
+        if fetch.id == *id {
+            fetch.cancel.store(true, Ordering::Release);
+        }
+    }
+    Ok(true)
+}
+
 fn main() -> io::Result<()> {
     validate_tls_configuration().map_err(io::Error::other)?;
     let hosts = allowed_hosts_from_env().map_err(io::Error::other)?;
-    let stdin = io::stdin();
-    let mut reader = stdin.lock();
+    let pending = Arc::new(Mutex::new(Vec::<PendingFetch>::new()));
+    let reader_pending = Arc::clone(&pending);
+    // A rendezvous channel retains no queued frames. The reader can hold one
+    // pending non-control frame; backpressure then pauses further input reads.
+    let (tx, rx) = mpsc::sync_channel::<io::Result<Incoming>>(0);
+    let input_thread = thread::Builder::new()
+        .name("mcp-stdin".into())
+        .spawn(move || {
+            let run = || -> io::Result<()> {
+                let stdin = io::stdin();
+                let mut reader = stdin.lock();
+                loop {
+                    let frame = read_frame(&mut reader)?;
+                    let eof = matches!(frame, Frame::Eof);
+                    let cancel = Arc::new(AtomicBool::new(false));
+                    if let Frame::Data(data) = &frame {
+                        if let Ok(message) = serde_json::from_slice::<Value>(data) {
+                            if apply_cancellation(&message, &reader_pending)? {
+                                continue;
+                            }
+                            if message.get("jsonrpc").and_then(Value::as_str) == Some("2.0")
+                                && message.get("method").and_then(Value::as_str)
+                                    == Some("tools/call")
+                            {
+                                if let Some(id) = message.get("id").filter(|id| valid_id(id)) {
+                                    reader_pending
+                                        .lock()
+                                        .map_err(|_| {
+                                            io::Error::other("Cancellation registry unavailable")
+                                        })?
+                                        .push(PendingFetch {
+                                            id: id.clone(),
+                                            cancel: Arc::clone(&cancel),
+                                        });
+                                }
+                            }
+                        }
+                    }
+                    tx.send(Ok(Incoming { frame, cancel })).map_err(|_| {
+                        io::Error::new(io::ErrorKind::BrokenPipe, "Dispatcher stopped")
+                    })?;
+                    if eof {
+                        return Ok(());
+                    }
+                }
+            };
+            if let Err(error) = run() {
+                let _ = tx.send(Err(error));
+            }
+        })?;
     let stdout = io::stdout();
     let mut writer = stdout.lock();
     let mut session = Session::New;
     loop {
-        let response = match read_frame(&mut reader)? {
+        let Incoming { frame, cancel } = rx
+            .recv()
+            .map_err(|_| io::Error::other("Input reader stopped"))??;
+        let response = match frame {
             Frame::Eof => break,
             Frame::TooLarge => Some(rpc_error(Value::Null, -32600, "Request too large")),
             Frame::Data(data) => match serde_json::from_slice::<Value>(&data) {
-                Ok(message) => handle(message, &hosts, &mut session),
+                Ok(message) => handle_cancellable(message, &hosts, &mut session, &cancel),
                 Err(_) => Some(rpc_error(Value::Null, -32700, "Parse error")),
             },
         };
+        pending
+            .lock()
+            .map_err(|_| io::Error::other("Cancellation registry unavailable"))?
+            .retain(|fetch| !Arc::ptr_eq(&fetch.cancel, &cancel));
         if let Some(response) = response {
             serde_json::to_writer(&mut writer, &response)?;
             writer.write_all(b"\n")?;
             writer.flush()?;
         }
     }
+    input_thread
+        .join()
+        .map_err(|_| io::Error::other("Input reader failed"))?;
     Ok(())
 }
 
@@ -337,6 +461,40 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result["error"]["code"], -32600);
+    }
+
+    #[test]
+    fn cancellation_matches_typed_ids_and_ignores_malformed_notifications() {
+        let flag = Arc::new(AtomicBool::new(false));
+        let pending = Mutex::new(vec![PendingFetch {
+            id: json!("1"),
+            cancel: Arc::clone(&flag),
+        }]);
+        for message in [
+            json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1}}),
+            json!({"jsonrpc":"1.0","method":"notifications/cancelled","params":{"requestId":"1"}}),
+            json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"1","reason":false}}),
+            json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":"1","_meta":[]}}),
+            json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":[]}}),
+            json!({"jsonrpc":"2.0","method":"notifications/cancelled"}),
+        ] {
+            assert!(apply_cancellation(&message, &pending).unwrap());
+            assert!(!flag.load(Ordering::Acquire));
+        }
+        assert!(!apply_cancellation(
+            &json!({"jsonrpc":"2.0","id":9,"method":"notifications/cancelled",
+            "params":{"requestId":"1"}}),
+            &pending
+        )
+        .unwrap());
+        assert!(!flag.load(Ordering::Acquire));
+        assert!(apply_cancellation(
+            &json!({"jsonrpc":"2.0","method":"notifications/cancelled",
+            "params":{"requestId":"1","reason":"sensitive marker"}}),
+            &pending
+        )
+        .unwrap());
+        assert!(flag.load(Ordering::Acquire));
     }
 
     #[test]
