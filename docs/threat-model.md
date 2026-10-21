@@ -70,3 +70,6 @@ HTTP total-deadline evidence now uses cancellable async I/O and a stricter late-
 
 
 [Configured parser and stream-budget evidence](adversarial-netns.md#configured-http-parser-and-stream-budgets) covers header boundaries, excessive chunk framing, trailers and serialized-request preflight. These are application-stream caps, not bounds on kernel buffers, retransmissions, resolver allocations or CPU. Independent release gates and human review remain open.
+
+
+Modern stateless stdio metadata/discovery and legacy compatibility are now exercised by [revision-specific wire and official-client checks](protocol-conformance.md). Historical modern refusal is not the current behavior. The client matrix and independent conformance/release review remain open; the transport is still stdio only.

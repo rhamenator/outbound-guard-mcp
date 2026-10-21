@@ -49,3 +49,8 @@ The Linux resource probe shrinks the child's stdout pipe to 4 KiB, sends a valid
 
 
 Output client-control replay on 2026-10-21 checks the worker acknowledgement/error path against a real closed pipe, and successful large output against a draining client. These controls complement the unread-pipe timeout rather than extending the enforcement boundary. The resource probe runs them in debug CI and installed optimized packaging; no production behavior or dependencies change.
+
+
+## Modern protocol migration
+
+The [conformance evidence](protocol-conformance.md) supersedes historical modern-refusal/fallback checks: Inspector now requires successful automatic and pinned modern negotiation while explicit legacy mode stays passing. The network-free modern corpus checks stateless operations, metadata/version/ID validation, malformed-request non-dispatch, cache/result fields, parse/size errors, subscriptions and legacy coexistence. CI and installed candidates run it. Numeric-ID normalization avoids float rounding and accepts equivalent integer-valued forms while keeping strings distinct.

@@ -174,10 +174,10 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 if burst:
                     self.wfile.write(b"x" * 2000)
                     self.wfile.flush()
-                for _ in range(20 if burst else 4):
-                    self.wfile.write(b"x" * (1 if burst else 600))
+                for _ in range(20):
+                    self.wfile.write(b"x" * (1 if burst else 120))
                     self.wfile.flush()
-                    time.sleep(1)
+                    time.sleep(1 if burst else 0.2)
             except (BrokenPipeError, ConnectionResetError):
                 pass
             return
@@ -206,13 +206,13 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
-            for _ in range(10):
+            for _ in range(40):
                 try:
-                    self.wfile.write(b"x" * 600)
+                    self.wfile.write(b"x" * 500)
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError):
                     break
-                time.sleep(1)
+                time.sleep(0.25)
             time.sleep(2.5)
             return
         if self.path == "/redirect":
@@ -847,7 +847,7 @@ def test_cancellation(probe):
 
 def test_stdio_cancellation(binary):
     marker = "synthetic-cancellation-reason"
-    for active_id in ("1", 1):
+    for active_id in ("1", 1.0):
         wrong_id = 1 if isinstance(active_id, str) else "1"
         HTTP.cancel_started.clear()
         HTTP.cancel_closed.clear()
@@ -887,7 +887,7 @@ def test_stdio_cancellation(binary):
             time.sleep(0.15)
             assert not HTTP.cancel_closed.is_set(), "malformed/wrong-ID cancellation closed the socket"
             started = time.monotonic()
-            cancel(active_id, reason=marker)
+            cancel(active_id if isinstance(active_id, str) else 1, reason=marker)
             send({"jsonrpc":"2.0", "id":"barrier", "method":"ping"})
             assert receive("barrier")["result"] == {}  # No reply for the cancelled call or notification.
             assert time.monotonic() - started < 5
@@ -914,11 +914,11 @@ def test_stdio_cancellation(binary):
             if process.poll() is None:
                 process.kill()
                 process.wait()
-    print("stdio cancellation probe: string/numeric IDs matched exactly; malformed, unknown and late "
+    print("stdio cancellation probe: string/numeric IDs stayed distinct, integer-valued numeric representations matched; malformed, unknown and late "
           "notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered")
 
 
-def test_sdk_cancellation(binary):
+def test_sdk_cancellation(binary, modern=False):
     sdk_dir = os.environ.get("OUTBOUND_GUARD_TEST_SDK_DIR")
     if not sdk_dir:
         print("official SDK cancellation: not requested (set OUTBOUND_GUARD_TEST_SDK_DIR)")
@@ -929,7 +929,7 @@ def test_sdk_cancellation(binary):
     before_methods = len(HTTP.methods)
     env = os.environ.copy()
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
-    process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"], os.path.join(sdk_dir, "cancel.mjs"), binary],
+    process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"], os.path.join(sdk_dir, "cancel_modern.mjs" if modern else "cancel.mjs"), binary],
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, text=True, env=env)
     def receive(expected):
@@ -951,7 +951,8 @@ def test_sdk_cancellation(binary):
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
-        print(f"official SDK 1.32.1 cancellation: AbortSignal rejected; audited cancellation, "
+        label = "2.0.0 modern" if modern else "1.32.1 legacy"
+        print(f"official SDK {label} cancellation: AbortSignal rejected; audited cancellation, "
               f"socket closed while client live, recovery and output-schema checks passed ({elapsed:.2f}s)")
         return 4
     finally:
@@ -1132,7 +1133,7 @@ def main(binary, cancellation_probe):
             "GitLab/PyPI")
         test_cancellation(cancellation_probe)
         test_stdio_cancellation(binary)
-        sdk_cases = test_sdk_cancellation(binary)
+        sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
