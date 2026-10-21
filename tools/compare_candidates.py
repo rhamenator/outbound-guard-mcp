@@ -58,9 +58,10 @@ def inspect(path):
         'archive_sha256': digest(data), 'revision': provenance['revision'],
         'source_files_sha256': digest(json.dumps(manifest, sort_keys=True).encode()),
         'binary_sha256': provenance['binary_sha256'],
-        'settings': {key: build[key] for key in (
+        'settings': {**{key: build[key] for key in (
             'target', 'profile', 'locked', 'jobs', 'toolchain_channel',
             'rustc_verbose_version', 'cargo_version', 'cargo_lock_sha256')},
+            'path_remapping': build.get('path_remapping')},
         'package': {key: provenance[key] for key in (
             'version', 'platform', 'license', 'candidate', 'stable_release')},
     }

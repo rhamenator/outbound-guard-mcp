@@ -67,3 +67,11 @@ A match does not authenticate a publisher or prove the builders were independent
 The local optimized candidate at `2534e80d19e49cbf75096cb13ed2ce2e8904d4c3` and GitHub CI run [39680694775](https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39680694775) at synthetic merge revision `d0c7e8be56f32025b1329b67713cfacf4cf6ded4` have identical source-file bytes and lockfile, but different compilers and executables. The verifier exits 1. The [recorded comparison](rebuild-comparison-pr75.json) retains observed hashes and settings. Local Rust is 1.96.0; CI Rust is 1.99.1. This is a failed reproducibility comparison, not an application-test failure; both candidates passed their installed tests.
 
 Next: align an explicitly versioned build compiler across independent builders, then replay this comparison. Matching compilers alone will not guarantee identical native linker inputs, paths or executable bytes; investigate any remaining differences rather than waive them. Signing and human release review remain separate open gates.
+
+## Controlled build path remapping
+
+The first compiler-aligned local/CI comparison (PR #77, CI run 39684517905) matched source bytes and all recorded settings but not executable hashes. Both binaries embedded their builder's absolute Cargo cache paths in dependency panic strings. This identifies one concrete obstacle, not proof of the only cause.
+
+Candidate builds now set only internally generated `--remap-path-prefix` Rust flags for the exported source, Cargo home and target directory, mapping to `/build/source`, `/build/cargo` and `/build/target`. The encoded Cargo flags preserve argument boundaries even when source/cache paths contain spaces. User-supplied compiler/wrapper/flag overrides remain rejected before constructing this environment. The logical mapping policy is recorded in provenance and compared by the offline verifier; private absolute builder paths are not recorded there. This applies to candidate Rust builds, including dependencies, not ordinary debug builds or native C compilation.
+
+Path normalization is not a hermetic compiler/linker sandbox. Native tools, system libraries, host configuration and Cargo cache remain trusted inputs. Independent artifacts must still match; inspect any remaining mismatch rather than assuming that remapping proves reproducibility.

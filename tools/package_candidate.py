@@ -163,6 +163,22 @@ def verify_build_compiler(evidence):
         raise RuntimeError('Candidate compiler/Cargo must match the exact version in rust-toolchain.toml')
 
 
+PATH_REMAPPING = {"source": "/build/source", "cargo_home": "/build/cargo", "target": "/build/target"}
+
+
+def candidate_build_env(source_root, target_dir, environ):
+    """Only internally chosen path flags; encoded arguments also support spaces."""
+    reject_build_overrides(environ)
+    cargo_home = Path(environ.get('CARGO_HOME') or Path.home() / '.cargo').expanduser()
+    if not cargo_home.is_absolute():
+        cargo_home = source_root / cargo_home
+    paths = {'source': source_root, 'cargo_home': cargo_home, 'target': target_dir}
+    result = dict(environ)
+    result['CARGO_ENCODED_RUSTFLAGS'] = '\x1f'.join(
+        f'--remap-path-prefix={path.resolve()}={PATH_REMAPPING[name]}' for name, path in paths.items())
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new output directory")
@@ -195,9 +211,11 @@ def main():
                     destination.chmod(entry.mode & 0o777)
         evidence = build_evidence(Path(folder) / "source", source)
         verify_build_compiler(evidence)
+        evidence['path_remapping'] = PATH_REMAPPING
+        build_env = candidate_build_env(Path(folder) / 'source', REPO / 'target', os.environ)
         subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "--bins", "--examples", "-j", "2",
                         "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
-                       cwd=Path(folder) / "source", check=True)
+                       cwd=Path(folder) / "source", env=build_env, check=True)
         binary = (REPO / "target/x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
         cancellation_probe = REPO / "target/x86_64-unknown-linux-gnu/release/examples/cancel_fetch_probe"
         dependencies = dependency_files(Path(folder) / "source")
