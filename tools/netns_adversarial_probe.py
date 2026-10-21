@@ -114,6 +114,23 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
             return
+        if self.path in ("/burst-drip", "/steady-rate"):
+            burst = self.path == "/burst-drip"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", "2020" if burst else "2400")
+            self.end_headers()
+            try:
+                if burst:
+                    self.wfile.write(b"x" * 2000)
+                    self.wfile.flush()
+                for _ in range(20 if burst else 4):
+                    self.wfile.write(b"x" * (1 if burst else 600))
+                    self.wfile.flush()
+                    time.sleep(1)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
         if self.path in ("/drip", "/cancel-drip"):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -141,7 +158,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             for _ in range(10):
                 try:
-                    self.wfile.write(b"x")
+                    self.wfile.write(b"x" * 600)
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError):
                     break
@@ -903,22 +920,27 @@ def main(binary, cancellation_probe):
             assert HTTP.hits[-1] == f"/{path}"
             framing_results[path] = decision["rule"]
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
-                           ("drip", "EGRESS_RESPONSE_TIMEOUT"),
-                           ("late-eof", "EGRESS_RESPONSE_TIMEOUT")):
+                           ("drip", "EGRESS_RESPONSE_TOO_SLOW"),
+                           ("late-eof", "EGRESS_RESPONSE_TIMEOUT"),
+                           ("burst-drip", "EGRESS_RESPONSE_TOO_SLOW")):
             started = time.monotonic()
             decision = call(binary, "allowed.test", path)
             elapsed = time.monotonic() - started
             assert decision["rule"] == rule, (path, decision)
             assert "body_text" not in decision, (path, decision)
-            assert elapsed < 16, (path, elapsed)
+            assert elapsed < (7 if rule == "EGRESS_RESPONSE_TOO_SLOW" else 16), (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
+            print(f"response timing probe: {path} -> {rule} in {elapsed:.2f}s; no partial body")
+        steady = call(binary, "allowed.test", "steady-rate")
+        assert steady["rule"] == "EGRESS_ALLOWED" and steady["body_text"] == "x" * 2400
+        assert HTTP.hits[-1] == "/steady-rate"
         github_cases = test_github_secrets(binary)
         test_cancellation(cancellation_probe)
         test_stdio_cancellation(binary)
         sdk_cases = test_sdk_cancellation(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
-        print(f"netns adversarial probe: {1188 + generated + github_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1190 + generated + github_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

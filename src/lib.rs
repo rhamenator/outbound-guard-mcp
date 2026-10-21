@@ -108,6 +108,30 @@ pub fn audit_snapshot() -> Result<Value, &'static str> {
         .map_err(|_| "Audit unavailable")
 }
 
+// Four one-second buckets: current partial second plus three completed seconds.
+// Fixed storage prevents a byte-at-a-time peer from growing timing state.
+#[derive(Default)]
+struct TransferRate {
+    buckets: [usize; 4],
+    tick: u64,
+}
+
+impl TransferRate {
+    fn observe(&mut self, elapsed: Duration, bytes: usize) -> bool {
+        let tick = elapsed.as_secs();
+        for offset in 1..=tick.saturating_sub(self.tick).min(4) {
+            self.buckets[((self.tick + offset) % 4) as usize] = 0;
+        }
+        self.tick = tick;
+        self.buckets[(tick % 4) as usize] += bytes;
+        tick < 3
+            || (1..=3)
+                .map(|age| self.buckets[((tick - age) % 4) as usize])
+                .sum::<usize>()
+                >= 1500
+    }
+}
+
 #[derive(Default)]
 struct CallBudget {
     per_host: HashMap<String, VecDeque<Instant>>,
@@ -836,6 +860,8 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
         .is_some_and(|media_type| media_type.trim().eq_ignore_ascii_case("application/json"));
     let status_code = response.status().as_u16();
     let mut body = Vec::new();
+    let body_started = Instant::now();
+    let mut transfer_rate = TransferRate::default();
     let mut chunk = [0u8; 8192];
     loop {
         if let Some(denial) = cancelled(cancel) {
@@ -853,6 +879,15 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
         let read = response.read(&mut chunk[..read_len]);
         if let Some(denial) = cancelled(cancel) {
             return denial;
+        }
+        if let Ok(bytes) = &read {
+            if !transfer_rate.observe(body_started.elapsed(), *bytes) {
+                return Denial::new(
+                    "EGRESS_RESPONSE_TOO_SLOW",
+                    "Use an endpoint delivering at least 500 bytes per second over completed three-second windows.",
+                )
+                .value();
+            }
         }
         match read {
             Ok(0) => {
@@ -921,6 +956,25 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicBool;
+    #[test]
+    fn rolling_transfer_rate_expires_bursts_and_has_bounded_state() {
+        let mut rate = TransferRate::default();
+        assert!(rate.observe(Duration::ZERO, 2000));
+        assert!(rate.observe(Duration::from_secs(3), 0));
+        // A new burst cannot hide three preceding seconds without progress.
+        assert!(!rate.observe(Duration::from_secs(4), 8192));
+        assert!(!rate.observe(Duration::from_secs(1_000_000), 1));
+        for bytes in [499, 500, 501] {
+            let mut rate = TransferRate::default();
+            for second in 0..3 {
+                assert!(rate.observe(Duration::from_secs(second), bytes));
+            }
+            assert_eq!(rate.observe(Duration::from_secs(3), bytes), bytes >= 500);
+        }
+        let mut small = TransferRate::default();
+        assert!(small.observe(Duration::ZERO, 2));
+        assert!(small.observe(Duration::from_millis(2999), 0));
+    }
     #[test]
     fn pre_cancelled_fetch_is_audited_without_body_or_budget() {
         let before = EGRESS_BUDGET.lock().unwrap().all_calls.len();
