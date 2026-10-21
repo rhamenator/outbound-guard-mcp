@@ -2,7 +2,7 @@
 
 After `cargo build --locked`, run `python3 tools/stdio_resource_probe.py target/debug/outbound-guard-mcp` on Linux. CI runs the same probe. It streams a 160 MiB unterminated JSON-RPC frame in 1 MiB chunks followed by a valid ping, then streams another 8 MiB frame ending at EOF. Streaming keeps the probe parent's memory low so its fork does not contaminate child peak RSS. Both oversized frames must return a bounded protocol error; the ping must succeed after the first frame is drained. The probe checks the child process peak RSS stays under 128 MiB, allowing runtime and runner variation. A regression that buffers the entire 160 MiB frame would exceed that ceiling. The current host run records the measured RSS in its output.
 
-This establishes bounded memory for those two large-frame cases and recovery after one malformed frame. It does not bound CPU or elapsed time for a peer that streams bytes indefinitely without a newline, and it does not test network concurrency. The full resource and adversarial gates remain in [QUALITY_BAR.md](QUALITY_BAR.md).
+This establishes bounded memory for those two large-frame cases and recovery after one malformed frame. The separate ingestion-deadline cases below cover stalled and continuously fed partial frames; this is not a CPU quota or a network concurrency test. The full resource and adversarial gates remain in [QUALITY_BAR.md](QUALITY_BAR.md).
 
 ## MCP parameter and metadata regression
 
@@ -34,3 +34,8 @@ This follows the newer revision's [stdio discovery/fallback model](https://model
 A frame has a 10-second wall-clock ingestion budget starting when the reader sees its first bytes, including time draining an oversized frame. The reader checks every chunk and completion; the dispatcher checks stalled partial input every 100 ms while waiting. An expired frame terminates the process with a fixed diagnostic, without dispatching or reflecting partial input. Idle input before the first byte has no deadline. Completed frames waiting on the rendezvous channel do not consume ingestion time. An executing fetch or blocked stdout write can delay dispatcher observation; stdout backpressure remains an open gate. This is not a CPU quota.
 
 The Linux resource probe now concurrently holds short and oversized partial frames open, verifies nonzero exit and redacted diagnostics within 13 seconds, and verifies a third idle client survives and accepts a ping afterward. A deterministic Rust regression checks already-expired frames at newline, data and EOF completion. Debug CI and installed optimized candidate packaging run the resource probe. Existing fast 160 MiB drain/recovery and 8 MiB EOF cases remain covered. No runtime dependency was added.
+
+
+## Continuous-stream deadline regression
+
+The resource probe also runs a fourth server while the other deadline cases execute. A controlled writer sends about 4 KiB every 20 ms without LF, keeping the stream active past the 64 KiB frame cap. The server must still terminate within the same 13-second test tolerance, with a fixed timeout diagnostic, no stdout, and no marker echo. Successful incoming bytes must not renew the ten-second ingestion budget. The nonblocking writer uses a stop event and bounded join so a failing server cannot trap the harness in a pipe write. This is finite Linux process evidence, not a CPU quota or output-backpressure guarantee. Debug CI and the installed optimized candidate both run it.
