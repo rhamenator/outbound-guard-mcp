@@ -22,3 +22,5 @@ A failed check or missing evidence keeps the gate open. Rebuild/retest changed a
 The user's adversarial-testing requirement separately applies to `ai-scraping-defense`, `ai-scraping-defense-rust`, `ai-scraping-defense-iis` and `ai-scraping-defense-mcp`. Reuse safe methodology and fixtures, but record each repository's commit, exercised interfaces, actual results and limitations separately. Outbound Guard evidence does not certify those projects, Request Guard or Runtime Guard.
 
 [Priority cancellation and overload](cancellation-priority.md) now have both-era socket/audit/recovery regressions. Independent review and final-candidate client matrix still apply; do not equate fixing server-side admission with clients sending cancellation notifications.
+
+The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. The offline verifier detects this mismatch; cross-host reproducibility remains open pending compiler alignment and a successful replay.
