@@ -63,6 +63,63 @@ def installed_smoke(binary, version):
                    cwd=binary.parent, env=env, check=True, timeout=180)
 
 
+def dependency_files(source_root):
+    """Inventory resolved normal/build crates, with their shipped notices."""
+    metadata = json.loads(subprocess.check_output([
+        "cargo", "metadata", "--locked", "--offline", "--format-version", "1",
+        "--filter-platform", "x86_64-unknown-linux-gnu"], cwd=source_root))
+    nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
+    packages = {package["id"]: package for package in metadata["packages"]}
+    root = metadata["resolve"]["root"]
+    selected, pending = set(), [root]
+    while pending:
+        id_ = pending.pop()
+        if id_ in selected:
+            continue
+        selected.add(id_)
+        pending.extend(dep["pkg"] for dep in nodes[id_]["deps"]
+                       if any(kind["kind"] != "dev" for kind in dep["dep_kinds"]))
+    lock = tomllib.loads((source_root / "Cargo.lock").read_text())
+    locked = {(item["name"], item["version"], item.get("source")): item
+              for item in lock["package"]}
+    files, inventory = {}, []
+    for id_ in sorted(selected - {root}, key=lambda id_: (packages[id_]["name"], packages[id_]["version"])):
+        package = packages[id_]
+        name, version, source = (package[key] for key in ("name", "version", "source"))
+        assert source == "registry+https://github.com/rust-lang/crates.io-index", "review non-registry dependency"
+        checksum = locked[(name, version, source)]["checksum"]
+        crate = Path(package["manifest_path"]).parent.resolve()
+        cached = crate.parents[2] / "cache" / crate.parent.name / f"{name}-{version}.crate"
+        with cached.open("rb") as downloaded:
+            assert hashlib.file_digest(downloaded, "sha256").hexdigest() == checksum, "registry archive checksum mismatch"
+        notices = {path for path in crate.iterdir()
+                   if path.name.lower().startswith(("license", "copying", "notice")) and path.is_file()}
+        if package.get("license_file"):
+            notices.add(Path(package["license_file"]))
+        names = []
+        for path in sorted(notices):
+            assert not path.is_symlink() and path.resolve().is_relative_to(crate), "unsafe notice path"
+            assert path.is_file() and path.stat().st_size <= 1024 * 1024, "unbounded notice file"
+            relative = path.relative_to(crate).as_posix()
+            data = path.read_bytes()
+            with tarfile.open(cached) as downloaded:
+                member = downloaded.getmember(f"{name}-{version}/{relative}")
+                assert member.isfile() and member.size == len(data), "notice archive entry mismatch"
+                assert downloaded.extractfile(member).read() == data, "notice content differs from locked archive"
+            destination = f"third-party/{name}-{version}/{relative}"
+            files[destination] = data
+            names.append(destination)
+        assert names and package.get("license"), f"review missing license metadata/notices for {name}"
+        inventory.append({"name": name, "version": version, "source": source,
+                          "checksum_sha256": checksum, "license_expression": package["license"],
+                          "features": sorted(nodes[id_]["features"]), "notice_files": names})
+    files["dependency-inventory.json"] = (json.dumps({"schema_version": 1,
+        "target": "x86_64-unknown-linux-gnu", "scope": "resolved normal and build dependencies",
+        "packages": inventory}, indent=2, sort_keys=True) + "\n").encode()
+    print(f"dependency inventory: {len(inventory)} locked crates with checksum-verified shipped notices")
+    return files
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new output directory")
@@ -96,8 +153,9 @@ def main():
                         "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
                        cwd=Path(folder) / "source", check=True)
         binary = (REPO / "target/x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
+        dependencies = dependency_files(Path(folder) / "source")
     root = f"outbound-guard-mcp-{version}-candidate.{revision[:12]}-linux-x86_64"
-    files = {"bin/outbound-guard-mcp": binary}
+    files = {"bin/outbound-guard-mcp": binary, **dependencies}
     files.update({name: git("show", f"{revision}:{name}") for name in ("README.md", "LICENSE", "SECURITY.md")})
     files["source.tar.gz"] = source
     files["provenance.json"] = (json.dumps({"revision": revision, "version": version,
@@ -135,6 +193,9 @@ def main():
             member = tar.getmember(root + "/bin/outbound-guard-mcp")
             assert member.isfile() and member.mode == 0o755
             installed.write_bytes(tar.extractfile(member).read())
+            for name, data in dependencies.items():
+                entry = tar.getmember(root + "/" + name)
+                assert entry.isfile() and tar.extractfile(entry).read() == data, "dependency asset changed in package"
         assert digest(installed.read_bytes()) == digest(binary)
         installed.chmod(0o755)
         installed_smoke(installed, version)

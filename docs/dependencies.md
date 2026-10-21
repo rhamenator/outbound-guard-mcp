@@ -5,3 +5,13 @@ The runtime declares two direct crates: `serde_json` for bounded JSON-RPC messag
 The server still needs dependency review and advisory gates before a stable release. A future move to a smaller HTTP client must preserve the pinned DNS behavior, TLS hostname checks, disabled ambient proxies, redirect policy, and bounded streaming reads.
 
 `serde_json` enables its `arbitrary_precision` feature so response syntax validation accepts valid large JSON numbers (for example `1e400`) without forcing them into finite floating-point values. The existing nesting guard and response byte cap remain active. This feature adds no crate to the dependency graph.
+
+## Candidate inventory and notices
+
+Linux x86_64 candidate archives now contain `dependency-inventory.json` and `third-party/` notice files. Packaging runs `cargo metadata --locked --offline --filter-platform x86_64-unknown-linux-gnu` inside the committed source snapshot after the build, then walks the resolved normal/build dependency graph. Development-only edges and the root project are excluded. The inventory records each crate’s name, version, reported license expression, registry source, locked SHA-256, resolved features and notice filenames. It contains no Cargo-cache or workspace paths. This is our versioned inventory format, not a claim of SPDX/CycloneDX schema conformance or an exact list of linked binary symbols.
+
+For every included crate, packaging hashes the cached `.crate` archive against `Cargo.lock` and compares shipped license/copying/notice files with the archive bytes. Notice symlinks, out-of-crate paths, oversized files, missing notices/license metadata and unsupported non-registry sources stop packaging for review. The Cargo registry source and archive cache must be available; this step performs no network fetch. Notice files remain unchanged. The inventory includes build dependencies, which may not be linked into the executable.
+
+The initial target inventory contains 107 crates and 181 notices. Standard-library Python tests (`python3 -m unittest discover -s tests -p 'test_*.py'`) cover path-free output, notice preservation, modified-notice rejection and modified-archive rejection. CI runs these tests before packaging. Future dependency changes may change counts; CI must regenerate and verify the inventory.
+
+The project remains GPL-3.0-or-later; dependency license expressions are reported separately. This inventory is evidence for dependency/notice review, not a license-compatibility decision, vulnerability scan, signature verification, or complete dependency source bundle. The human release review must still evaluate distribution obligations and the remaining supply-chain gates before a stable release.
