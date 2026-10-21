@@ -62,3 +62,5 @@ Mislabeled fragment-root evidence: [thirteen hidden-link fixtures](adversarial-n
 Exact-name resolution: [hostile search-suffix fixtures](adversarial-netns.md#absolute-dns-and-hostile-search-suffix) reproduce the pre-fix wrong-name lookup, then require zero suffixed DNS questions after absolute lookup enforcement. Private-answer rejection remained effective in the pre-fix case. System resolver/hosts data remains trusted operator configuration.
 
 HEAD evidence: [controlled HEAD fixtures and official SDK](adversarial-netns.md#controlled-head-requests) check method preservation, empty-body results, header/framing policy, redirect refusal and first-byte timeout. HEAD success is independent of a future GET decision and does not assess representation content.
+
+Credential isolation evidence: [six consecutive same-process requests](adversarial-netns.md#credential-isolation-across-calls) cover a same-host non-Secure response cookie, Basic challenge and four synthetic credential environment variables with no sensitive request headers, retries or marker echo. This is bounded evidence, not certification of every credential provider or authenticated-session support.

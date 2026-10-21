@@ -97,15 +97,23 @@ class DNS(socketserver.BaseRequestHandler):
 class HTTP(http.server.BaseHTTPRequestHandler):
     hits = []
     methods = []
+    sensitive_headers = []
     cancel_started = threading.Event()
     cancel_closed = threading.Event()
 
     def log_message(self, *_args):
         pass
 
+    def record_sensitive_headers(self):
+        # Record presence only: never retain a credential's value in fixture logs.
+        self.sensitive_headers.append(tuple(name for name in (
+            "Authorization", "Proxy-Authorization", "Cookie", "Referer", "X-Api-Key",
+            "Private-Token", "Job-Token", "X-Amz-Security-Token") if name in self.headers))
+
     def do_HEAD(self):
         self.methods.append("HEAD")
         self.hits.append(self.path)
+        self.record_sensitive_headers()
         if self.path == "/head-delayed":
             time.sleep(11)
         try:
@@ -131,6 +139,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.methods.append("GET")
         self.hits.append(self.path)
+        self.record_sensitive_headers()
         if self.path == "/delayed":
             time.sleep(11)
             try:
@@ -296,6 +305,15 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.send_header("Content-Encoding", "gzip")
+        elif self.path in ("/cookie-set", "/auth-challenge"):
+            self.send_response(401 if self.path == "/auth-challenge" else 200)
+            self.send_header("Content-Type", "text/plain")
+            if self.path == "/cookie-set":
+                self.send_header("Set-Cookie", "guard_fixture=synthetic-cookie-not-real; Path=/; HttpOnly; SameSite=Lax")
+                body = b"cookie-set"
+            else:
+                self.send_header("WWW-Authenticate", 'Basic realm="controlled-fixture"')
+                body = b"auth-required"
         elif self.path.startswith("/html-root-"):
             tag = self.path.removeprefix("/html-root-")
             assert tag in ("div", "span", "form", "input", "button", "img", "meta", "link",
@@ -516,7 +534,7 @@ def resource_limited_run(binary, payload, env):
     return subprocess.CompletedProcess([binary], process.returncode, stdout, stderr)
 
 
-def call_arguments(binary, arguments, extra_ca=None, redaction_markers=(), resource_probe=False):
+def call_arguments(binary, arguments, extra_ca=None, redaction_markers=(), resource_probe=False, env_overrides=None):
     handshake = [
         {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
@@ -531,11 +549,15 @@ def call_arguments(binary, arguments, extra_ca=None, redaction_markers=(), resou
         for index, args in enumerate(arguments, 1)
     ]
     env = os.environ.copy()
+    if env_overrides:
+        env.update(env_overrides)
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
     if extra_ca is not None:
         env["OUTBOUND_GUARD_EXTRA_CA_CERT"] = extra_ca
     env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = ",".join(RECORDS)
     # A working direct request proves these ambient proxy variables were ignored.
+    env["HTTPS_PROXY"] = "http://127.0.0.1:9"
+    env["https_proxy"] = "http://127.0.0.1:9"
     env["HTTP_PROXY"] = "http://127.0.0.1:9"
     env["http_proxy"] = "http://127.0.0.1:9"
     env["ALL_PROXY"] = "http://127.0.0.1:9"
@@ -624,6 +646,32 @@ def test_schema_mutations(binary):
     assert HTTP.hits[before_hits:] == ["/plain"]
     print(f"schema mutation probe: {len(cases)} invalid inputs; seed={seed}; sha256={corpus_hash}; "
           "baseline fetched, invalid inputs opened no DNS/HTTP and echoed no marker")
+    return len(decisions)
+
+
+def test_credential_isolation(binary):
+    marker = "synthetic-env-credential-not-real"
+    paths = ("cookie-set", "plain", "head-ok", "auth-challenge", "plain", "redirect")
+    methods = ("GET", "GET", "HEAD", "GET", "GET", "GET")
+    before_hits, before_headers, before_methods = len(HTTP.hits), len(HTTP.sensitive_headers), len(HTTP.methods)
+    decisions, _ = call_arguments(binary,
+        [{"url":"http://allowed.test/" + path, "method":method} for path, method in zip(paths, methods)],
+        redaction_markers=(marker, "synthetic-cookie-not-real"),
+        env_overrides={name:marker for name in (
+            "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "OPENAI_API_KEY", "GH_TOKEN")})
+    assert [item["rule"] for item in decisions] == ["EGRESS_ALLOWED"] * 5 + ["EGRESS_REDIRECT_DENIED"]
+    assert decisions[0]["body_text"] == "cookie-set"
+    assert decisions[1]["body_text"] == decisions[4]["body_text"] == "fixture-ok"
+    assert decisions[2]["body_text"] == ""
+    assert decisions[3]["status_code"] == 401 and decisions[3]["body_text"] == "auth-required"
+    assert "body_text" not in decisions[5]
+    assert HTTP.hits[before_hits:] == ["/" + path for path in paths], "authentication retry or redirect observed"
+    assert HTTP.methods[before_methods:] == list(methods)
+    headers = HTTP.sensitive_headers[before_headers:]
+    assert len(headers) == len(paths) and all(not names for names in headers), headers
+    print("credential isolation probe: six same-process calls; response cookie, Basic challenge and "
+          "four synthetic credential environment variables caused no auth/cookie/referer headers, "
+          "retry, redirect or result/audit marker echo")
     return len(decisions)
 
 
@@ -1009,6 +1057,7 @@ def main(binary, cancellation_probe):
         steady = call(binary, "allowed.test", "steady-rate")
         assert steady["rule"] == "EGRESS_ALLOWED" and steady["body_text"] == "x" * 2400
         assert HTTP.hits[-1] == "/steady-rate"
+        credential_cases = test_credential_isolation(binary)
         head_cases = test_head_requests(binary)
         github_cases = test_provider_secrets(binary,
             ("github_pat_", "ghu_", "ghs_", "ghr_"), "GitHub", installation_case=True)
@@ -1024,7 +1073,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1190 + len(root_tags) + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1190 + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

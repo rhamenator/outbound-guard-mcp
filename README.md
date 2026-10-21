@@ -114,3 +114,7 @@ The system resolver receives an absolute hostname (a terminal dot is added only 
 ### HEAD behavior
 
 `guarded_fetch` with `method: "HEAD"` returns the guarded URL and HTTP status with empty `body_text`; it does not return arbitrary response headers. Since no representation body is read, the GET media-type and JSON-body requirements do not apply. Header count/size, ambiguous framing/metadata, encoding, redirect, DNS and timeout policies still apply. A successful HEAD does not authorize a subsequent GET or establish that its content is safe. Controlled tests and the official SDK verify the method actually sent, empty-body results and hostile header/redirect/timeouts.
+
+### Credential-free requests
+
+The current tool does not support authenticated sessions or cookie persistence. Controlled same-process GET/HEAD tests verify that Set-Cookie and a Basic authentication challenge do not produce Cookie, Authorization, Proxy-Authorization, provider-token or Referer headers on later calls, retries, or redirect traffic. Four synthetic credential environment variables are also checked for request/result/audit isolation. A returned HTTP 401 can still be a SAFE policy decision with untrusted text; it does not mean authentication succeeded. See the [credential-isolation evidence and scope](docs/adversarial-netns.md#credential-isolation-across-calls).
