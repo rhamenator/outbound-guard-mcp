@@ -84,3 +84,7 @@ Keep one outstanding fetch for timely cancellation. The zero-capacity input hand
 ### Structured decision contract
 
 `tools/list` advertises an `outputSchema` with separate `SAFE` and `BLOCKED` branches. Blocked results contain only status, rule, remediation and an optional correlation ID (audit failure can occur before allocation); fetched URLs and bodies are forbidden in that branch. Allowed results require the normalized URL, HTTP status, body text, correlation ID and `untrusted_content: true`. `SAFE` means egress policy passed, not that HTTP succeeded or content is trustworthy. The official SDK probe validates real allow/block results and rejects malformed result mutations. This uses the existing [MCP 2025-06-18 output-schema mechanism](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#output-schema); newer protocol conformance remains open.
+
+### Slow-transfer policy
+
+After response headers, a three-second grace period allows short small responses to finish. Longer responses must deliver at least 1,500 bytes across the preceding three completed one-second buckets (500 bytes/second average). A fixed four-bucket counter detects slow drips even after an initial burst; `EGRESS_RESPONSE_TOO_SLOW` returns no partial body and is audited. Checks occur when blocking reads return, so the existing idle timeout can delay detection. Legitimate slow or small long-lived responses can be rejected; this narrow tool does not support streaming subscriptions. The ten-second request deadline and size limits still apply independently.
