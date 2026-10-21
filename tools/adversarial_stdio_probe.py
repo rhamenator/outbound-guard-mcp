@@ -92,6 +92,51 @@ def metadata_probe(binary, env, marker):
           "did not advance handshake, four valid extension/progress-token cases accepted, no tool audit or marker echo")
 
 
+def framing_boundary_probe(binary, env):
+    limit = 64 * 1024
+    def ping(id_, length, ending):
+        body = frame({"jsonrpc":"2.0", "id":id_, "method":"ping"})[:-1]
+        return body + b" " * (length - len(body) - len(ending)) + ending
+    decisions = 0
+    for ending in (b"\n", b"\r\n", b""):
+        # A separate process for EOF-only frames: no following bytes can delimit them.
+        for length in (limit - 1, limit, limit + 1):
+            payload = ping(1, length, ending)
+            if ending:
+                payload += frame({"jsonrpc":"2.0", "id":2, "method":"ping"})
+            result = subprocess.run([binary], input=payload, capture_output=True,
+                                    env=env, timeout=10, check=True)
+            assert not result.stderr
+            replies = [json.loads(line) for line in result.stdout.splitlines()]
+            assert len(replies) == (2 if ending else 1), replies
+            if length <= limit:
+                assert replies[0] == {"jsonrpc":"2.0", "id":1, "result":{}}, replies
+            else:
+                assert replies[0]["id"] is None
+                assert replies[0]["error"]["code"] == -32600
+                assert replies[0]["error"]["message"] == "Request too large"
+            if ending:
+                assert replies[1] == {"jsonrpc":"2.0", "id":2, "result":{}}, replies
+            decisions += len(replies)
+    # Invalid UTF-8 and raw controls inside JSON strings must fail parsing, with
+    # no byte echo and with the following valid request still synchronized.
+    invalid = [b"\xff", b"\xc0\xaf", b"\xed\xa0\x80", b"\xf4\x90\x80\x80", b"\x00", b"\r"]
+    payload = b"".join(b'{"jsonrpc":"2.0","id":1,"method":"' + value + b'"}\n' +
+                       frame({"jsonrpc":"2.0", "id":100 + index, "method":"ping"})
+                       for index, value in enumerate(invalid))
+    result = subprocess.run([binary], input=payload, capture_output=True, env=env,
+                            timeout=10, check=True)
+    assert not result.stderr
+    replies = [json.loads(line) for line in result.stdout.splitlines()]
+    assert len(replies) == 2 * len(invalid)
+    for index in range(len(invalid)):
+        assert replies[2 * index]["id"] is None
+        assert replies[2 * index]["error"] == {"code":-32700, "message":"Parse error"}
+        assert replies[2 * index + 1] == {"jsonrpc":"2.0", "id":100 + index, "result":{}}
+    print(f"framing boundary probe: {decisions + len(replies)} replies; LF/CRLF/EOF byte limits, "
+          "invalid UTF-8/control rejection and subsequent ping recovery passed")
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: adversarial_stdio_probe.py PATH_TO_SERVER")
@@ -145,6 +190,7 @@ def main():
     print("stdio adversarial probe: 17 frames, 14 expected replies, no network or secret echo")
     audit_probe(sys.argv[1], env, marker)
     metadata_probe(sys.argv[1], env, marker)
+    framing_boundary_probe(sys.argv[1], env)
 
 
 if __name__ == "__main__":

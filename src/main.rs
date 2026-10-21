@@ -414,6 +414,62 @@ mod tests {
         assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Data(_)));
     }
     #[test]
+    fn generated_frames_match_line_oracle_across_buffer_boundaries() {
+        // Independent oracle: split the complete byte stream at LF, then classify
+        // each intact slice by length. The production reader must agree for all
+        // fragmentation capacities, retaining exact bytes and recovering at LF.
+        let mut seed = 0x6672616d696e6721_u64;
+        let mut input = Vec::new();
+        for length in [0, 1, MAX_LINE - 2, MAX_LINE - 1, MAX_LINE, MAX_LINE + 1] {
+            input.extend(std::iter::repeat_n(b'x', length));
+            input.push(b'\n');
+            input.extend_from_slice(b"valid-after-boundary\r\n");
+        }
+        for _ in 0..128 {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            let length = (seed % 1024) as usize;
+            for index in 0..length {
+                // Arbitrary bytes include invalid UTF-8, NUL, CR, and embedded LF.
+                input.push(seed.wrapping_add(index as u64) as u8);
+            }
+            input.push(b'\n');
+        }
+        input.extend_from_slice(b"unterminated-at-eof");
+        for capacity in [1, 2, 3, 7, 64, 8192, MAX_LINE + 1] {
+            let mut reader = io::BufReader::with_capacity(capacity, input.as_slice());
+            for (index, expected) in input.split_inclusive(|byte| *byte == b'\n').enumerate() {
+                match read_frame(&mut reader).unwrap() {
+                    Frame::Data(actual) => {
+                        assert!(
+                            expected.len() <= MAX_LINE,
+                            "capacity={capacity} frame={index}"
+                        );
+                        assert_eq!(actual, expected, "capacity={capacity} frame={index}");
+                    }
+                    Frame::TooLarge => assert!(
+                        expected.len() > MAX_LINE,
+                        "capacity={capacity} frame={index}"
+                    ),
+                    Frame::Eof => panic!("early EOF: capacity={capacity} frame={index}"),
+                }
+            }
+            assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Eof));
+        }
+        // EOF has no delimiter byte: exactly MAX_LINE bytes remain a valid frame.
+        for length in [0, MAX_LINE, MAX_LINE + 1] {
+            let bytes = vec![b'x'; length];
+            let mut reader = io::BufReader::with_capacity(7, bytes.as_slice());
+            match read_frame(&mut reader).unwrap() {
+                Frame::Eof => assert_eq!(length, 0),
+                Frame::Data(actual) => assert_eq!(actual.len(), MAX_LINE),
+                Frame::TooLarge => assert_eq!(length, MAX_LINE + 1),
+            }
+            assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Eof));
+        }
+    }
+    #[test]
     fn missing_method_is_a_protocol_error() {
         let result = handle(json!({"jsonrpc":"2.0","id":1}), &[], &mut Session::New).unwrap();
         assert_eq!(result["error"]["code"], -32600);
