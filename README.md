@@ -98,3 +98,7 @@ outbound-guard-mcp --check-config
 ```
 
 `--check-config` validates the configured exact-host allowlist and optional CA file, then exits. Its JSON reports `valid`, `scope: "startup"`, the deduplicated `allowed_host_count`, and `network_checked: false`. Empty configuration is valid and denies all egress. No hostnames, certificate contents or file paths are printed. Invalid configuration exits nonzero with a fixed diagnostic. Help/version work even with invalid configuration. Unknown or combined arguments fail rather than starting stdio. Launch the MCP server **without arguments** in client configuration. This check does not establish destination reachability, TLS interoperability, MCP client setup or production readiness; those need the documented client/fixture tests. `tools/cli_smoke.py` tests these commands in CI and against the installed candidate.
+
+### Provider token signatures
+
+The URL scanner also blocks GitLab’s documented token prefixes and the PyPI `pypi-` prefix followed by at least 20 ASCII alphanumeric, underscore or hyphen characters. This reuses the existing signature scanner before budget reservation and DNS. It is conservative shape matching, not credential validation: token-like public text may be rejected, shorter or custom-prefix secrets may escape signatures, and the entropy heuristic is not complete exfiltration detection. GitLab administrators can customize personal-token prefixes. See the [provider corpus and sources](docs/adversarial-netns.md#gitlab-and-pypi-token-signatures).
