@@ -778,8 +778,8 @@ def test_sdk_cancellation(binary):
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
         print(f"official SDK 1.32.1 cancellation: AbortSignal rejected; audited cancellation, "
-              f"socket closed while client live, recovery passed ({elapsed:.2f}s)")
-        return 2
+              f"socket closed while client live, recovery and output-schema checks passed ({elapsed:.2f}s)")
+        return 3
     finally:
         if process.poll() is None:
             process.kill()
