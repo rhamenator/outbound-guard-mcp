@@ -12,6 +12,16 @@ spec.loader.exec_module(candidate)
 
 
 class BuildEvidenceTests(unittest.TestCase):
+    def test_candidate_requires_exact_pinned_compiler_and_cargo(self):
+        evidence = dict(toolchain_channel='1.99.1', rustc_verbose_version='rustc fixture\nrelease: 1.99.1',
+                        cargo_version='cargo 1.99.1 (fixture)')
+        candidate.verify_build_compiler(evidence)
+        for changes in [dict(toolchain_channel='stable'), dict(toolchain_channel='1.99'),
+                        dict(rustc_verbose_version='release: 1.96.0'),
+                        dict(cargo_version='cargo 1.96.0 (fixture)')]:
+            with self.subTest(changes=changes), self.assertRaises(RuntimeError):
+                candidate.verify_build_compiler(evidence | changes)
+
     def test_override_values_are_never_echoed(self):
         for key in ['RUSTFLAGS', 'RUSTC_WRAPPER', 'CARGO_ENCODED_RUSTFLAGS',
                     'CARGO_PROFILE_RELEASE_LTO', 'CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER']:

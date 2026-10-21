@@ -154,6 +154,15 @@ def build_evidence(source_root, source):
             "environment_policy": "reject explicit compiler/wrapper/profile/target-linker overrides; not hermetic"}
 
 
+def verify_build_compiler(evidence):
+    """Do not package a compiler selected by an overriding rustup environment."""
+    channel = evidence['toolchain_channel']
+    if (len(channel.split('.')) != 3 or not all(part.isdigit() for part in channel.split('.')) or
+            f'release: {channel}' not in evidence['rustc_verbose_version'].splitlines() or
+            not evidence['cargo_version'].startswith(f'cargo {channel} ')):
+        raise RuntimeError('Candidate compiler/Cargo must match the exact version in rust-toolchain.toml')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new output directory")
@@ -185,6 +194,7 @@ def main():
                     destination.write_bytes(tar.extractfile(entry).read())
                     destination.chmod(entry.mode & 0o777)
         evidence = build_evidence(Path(folder) / "source", source)
+        verify_build_compiler(evidence)
         subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "--bins", "--examples", "-j", "2",
                         "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
                        cwd=Path(folder) / "source", check=True)
