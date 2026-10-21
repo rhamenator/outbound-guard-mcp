@@ -299,8 +299,37 @@ fn apply_cancellation(message: &Value, pending: &Mutex<Vec<PendingFetch>>) -> io
 }
 
 fn main() -> io::Result<()> {
+    let mut arguments = std::env::args_os().skip(1);
+    let first = arguments.next();
+    let extra = arguments.next().is_some();
+    let check_config = match first.as_deref() {
+        None if !extra => false,
+        Some(value) if !extra && value == "--help" => {
+            writeln!(io::stdout().lock(), "outbound-guard-mcp [--help | --version | --check-config]\n\nNo arguments: run the MCP stdio server (2025-06-18).\n--check-config: validate startup configuration and exit; no DNS or HTTP probe.\n\nEnvironment:\n  OUTBOUND_GUARD_ALLOWED_HOSTS   Comma-separated exact DNS hosts; empty denies all.\n  OUTBOUND_GUARD_EXTRA_CA_CERT   Optional operator-owned single PEM certificate.\n\nExperimental. Only guarded_fetch traffic is covered; fetched content is untrusted.")?;
+            return Ok(());
+        }
+        Some(value) if !extra && value == "--version" => {
+            writeln!(
+                io::stdout().lock(),
+                "outbound-guard-mcp {}",
+                env!("CARGO_PKG_VERSION")
+            )?;
+            return Ok(());
+        }
+        Some(value) if !extra && value == "--check-config" => true,
+        _ => return Err(io::Error::other("Unsupported arguments; run --help")),
+    };
     validate_tls_configuration().map_err(io::Error::other)?;
     let hosts = allowed_hosts_from_env().map_err(io::Error::other)?;
+    if check_config {
+        writeln!(
+            io::stdout().lock(),
+            "{}",
+            json!({"valid":true,"scope":"startup",
+            "allowed_host_count":hosts.len(),"network_checked":false})
+        )?;
+        return Ok(());
+    }
     let pending = Arc::new(Mutex::new(Vec::<PendingFetch>::new()));
     let reader_pending = Arc::clone(&pending);
     // A rendezvous channel retains no queued frames. The reader can hold one

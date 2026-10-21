@@ -30,6 +30,8 @@ def digest(data):
 
 
 def installed_smoke(binary, version, cancellation_probe):
+    subprocess.run([sys.executable, str(REPO / "tools/cli_smoke.py"), str(binary), version],
+                   cwd=binary.parent, check=True, timeout=60)
     messages = [
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
