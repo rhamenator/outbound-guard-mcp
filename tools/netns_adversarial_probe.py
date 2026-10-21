@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Socket-level guarded_fetch checks inside a disposable, route-free network namespace."""
 import gzip
+from pathlib import Path
 import hashlib
 import http.server
 import json
 import os
 import random
 import select
+import queue
 import socket
 import socketserver
 import ssl
@@ -922,6 +924,81 @@ def test_stdio_cancellation(binary):
           "notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered")
 
 
+def test_saturated_cancellation(binary):
+    """Record bounded backpressure, including the control-delay limitation."""
+    for modern in (False, True):
+        HTTP.cancel_started.clear()
+        HTTP.cancel_closed.clear()
+        env = os.environ.copy()
+        env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+        env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = "allowed.test"
+        process = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, env=env)
+        replies = queue.Queue()
+        def read():
+            for line in process.stdout:
+                replies.put(json.loads(line))
+        reader = threading.Thread(target=read, daemon=True)
+        reader.start()
+        meta = {"io.modelcontextprotocol/protocolVersion":"2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities":{}} if modern else {}
+        def send(id_, method, params=None):
+            params = dict(params or {})
+            if modern:
+                params["_meta"] = meta
+            message = {"jsonrpc":"2.0", "method":method, "params":params}
+            if id_ is not None:
+                message["id"] = id_
+            process.stdin.write(json.dumps(message) + "\n")
+            process.stdin.flush()
+        try:
+            if not modern:
+                send("init", "initialize", {"protocolVersion":"2025-06-18", "capabilities":{},
+                     "clientInfo":{"name":"saturation-probe", "version":"1"}})
+                assert replies.get(timeout=4)["id"] == "init"
+                send(None, "notifications/initialized")
+            send("fetch", "tools/call", {"name":"guarded_fetch",
+                 "arguments":{"url":"http://allowed.test/cancel-drip"}})
+            assert HTTP.cancel_started.wait(4)
+            started = time.monotonic()
+            # Eight queued + one reader-held frame hide the later notification.
+            for i in range(9):
+                send(f"queued-{i}", "tools/list", {"padding":"x" * 60000})
+            send(None, "notifications/cancelled", {"requestId":"fetch"})
+            peak_rss = peak_fds = 0
+            observed = []
+            while len(observed) < 10:
+                try:
+                    observed.append(replies.get(timeout=0.05))
+                except queue.Empty:
+                    pass
+                assert time.monotonic() - started < 12, "saturated input did not recover"
+                for line in Path(f"/proc/{process.pid}/status").read_text().splitlines():
+                    if line.startswith("VmRSS:"):
+                        peak_rss = max(peak_rss, int(line.split()[1]))
+                peak_fds = max(peak_fds, len(list(Path(f"/proc/{process.pid}/fd").iterdir())))
+            assert [r["id"] for r in observed] == ["fetch"] + [f"queued-{i}" for i in range(9)]
+            assert observed[0]["result"]["structuredContent"]["rule"] == "EGRESS_RESPONSE_TOO_SLOW"
+            assert peak_rss < 65536 and peak_fds < 64, (peak_rss, peak_fds)
+            assert HTTP.cancel_closed.wait(4)
+            send("audit", "resources/read", {"uri":"outbound-guard://logs/audit.json"})
+            audit = json.loads(replies.get(timeout=4)["result"]["contents"][0]["text"])
+            assert [event["rule"] for event in audit["events"]] == ["EGRESS_RESPONSE_TOO_SLOW"]
+            send("recovered", "tools/call", {"name":"guarded_fetch",
+                 "arguments":{"url":"http://allowed.test/plain"}})
+            assert replies.get(timeout=4)["result"]["structuredContent"]["rule"] == "EGRESS_ALLOWED"
+            process.stdin.close()
+            process.wait(timeout=4)
+            reader.join(timeout=2)
+            assert process.returncode == 0 and not process.stderr.read() and replies.empty()
+            print(f"queue saturation {'modern' if modern else 'legacy'}: bounded recovery; "
+                  f"late cancellation stayed backpressured; RSS={peak_rss} KiB, FDs={peak_fds}")
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
+
 def test_sdk_cancellation(binary, modern=False):
     sdk_dir = os.environ.get("OUTBOUND_GUARD_TEST_SDK_DIR")
     if not sdk_dir:
@@ -1137,6 +1214,7 @@ def main(binary, cancellation_probe):
             "GitLab/PyPI")
         test_cancellation(cancellation_probe)
         test_stdio_cancellation(binary)
+        test_saturated_cancellation(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         test_budgets(binary)
         generated = test_schema_mutations(binary)

@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Private helper: transparently forward MCP; log only method/ID/rule metadata."""
+import sys,subprocess,threading,json,time
+ns,binary,log=sys.argv[1:]
+p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i','PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test',binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
+lock=threading.Lock()
+def record(direction,line):
+ try:
+  m=json.loads(line);entry={'t':time.monotonic(),'direction':direction,'method':m.get('method'),'id':m.get('id')}
+  if m.get('method')=='tools/call':entry['http_method']=m.get('params',{}).get('arguments',{}).get('method','GET')
+  if m.get('method')=='notifications/cancelled':entry['requestId']=m.get('params',{}).get('requestId')
+  d=m.get('result',{}).get('structuredContent')
+  if d:
+   entry['rule']=d.get('rule')
+   if 'status_code' in d:entry['status_code']=d['status_code']
+  with lock:
+   with open(log,'a') as f:f.write(json.dumps(entry)+'\n')
+ except ValueError:pass
+
+def outgoing():
+ for line in p.stdout:
+  record('out',line);sys.stdout.buffer.write(line);sys.stdout.buffer.flush()
+t=threading.Thread(target=outgoing,daemon=True);t.start()
+try:
+ for line in sys.stdin.buffer:
+  record('in',line);p.stdin.write(line);p.stdin.flush()
+finally:
+ p.stdin.close()
+ try:p.wait(timeout=15)
+ except subprocess.TimeoutExpired:p.kill();p.wait()
+ t.join(timeout=2)
