@@ -10,9 +10,26 @@ use std::{
         mpsc, Arc, Mutex,
     },
     thread,
+    time::{Duration, Instant},
 };
 
 const MAX_LINE: usize = 64 * 1024;
+const FRAME_TIMEOUT: Duration = Duration::from_secs(10);
+
+fn frame_timeout() -> io::Error {
+    io::Error::new(io::ErrorKind::TimedOut, "Input frame deadline exceeded")
+}
+
+fn check_frame_clock(clock: &Mutex<Option<Instant>>) -> io::Result<()> {
+    if clock
+        .lock()
+        .map_err(|_| io::Error::other("Input clock unavailable"))?
+        .is_some_and(|start| start.elapsed() >= FRAME_TIMEOUT)
+    {
+        return Err(frame_timeout());
+    }
+    Ok(())
+}
 
 enum Frame {
     Eof,
@@ -28,11 +45,20 @@ enum Session {
     Ready,
 }
 
+#[cfg(test)]
 fn read_frame<R: BufRead>(reader: &mut R) -> io::Result<Frame> {
+    read_frame_tracked(reader, &Mutex::new(None))
+}
+
+fn read_frame_tracked<R: BufRead>(
+    reader: &mut R,
+    clock: &Mutex<Option<Instant>>,
+) -> io::Result<Frame> {
     let mut data = Vec::new();
     let mut too_large = false;
     loop {
         let available = reader.fill_buf()?;
+        check_frame_clock(clock)?;
         if available.is_empty() {
             return if data.is_empty() && !too_large {
                 Ok(Frame::Eof)
@@ -41,6 +67,12 @@ fn read_frame<R: BufRead>(reader: &mut R) -> io::Result<Frame> {
             } else {
                 Ok(Frame::Data(data))
             };
+        }
+        {
+            let mut start = clock
+                .lock()
+                .map_err(|_| io::Error::other("Input clock unavailable"))?;
+            start.get_or_insert_with(Instant::now);
         }
         let length = available
             .iter()
@@ -332,6 +364,8 @@ fn main() -> io::Result<()> {
     }
     let pending = Arc::new(Mutex::new(Vec::<PendingFetch>::new()));
     let reader_pending = Arc::clone(&pending);
+    let frame_clock = Arc::new(Mutex::new(None));
+    let reader_clock = Arc::clone(&frame_clock);
     // A rendezvous channel retains no queued frames. The reader can hold one
     // pending non-control frame; backpressure then pauses further input reads.
     let (tx, rx) = mpsc::sync_channel::<io::Result<Incoming>>(0);
@@ -342,7 +376,10 @@ fn main() -> io::Result<()> {
                 let stdin = io::stdin();
                 let mut reader = stdin.lock();
                 loop {
-                    let frame = read_frame(&mut reader)?;
+                    let frame = read_frame_tracked(&mut reader, &reader_clock)?;
+                    *reader_clock
+                        .lock()
+                        .map_err(|_| io::Error::other("Input clock unavailable"))? = None;
                     let eof = matches!(frame, Frame::Eof);
                     let cancel = Arc::new(AtomicBool::new(false));
                     if let Frame::Data(data) = &frame {
@@ -384,9 +421,15 @@ fn main() -> io::Result<()> {
     let mut writer = stdout.lock();
     let mut session = Session::New;
     loop {
-        let Incoming { frame, cancel } = rx
-            .recv()
-            .map_err(|_| io::Error::other("Input reader stopped"))??;
+        let Incoming { frame, cancel } = loop {
+            match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok(incoming) => break incoming?,
+                Err(mpsc::RecvTimeoutError::Timeout) => check_frame_clock(&frame_clock)?,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    return Err(io::Error::other("Input reader stopped"))
+                }
+            }
+        };
         let response = match frame {
             Frame::Eof => break,
             Frame::TooLarge => Some(rpc_error(Value::Null, -32600, "Request too large")),
@@ -413,6 +456,17 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn expired_partial_frame_is_never_dispatched_even_after_completion() {
+        let clock = std::sync::Mutex::new(Some(std::time::Instant::now() - super::FRAME_TIMEOUT));
+        for bytes in [b"\n".as_slice(), b"".as_slice(), b"ping\n".as_slice()] {
+            let error = super::read_frame_tracked(&mut std::io::Cursor::new(bytes), &clock)
+                .err()
+                .unwrap();
+            assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+        }
+    }
+
     // These protocol tests share the production process-wide fetch permit.
     static FETCH_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
     use super::*;
