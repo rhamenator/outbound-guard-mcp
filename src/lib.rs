@@ -894,6 +894,15 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
         if let Some(denial) = cancelled(cancel) {
             return denial;
         }
+        // A blocking read may cross the total deadline. Check it before rate,
+        // EOF, or read-error classification so timing does not change the rule.
+        if http_started.elapsed() >= HTTP_TOTAL_TIMEOUT {
+            return Denial::new(
+                "EGRESS_RESPONSE_TIMEOUT",
+                "The response exceeded the total time limit.",
+            )
+            .value();
+        }
         if let Ok(bytes) = &read {
             if !transfer_rate.observe(body_started.elapsed(), *bytes) {
                 return Denial::new(
@@ -904,16 +913,7 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
             }
         }
         match read {
-            Ok(0) => {
-                if http_started.elapsed() >= HTTP_TOTAL_TIMEOUT {
-                    return Denial::new(
-                        "EGRESS_RESPONSE_TIMEOUT",
-                        "The response exceeded the total time limit.",
-                    )
-                    .value();
-                }
-                break;
-            }
+            Ok(0) => break,
             Ok(n) => body.extend_from_slice(&chunk[..n]),
             Err(_) => {
                 return Denial::new(
