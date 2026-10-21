@@ -13,6 +13,8 @@ No stable release is approved by this changelog. Candidate archives identify the
 - Bounded stdio frame size, ten-second partial-frame ingestion deadline and three-second reply write/flush deadline. Timeout can terminate a session with an incomplete transport frame; clients must discard it and reconnect.
 - Standalone help/version/startup configuration diagnostics; installed candidate packaging with source, provenance, checksums, locked dependency inventory and shipped upstream notices. Skill ZIP contains only instructions and GPL license.
 
+GET media-type parameters are restricted to one optional UTF-8 charset declaration; conflicting, duplicate, unknown or malformed parameters are denied without response body text.
+
 ### Verification added
 
 - Controlled route-free DNS/HTTP fixtures, malformed framing/schema corpora, deterministic IP/framing properties, process-resource probes, official SDK cancellation and Inspector compatibility checks.

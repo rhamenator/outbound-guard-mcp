@@ -554,9 +554,29 @@ fn valid_dns_name(host: &str) -> bool {
 }
 
 fn supported_content_type(value: &str) -> bool {
-    let media_type = value.split(';').next().unwrap_or("").trim();
-    media_type.eq_ignore_ascii_case("text/plain")
-        || media_type.eq_ignore_ascii_case("application/json")
+    let mut parts = value.split(';');
+    let media_type = parts.next().unwrap_or("").trim();
+    if !media_type.eq_ignore_ascii_case("text/plain")
+        && !media_type.eq_ignore_ascii_case("application/json")
+    {
+        return false;
+    }
+    // Deliberately narrow: no charset guessing or general MIME parameter parser.
+    // Accept only one optional UTF-8 declaration; reject unknown/duplicate params.
+    match parts.next() {
+        None => true,
+        Some(parameter) => {
+            let Some((name, value)) = parameter.trim().split_once('=') else {
+                return false;
+            };
+            name.trim().eq_ignore_ascii_case("charset")
+                && matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "utf-8" | "\"utf-8\""
+                )
+                && parts.next().is_none()
+        }
+    }
 }
 
 fn looks_like_html(text: &str) -> bool {
@@ -867,7 +887,7 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
     if target.method != "HEAD" && !supported_content_type(content_type) {
         return Denial::new(
             "EGRESS_UNSUPPORTED_CONTENT",
-            "Only plain text and JSON are returned at this stage.",
+            "Use text/plain or application/json with no parameters or one charset=utf-8 declaration.",
         )
         .value();
     }
@@ -1079,6 +1099,22 @@ mod tests {
         assert!(!supported_content_type("application/json+html"));
         assert!(!supported_content_type("text/html"));
         assert!(!supported_content_type(""));
+        for value in [
+            "Text/Plain; CHARSET=\"UTF-8\"",
+            "application/json; charset = utf-8",
+        ] {
+            assert!(supported_content_type(value), "{value}");
+        }
+        for value in [
+            "text/plain; charset=iso-8859-1",
+            "application/json; charset=utf-16",
+            "text/plain; charset=utf-8; charset=utf-8",
+            "text/plain; profile=custom",
+            "text/plain; charset=\"utf-8",
+            "text/plain;",
+        ] {
+            assert!(!supported_content_type(value), "{value}");
+        }
     }
     #[test]
     fn leading_html_signatures_are_quarantined() {
