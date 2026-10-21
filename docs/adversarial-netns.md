@@ -105,7 +105,7 @@ This is controlled Linux resolver evidence, not certification of every platform/
 
 ## Controlled HEAD requests
 
-Eight new HEAD fixtures cover: a normal status response with application/octet-stream and representation Content-Length, empty JSON/204, private-target redirect, gzip metadata, duplicate Content-Type, conflicting Content-Length/Transfer-Encoding, seventy response headers, and delayed headers. Allowed responses must contain empty body_text and untrusted_content=true. Denials must contain no body_text. The delayed-header case must fail within a seven-second aggregate probe bound. Exact method/path logs require eight HEAD requests, no GET fallback and no request to the redirect target.
+Eight new HEAD fixtures cover: a normal status response with application/octet-stream and representation Content-Length, empty JSON with status 200, private-target redirect, gzip metadata, duplicate Content-Type, conflicting Content-Length/Transfer-Encoding, seventy response headers, and delayed headers. Allowed responses must contain empty body_text and untrusted_content=true. Denials must contain no body_text. The delayed-header case must fail within a seven-second aggregate probe bound. Exact method/path logs require eight HEAD requests, no GET fallback and no request to the redirect target.
 
 The already locked official SDK additionally calls guarded_fetch with method HEAD in its live recovery process, validates the output schema, and requires status 200 and an empty body. Fixture logs require GET/GET/HEAD for that process's network calls. These nine additional decisions bring the SDK-enabled suite to 1,951 MCP decisions plus two direct library decisions.
 

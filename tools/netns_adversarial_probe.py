@@ -109,8 +109,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
         if self.path == "/head-delayed":
             time.sleep(11)
         try:
-            self.send_response(204 if self.path == "/head-json-empty" else
-                               302 if self.path == "/head-redirect" else 200)
+            self.send_response(302 if self.path == "/head-redirect" else 200)
             self.send_header("Content-Type", "application/json" if self.path == "/head-json-empty"
                              else "application/octet-stream")
             self.send_header("Content-Length", "0" if self.path == "/head-json-empty" else "1024")
