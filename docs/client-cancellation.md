@@ -30,7 +30,7 @@ python3 tools/client_cancellation_probe.py cursor /absolute/path/to/installed/ou
 
 Run one account-backed probe at a time when inference is throttled. The harness only approves the fixture's guarded-fetch permission, rejects other requested tool permissions, and uses an empty private workspace. It acknowledges the client's interrupt, observes the actual MCP wire behavior, checks peer closure while the client remains live, and attempts a recovery call. Cursor additionally exercises loopback denial and HEAD. A report with `matching_wire_cancellation: false` is an observed client limitation, **not a passing prompt-cancellation acceptance gate**. Provider errors must be recorded as inconclusive; do not equate them with a network guard defect. The harness removes its temporary namespace and private client/wire logs. Cleanup signals only PIDs belonging to that exact network namespace, never a host-wide process-name match.
 
-## Queue saturation review
+## Historical queue saturation review (before the priority fix)
 
 `test_saturated_cancellation` in the normal controlled network suite runs both protocol eras with one live fetch and nine ordinary requests, each carrying 60,000 padding bytes. Eight frames fill the channel; the ninth is reader-held, so a cancellation behind it cannot yet reach the control handler. In this fixture the fetch ends by its own slow-response rule. The test requires all nine queued replies, one correct audit decision, socket closure and a successful subsequent fetch; it checks sampled RSS below 64 MiB and descriptors below 64.
 
@@ -44,3 +44,5 @@ A separate Request Guard chat reviewed the new saturation test without edits/bui
 - [Codex app-server interruption](https://developers.openai.com/codex/app-server)
 - [Cursor ACP control and MCP support](https://prod.cursor.com/docs/cli/acp)
 - [Claude Agent SDK interrupt example](https://github.com/anthropics/claude-agent-sdk-python/blob/main/examples/streaming_mode.py)
+
+The [current priority admission implementation](cancellation-priority.md) replaces the historical saturation behavior above. The dated client-control observations and JSON records remain historical evidence; they do not automatically certify a later release candidate or its client UI behavior.
