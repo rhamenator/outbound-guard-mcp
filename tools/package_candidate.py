@@ -17,7 +17,7 @@ import zipfile
 
 
 REPO = Path(__file__).resolve().parent.parent
-INPUTS = ["Cargo.toml", "Cargo.lock", "src", "tests", "examples", "README.md", "LICENSE", "SECURITY.md",
+INPUTS = ["Cargo.toml", "Cargo.lock", "src", "tests", "examples", "README.md", "CHANGELOG.md", "LICENSE", "SECURITY.md",
           "skills", "tools", "docs", "rust-toolchain.toml"]
 
 
@@ -140,7 +140,7 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = git("archive", "--format=tar.gz", "--prefix=source/", revision, "--",
-        "Cargo.toml", "Cargo.lock", "src", "tests", "examples", "rust-toolchain.toml", "LICENSE", "README.md",
+        "Cargo.toml", "Cargo.lock", "src", "tests", "examples", "rust-toolchain.toml", "LICENSE", "README.md", "CHANGELOG.md",
         "SECURITY.md", "tools", "docs", "skills")
     # Build from the committed snapshot, excluding untracked build.rs or Cargo config.
     with tempfile.TemporaryDirectory(prefix="outbound-guard-source-") as folder:
@@ -164,7 +164,7 @@ def main():
         dependencies = dependency_files(Path(folder) / "source")
     root = f"outbound-guard-mcp-{version}-candidate.{revision[:12]}-linux-x86_64"
     files = {"bin/outbound-guard-mcp": binary, **dependencies}
-    files.update({name: git("show", f"{revision}:{name}") for name in ("README.md", "LICENSE", "SECURITY.md")})
+    files.update({name: git("show", f"{revision}:{name}") for name in ("README.md", "CHANGELOG.md", "LICENSE", "SECURITY.md")})
     files["source.tar.gz"] = source
     files["provenance.json"] = (json.dumps({"revision": revision, "version": version,
         "candidate": True, "stable_release": False, "platform": "linux-x86_64",
