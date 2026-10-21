@@ -88,3 +88,13 @@ Keep one outstanding fetch for timely cancellation. The zero-capacity input hand
 ### Slow-transfer policy
 
 After response headers, a three-second grace period allows short small responses to finish. Longer responses must deliver at least 1,500 bytes across the preceding three completed one-second buckets (500 bytes/second average). A fixed four-bucket counter detects slow drips even after an initial burst; `EGRESS_RESPONSE_TOO_SLOW` returns no partial body and is audited. Checks occur when blocking reads return, so the existing idle timeout can delay detection. Legitimate slow or small long-lived responses can be rejected; this narrow tool does not support streaming subscriptions. The ten-second request deadline and size limits still apply independently.
+
+### Verify an installation
+
+```sh
+outbound-guard-mcp --help
+outbound-guard-mcp --version
+outbound-guard-mcp --check-config
+```
+
+`--check-config` validates the configured exact-host allowlist and optional CA file, then exits. Its JSON reports `valid`, `scope: "startup"`, the deduplicated `allowed_host_count`, and `network_checked: false`. Empty configuration is valid and denies all egress. No hostnames, certificate contents or file paths are printed. Invalid configuration exits nonzero with a fixed diagnostic. Help/version work even with invalid configuration. Unknown or combined arguments fail rather than starting stdio. Launch the MCP server **without arguments** in client configuration. This check does not establish destination reachability, TLS interoperability, MCP client setup or production readiness; those need the documented client/fixture tests. `tools/cli_smoke.py` tests these commands in CI and against the installed candidate.
