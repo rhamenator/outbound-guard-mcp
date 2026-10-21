@@ -507,6 +507,31 @@ def test_schema_mutations(binary):
     return len(decisions)
 
 
+def test_github_secrets(binary):
+    prefixes = ("github_pat_", "ghu_", "ghs_", "ghr_")
+    tokens = [prefix + "A" * 20 for prefix in prefixes]
+    blocked_paths = [path for token in tokens
+                     for path in (token, "docs/" + token + "/data", token + "A" * 16)]
+    # Synthetic stateless installation-token shape; no real JWT or credential.
+    blocked_paths.append("ghs_123_eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJmaXh0dXJlIn0.fixture")
+    before = (DNS.queries, len(HTTP.hits))
+    decisions, _ = call_arguments(binary,
+        [{"url": "http://allowed.test/" + path} for path in blocked_paths],
+        redaction_markers=blocked_paths)
+    assert all(item["rule"] == "EGRESS_SECRET_DETECTED" and "body_text" not in item
+               for item in decisions), decisions
+    assert (DNS.queries, len(HTTP.hits)) == before, "GitHub token opened DNS/HTTP"
+    controls = [prefix + suffix for prefix in prefixes for suffix in ("A" * 19, "guide")]
+    decisions, _ = call_arguments(binary,
+        [{"url": "http://allowed.test/" + path} for path in controls])
+    assert all(item["rule"] == "EGRESS_ALLOWED" and item["body_text"] == "fixture-ok"
+               for item in decisions), decisions
+    assert HTTP.hits[before[1]:] == ["/" + path for path in controls]
+    print(f"GitHub secret probe: {len(blocked_paths)} synthetic paths blocked before DNS/HTTP, "
+          f"no result/stderr/audit marker echo; {len(controls)} lookalike controls fetched")
+    return len(blocked_paths) + len(controls)
+
+
 def test_budgets(binary):
     # A fresh process isolates each budget; no sleeps, external routes, or real hosts.
     before_hits, before_queries = len(HTTP.hits), len(DNS.a_names)
@@ -673,9 +698,10 @@ def main(binary):
             assert "body_text" not in decision, (path, decision)
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
+        github_cases = test_github_secrets(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
-        print(f"netns adversarial probe: {1184 + generated} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1184 + generated + github_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
