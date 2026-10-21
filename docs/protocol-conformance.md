@@ -18,11 +18,11 @@ The server emits no server-to-client requests and does not request sampling, roo
 | --- | --- |
 | Stateless discovery/tools, metadata/version/ID errors, result types, deterministic listings, private caching, invalid-request no-dispatch, legacy coexistence, parse/size errors and subscription acknowledgement/closure | `tools/modern_stdio_probe.py` plus Rust request/ID regressions |
 | Typed IDs and exact numeric cancellation matching | Rust numeric normalization cases and controlled stdio cancellation with request ID `1.0` cancelled as `1`; string `"1"` stays distinct |
-| Modern/legacy official clients | Locked development-only SDK 2.0.0 pinned modern and SDK 1.32.1 legacy run the same shared abort/audit/recovery/schema/GET/HEAD scenario |
-| Inspector negotiation | Inspector 2.5.0 explicit legacy, automatic modern discovery, pinned modern, strict tool/schema, denial, audit and child-environment checks |
+| Modern/legacy official clients | Locked development-only SDK 2.3.1 pinned modern and SDK 1.32.1 legacy run the same shared abort/audit/recovery/schema/GET/HEAD scenario |
+| Inspector negotiation | Inspector 2.11.0 explicit legacy, automatic modern discovery, pinned modern, strict tool/schema, denial, audit and child-environment checks |
 | Installed artifact | Candidate packaging repeats modern wire, Inspector, resource and both SDK network probes against the exact extracted optimized build |
 
-Inspector's CLI `initialize` command reports connection metadata even for a modern connection; it does not imply a modern wire handshake. The CLI has no direct `server/discover` command, so raw wire and SDK checks verify that method. Earlier pinned-modern refusal/fallback evidence in historical documents predates this implementation.
+Inspector's CLI `initialize` command reports connection metadata even for a modern connection; it does not imply a modern wire handshake. The historical CLI did not expose a direct `server/discover` command; raw wire and SDK checks verify that method without relying on a CLI method alias. Earlier pinned-modern refusal/fallback evidence in historical documents predates this implementation.
 
 Current tests do not constitute exhaustive formal certification, all optional extensions, a remote transport, every client UI, or another repository's conformance. Cursor authentication and final-candidate Codex/Claude/Cursor tests remain release work. Deprecated/optional logging, completion, tasks, ongoing subscriptions and elicitation features are not advertised as available.
 

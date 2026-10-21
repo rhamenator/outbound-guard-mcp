@@ -49,6 +49,8 @@ def main(binary):
     for cursor in ('unknown', None, 4):
         add('tools/list', {'cursor':cursor}, -32602)
     add('initialize', code=-32601)
+    for bad_filter in (None, [], {'toolsListChanged':'yes'}, {'resourceSubscriptions':[1]}):
+        add('subscriptions/listen', {'notifications':bad_filter}, -32602)
     for invalid_id in (None, True, {}, [], 1.5):
         messages.append({'jsonrpc':'2.0','id':invalid_id,'method':'tools/list','params':{'_meta':META}})
         expected.append((None, -32600))

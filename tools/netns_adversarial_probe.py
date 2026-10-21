@@ -951,7 +951,7 @@ def test_sdk_cancellation(binary, modern=False):
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
-        label = "2.0.0 modern" if modern else "1.32.1 legacy"
+        label = "2.3.1 modern" if modern else "1.32.1 legacy"
         print(f"official SDK {label} cancellation: AbortSignal rejected; audited cancellation, "
               f"socket closed while client live, recovery and output-schema checks passed ({elapsed:.2f}s)")
         return 4

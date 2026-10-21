@@ -45,7 +45,7 @@ Before connecting a fresh installation, the operator may run `outbound-guard-mcp
 
 GitLab/PyPI token-shaped URL material can produce EGRESS_SECRET_DETECTED before DNS. Ask the operator for a credential-free approved URL; never rewrite, split or encode a token to bypass scanning. Signatures require recognized prefixes and at least 20 following token-alphabet characters; customized or shorter tokens and other secret formats are not comprehensively covered. Public token-like strings may be rejected.
 
-Inspector 2.5.0 tests cover explicit legacy MCP 2025-06-18, automatic modern discovery and pinned modern 2026-07-28. Locked official SDK 1.32.1 and 2.0.0 probes cover legacy and modern cancellation/recovery; this does not certify cancellation from every client UI. In Inspector, configure protocolEra in the server configuration file; its unsupported --protocol-era CLI option is silently ignored.
+Inspector 2.11.0 tests cover explicit legacy MCP 2025-06-18, automatic modern discovery and pinned modern 2026-07-28. Locked official SDK 1.32.1 and 2.3.1 probes cover legacy and modern cancellation/recovery; this does not certify cancellation from every client UI. In Inspector, configure protocolEra in the server configuration file. Historical 2.5.0 checks showed that a CLI flag could be ignored, so use the tested configuration approach.
 
 A plain-text response beginning with a recognized HTML fragment root (including div/span containers, forms, images or templates) is rejected with EGRESS_HTML_MISLABELED and no body. Ask the operator for an approved plain-text or JSON endpoint. This check does not render a DOM, evaluate hidden CSS, remove every hidden link, or sanitize arbitrary text/JSON instructions.
 

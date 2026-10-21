@@ -34,4 +34,4 @@ The installed candidate also passes `tools/cli_smoke.py`: exact manifest version
 
 Installed Inspector checks now select the era through a temporary read-only server config, exercising explicit legacy, automatic fallback and pinned-modern refusal. See [the harness correction and limits](adversarial-stdio.md#inspector-era-selection-and-fallback); earlier unsupported CLI flags did not prove era selection.
 
-Installed candidates now run the network-free modern stdio corpus plus Inspector explicit legacy/automatic-modern/pinned-modern checks. When the locked SDK fixture directory is enabled (as in CI), both legacy 1.32.1 and modern 2.0.0 cancellation/recovery cases are required. See [conformance evidence](protocol-conformance.md).
+Installed candidates now run the network-free modern stdio corpus plus Inspector explicit legacy/automatic-modern/pinned-modern checks. When the locked SDK fixture directory is enabled (as in CI), both legacy 1.32.1 and modern 2.3.1 cancellation/recovery cases are required. See [conformance evidence](protocol-conformance.md).

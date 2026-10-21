@@ -1,1 +1,1 @@
-{"name":"outbound-guard-sdk-probe","private":true,"type":"module","dependencies":{"@modelcontextprotocol/client":"2.0.0","@modelcontextprotocol/sdk":"1.32.1"}}
+{"name":"outbound-guard-sdk-probe","private":true,"type":"module","dependencies":{"@modelcontextprotocol/client":"2.3.1","@modelcontextprotocol/sdk":"1.32.1"}}
