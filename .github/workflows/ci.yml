@@ -25,6 +25,8 @@ jobs:
       - run: cargo build --locked --bins --examples
       - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/stdio_resource_probe.py target/debug/outbound-guard-mcp
+      - run: npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund
+      - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"
       - run: bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
       - run: python3 tools/inspector_smoke.py target/debug/outbound-guard-mcp
       - run: python3 tools/package_candidate.py --output dist/candidate
