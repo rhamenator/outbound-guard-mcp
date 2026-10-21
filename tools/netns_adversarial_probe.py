@@ -213,7 +213,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 except (BrokenPipeError, ConnectionResetError):
                     break
                 time.sleep(1)
-            time.sleep(0.5)
+            time.sleep(2.5)
             return
         if self.path == "/redirect":
             self.send_response(302)
@@ -1077,7 +1077,8 @@ def main(binary, cancellation_probe):
             elapsed = time.monotonic() - started
             assert decision["rule"] == rule, (path, decision)
             assert "body_text" not in decision, (path, decision)
-            assert elapsed < (7 if rule == "EGRESS_RESPONSE_TOO_SLOW" else 16), (path, elapsed)
+            bound = 11.5 if path == "late-eof" else (7 if rule == "EGRESS_RESPONSE_TOO_SLOW" else 16)
+            assert elapsed < bound, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
             print(f"response timing probe: {path} -> {rule} in {elapsed:.2f}s; no partial body")
         steady = call(binary, "allowed.test", "steady-rate")
