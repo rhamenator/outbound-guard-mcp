@@ -105,6 +105,37 @@ def deadline_cases(binary):
             child.wait()
 
 
+def output_client_controls(binary):
+    env = {key: value for key, value in os.environ.items() if not key.startswith("OUTBOUND_GUARD_")}
+    marker = "PRIVATE_OUTPUT_MARKER" * 1000
+    # Drain a response larger than the backpressure fixture's pipe. A valid
+    # large ID must survive byte-for-byte, including a following normal reply.
+    result = subprocess.run([binary], input=frame("ping", marker) + frame("ping", 19),
+                            capture_output=True, env=env, timeout=6, check=True)
+    assert not result.stderr
+    assert [json.loads(line) for line in result.stdout.splitlines()] == [
+        {"jsonrpc": "2.0", "id": marker, "result": {}},
+        {"jsonrpc": "2.0", "id": 19, "result": {}},
+    ]
+    child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, env=env)
+    try:
+        # Keep stdin open: exit must follow the write failure, not input EOF.
+        child.stdout.close()
+        start = time.monotonic()
+        child.stdin.write(frame("ping", marker))
+        child.stdin.flush()
+        child.wait(timeout=3)
+        assert child.returncode != 0
+        error = child.stderr.read()
+        assert b"Broken pipe" in error and b"PRIVATE_OUTPUT_MARKER" not in error, error
+        print(f"stdout client controls: large-ID reply and subsequent ping intact; closed reader exited in {time.monotonic() - start:.2f}s without ID echo on stderr")
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.wait()
+
+
 def output_backpressure(binary):
     env = {key: value for key, value in os.environ.items() if not key.startswith("OUTBOUND_GUARD_")}
     child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -121,7 +152,7 @@ def output_backpressure(binary):
         elapsed = time.monotonic() - start
         assert child.returncode != 0 and 2 <= elapsed <= 6
         stderr = child.stderr.read()
-        assert b"Output write deadline exceeded" in stderr and marker.encode() not in stderr, stderr
+        assert b"Output write deadline exceeded" in stderr and b"PRIVATE_OUTPUT_MARKER" not in stderr, stderr
         # Bytes already written cannot be retracted. No complete JSON reply may
         # escape; clients must discard the partial frame and reconnect.
         partial = child.stdout.read()
@@ -148,6 +179,7 @@ def main(binary):
 
     deadline_cases(binary)
     output_backpressure(binary)
+    output_client_controls(binary)
 
     # Linux reports ru_maxrss in KiB. Keep headroom for runtime and CI variance.
     peak_kib = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
