@@ -673,6 +673,79 @@ def test_cancellation(probe):
             process.communicate()
 
 
+def test_stdio_cancellation(binary):
+    marker = "synthetic-cancellation-reason"
+    for active_id in ("1", 1):
+        wrong_id = 1 if isinstance(active_id, str) else "1"
+        HTTP.cancel_started.clear()
+        HTTP.cancel_closed.clear()
+        before_hits = len(HTTP.hits)
+        env = os.environ.copy()
+        env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+        env["OUTBOUND_GUARD_ALLOWED_HOSTS"] = "allowed.test"
+        process = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, env=env)
+        seen = []
+        def send(message):
+            process.stdin.write(json.dumps(message) + "\n")
+            process.stdin.flush()
+        def receive(id_):
+            assert select.select([process.stdout], [], [], 6)[0], "stdio cancellation timed out"
+            line = process.stdout.readline()
+            seen.append(line)
+            reply = json.loads(line)
+            assert reply["id"] == id_, reply
+            return reply
+        def cancel(id_, **fields):
+            send({"jsonrpc":"2.0", "method":"notifications/cancelled",
+                  "params":dict(requestId=id_, **fields)})
+        try:
+            send({"jsonrpc":"2.0", "id":"init", "method":"initialize", "params":{
+                "protocolVersion":"2025-06-18", "capabilities":{},
+                "clientInfo":{"name":"cancel-wire-probe", "version":"1"}}})
+            receive("init")
+            send({"jsonrpc":"2.0", "method":"notifications/initialized"})
+            send({"jsonrpc":"2.0", "id":active_id, "method":"tools/call", "params":{
+                "name":"guarded_fetch", "arguments":{"url":"http://allowed.test/cancel-drip"}}})
+            assert HTTP.cancel_started.wait(4), "MCP fetch did not receive fixture bytes"
+            cancel(wrong_id, reason=marker)
+            cancel("init")  # Initialization cannot be cancelled.
+            cancel(active_id, reason=False)
+            cancel(active_id, _meta=[])
+            time.sleep(0.15)
+            assert not HTTP.cancel_closed.is_set(), "malformed/wrong-ID cancellation closed the socket"
+            started = time.monotonic()
+            cancel(active_id, reason=marker)
+            send({"jsonrpc":"2.0", "id":"barrier", "method":"ping"})
+            assert receive("barrier")["result"] == {}  # No reply for the cancelled call or notification.
+            assert time.monotonic() - started < 5
+            assert HTTP.cancel_closed.wait(4) and process.poll() is None
+            send({"jsonrpc":"2.0", "id":"audit", "method":"resources/read",
+                  "params":{"uri":"outbound-guard://logs/audit.json"}})
+            audit = json.loads(receive("audit")["result"]["contents"][0]["text"])
+            assert [event["rule"] for event in audit["events"]] == ["EGRESS_CANCELLED"]
+            cancel(active_id)  # Late/duplicate notification must not poison reuse of a completed ID.
+            send({"jsonrpc":"2.0", "id":active_id, "method":"tools/call", "params":{
+                "name":"guarded_fetch", "arguments":{"url":"http://allowed.test/plain"}}})
+            decision = receive(active_id)["result"]["structuredContent"]
+            assert decision["rule"] == "EGRESS_ALLOWED" and decision["body_text"] == "fixture-ok"
+            send({"jsonrpc":"2.0", "id":"not-a-notification", "method":"notifications/cancelled",
+                  "params":{"requestId":active_id}})
+            assert receive("not-a-notification")["error"]["code"] == -32601
+            process.stdin.close()
+            process.wait(timeout=5)
+            tail, stderr = process.stdout.read(), process.stderr.read()
+            assert process.returncode == 0 and not tail and not stderr
+            assert marker not in "".join(seen)
+            assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+    print("stdio cancellation probe: string/numeric IDs matched exactly; malformed, unknown and late "
+          "notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered")
+
+
 def main(binary, cancellation_probe):
     dns = socketserver.ThreadingUDPServer(("127.0.0.1", 53), DNS)
     http_server = http.server.ThreadingHTTPServer((PUBLIC_FIXTURE, 80), HTTP)
@@ -801,9 +874,10 @@ def main(binary, cancellation_probe):
             assert HTTP.hits[-1] == f"/{path}"
         github_cases = test_github_secrets(binary)
         test_cancellation(cancellation_probe)
+        test_stdio_cancellation(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
-        print(f"netns adversarial probe: {1184 + generated + github_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1188 + generated + github_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

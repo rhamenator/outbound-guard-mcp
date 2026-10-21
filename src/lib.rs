@@ -574,7 +574,7 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
 }
 
 /// Cooperative library cancellation. Blocking DNS/HTTP operations finish or hit
-/// their existing deadlines before observing cancellation; stdio is unchanged.
+/// their existing deadlines before observing cancellation.
 pub fn guarded_fetch_cancellable(
     args: &Value,
     allowed_hosts: &[String],
