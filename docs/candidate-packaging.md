@@ -49,3 +49,21 @@ This is a narrow environment gate. PATH executables, the installed toolchain, Ca
 The manifest declares Rust `1.89`. A separate Ubuntu 24.04 CI job installs `1.89.0`, explicitly runs `cargo +1.89.0 test --locked --all-targets` and builds the binaries/examples, then exercises the built server's CLI, modern wire protocol and numeric-ID corpus. It uses a separate compiler cache key and two build jobs. An assertion ties the tested version to the manifest so a future minimum-version edit cannot silently retain an obsolete job.
 
 This job verifies the locked dependency graph on Linux x86_64 GNU with the declared minimum compiler. The main stable CI job still runs the full network, SDK, Inspector, resource and packaging gates. It is not an MSRV promise for arbitrary future unlocked dependency versions, other targets or all feature combinations. Candidate provenance records its own observed build compiler; the MSRV job does not make a stable-channel release artifact a Rust 1.89 build. A passing job is required evidence before advertising minimum-compiler compatibility; see the PR/CI record in issue #65.
+
+## Independent candidate comparison
+
+Run the offline standard-library verifier on independently obtained candidate tarballs:
+
+```bash
+python3 tools/compare_candidates.py /path/to/local-candidate.tar.gz /path/to/ci-candidate.tar.gz
+```
+
+It executes no archive content and extracts nothing to disk. It checks the executable, source archive and embedded lockfile against provenance, then compares source-file bytes, recorded compiler/build settings, package claims and executable bytes. Root directory names, commit IDs and tar header timestamps are excluded from the source-content comparison: GitHub pull-request merge commits differ from branch commits even when their file bytes match. Exit 0 means those compared values match, 1 means a valid mismatch, and 2 means invalid input. Whole-archive hashes and revisions remain in the JSON report. Member count and file-content size are bounded; this is an artifact review helper, not an untrusted-archive sandbox.
+
+A match does not authenticate a publisher or prove the builders were independent. Verify acquisition/checksums and record the hosts/workflow separately; a comparison of a file with itself is no independent rebuild evidence. This is not a signature check or stable-release approval. It compares source content, not original filesystem metadata or all packaged ancillary files.
+
+### First cross-host observation: PR #75
+
+The local optimized candidate at `2534e80d19e49cbf75096cb13ed2ce2e8904d4c3` and GitHub CI run [39680694775](https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39680694775) at synthetic merge revision `d0c7e8be56f32025b1329b67713cfacf4cf6ded4` have identical source-file bytes and lockfile, but different compilers and executables. The verifier exits 1. The [recorded comparison](rebuild-comparison-pr75.json) retains observed hashes and settings. Local Rust is 1.96.0; CI Rust is 1.99.1. This is a failed reproducibility comparison, not an application-test failure; both candidates passed their installed tests.
+
+Next: align an explicitly versioned build compiler across independent builders, then replay this comparison. Matching compilers alone will not guarantee identical native linker inputs, paths or executable bytes; investigate any remaining differences rather than waive them. Signing and human release review remain separate open gates.
