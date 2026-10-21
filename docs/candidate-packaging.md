@@ -75,3 +75,19 @@ The first compiler-aligned local/CI comparison (PR #77, CI run 39684517905) matc
 Candidate builds now set only internally generated `--remap-path-prefix` Rust flags for the exported source, Cargo home and target directory, mapping to `/build/source`, `/build/cargo` and `/build/target`. The encoded Cargo flags preserve argument boundaries even when source/cache paths contain spaces. User-supplied compiler/wrapper/flag overrides remain rejected before constructing this environment. The logical mapping policy is recorded in provenance and compared by the offline verifier; private absolute builder paths are not recorded there. This applies to candidate Rust builds, including dependencies, not ordinary debug builds or native C compilation.
 
 Path normalization is not a hermetic compiler/linker sandbox. Native tools, system libraries, host configuration and Cargo cache remain trusted inputs. Independent artifacts must still match; inspect any remaining mismatch rather than assuming that remapping proves reproducibility.
+
+## Pinned native candidate builder
+
+CI builds candidate binaries with `--container-build`. To reproduce that native environment locally, use Docker and a fresh output directory:
+
+```bash
+python3 tools/package_candidate.py --container-build --output dist/native-candidate
+```
+
+The builder is the Linux amd64 manifest of the official Rust 1.99.1 slim Bookworm image, pinned by immutable digest in `BUILDER_IMAGE` in the packaging script. This pins the image's Rust, GCC, libc/startup inputs and native build utilities together. No apt update or tool installation occurs inside the build. Docker may download the image and Cargo downloads checksum-locked public dependencies into a separate cache under `target/candidate-container-cargo`. Access to the local Docker daemon is required; Docker access itself is privileged host capability. The ordinary host build remains available without the flag, but is not equivalent independent native-build evidence.
+
+The container runs as the invoking UID/GID with a read-only root filesystem/source mount, dropped capabilities, no-new-privileges, two CPUs, 4 GiB memory including swap, 256 PIDs and a bounded temporary filesystem. Only the committed source export, dedicated target directory and dedicated Cargo cache are mounted. Host home, credentials, environment overrides and Docker socket are not passed into the builder. Network remains available for Cargo; this is not an offline or malicious-builder sandbox. Builds execute dependency build scripts and trust the pinned image, Docker daemon and host kernel.
+
+Provenance records the immutable builder reference, platform and observed container GCC/libc versions alongside the actual Rust/Cargo versions. Both versions are checked against the repository pin before compilation; evidence is rechecked after compilation. The offline comparator includes native-builder evidence, so host-vs-container settings cannot silently count as equivalent. The compiled binary and cancellation example are then exercised by the existing fresh-install/controlled-hostile fixtures outside the container. The server's runtime does not require Docker.
+
+This follows the compiler-aligned/path-remapped PR #78 comparison, which still differed in `.text`, unwind data and other ELF sections with local GCC15.2 versus CI GCC13.3. A pinned environment is an input control; only an actual independent matching binary comparison can supply reproducibility evidence. Signing, independent-host attestation and human stable-release approval remain separate gates.

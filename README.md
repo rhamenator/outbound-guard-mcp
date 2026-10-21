@@ -130,3 +130,5 @@ Real-client control-path evidence: Claude Code 2.1.301 emitted MCP cancellation 
 For release engineering, [compare independently built candidates offline](docs/candidate-packaging.md#independent-candidate-comparison). The first local/CI comparison detected a compiler and executable mismatch; this gate remains open.
 
 Source builds select Rust/Cargo 1.99.1 through `rust-toolchain.toml`; the minimum supported compiler remains 1.89 and is tested separately. Candidate packaging rejects a selected compiler/Cargo version that differs from the exact build pin. See [compiler evidence](docs/candidate-packaging.md#compilerbuild-evidence).
+
+For independent native rebuilds, use the [digest-pinned candidate builder](docs/candidate-packaging.md#pinned-native-candidate-builder). It requires Docker during packaging; installed server binaries do not require Docker.

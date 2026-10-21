@@ -12,6 +12,22 @@ spec.loader.exec_module(candidate)
 
 
 class BuildEvidenceTests(unittest.TestCase):
+    def test_native_builder_has_only_explicit_mounts_and_bounded_resources(self):
+        command = candidate.container_command(Path('/source'), Path('/target'), Path('/cache'), 1000, 1000, '1.99.1')
+        mounts = [command[index + 1] for index, value in enumerate(command) if value == '--mount']
+        self.assertEqual(mounts, ['type=bind,source=/source,target=/build/source,readonly',
+                                 'type=bind,source=/target,target=/build/target',
+                                 'type=bind,source=/cache,target=/build/cargo'])
+        for option, value in [('--cpus', '2'), ('--memory', '4g'), ('--memory-swap', '4g'),
+                              ('--pids-limit', '256'), ('--cap-drop', 'ALL'), ('--user', '1000:1000')]:
+            self.assertEqual(command[command.index(option) + 1], value)
+        self.assertIn('--read-only', command)
+        self.assertRegex(candidate.BUILDER_IMAGE, r'@sha256:[a-f0-9]{64}$')
+        self.assertNotIn('--privileged', command)
+        self.assertNotIn('/var/run/docker.sock', ' '.join(command))
+        script = command[-1]
+        self.assertLess(script.index('grep -Fqx'), script.index('exec nice'))
+
     def test_internal_path_flags_preserve_argument_boundaries_and_reject_overrides(self):
         env = {'CARGO_HOME': '/cache with spaces', 'KEEP': 'unchanged'}
         result = candidate.candidate_build_env(Path('/source with spaces'), Path('/target with spaces'), env)
