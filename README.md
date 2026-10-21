@@ -102,3 +102,7 @@ outbound-guard-mcp --check-config
 ### Provider token signatures
 
 The URL scanner also blocks GitLab’s documented token prefixes and the PyPI `pypi-` prefix followed by at least 20 ASCII alphanumeric, underscore or hyphen characters. This reuses the existing signature scanner before budget reservation and DNS. It is conservative shape matching, not credential validation: token-like public text may be rejected, shorter or custom-prefix secrets may escape signatures, and the entropy heuristic is not complete exfiltration detection. GitLab administrators can customize personal-token prefixes. See the [provider corpus and sources](docs/adversarial-netns.md#gitlab-and-pypi-token-signatures).
+
+### Mislabeled HTML fragments
+
+The leading-HTML signature check also covers common fragment roots such as div/span containers, forms, inputs, images, metadata/link elements, embedded objects, templates, noscript and paragraphs. A plain-text response beginning with these tags is denied as EGRESS_HTML_MISLABELED without returning its body. Matching is case-insensitive and requires a tag boundary. This is a bounded leading-signature heuristic, not DOM rendering, CSS visibility analysis, a complete HTML parser or prompt-injection sanitization. Markup later in plain text and HTML strings inside valid JSON can remain untrusted output.

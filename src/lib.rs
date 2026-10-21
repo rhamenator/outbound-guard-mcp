@@ -568,7 +568,8 @@ fn looks_like_html(text: &str) -> bool {
         return true;
     }
     [
-        "html", "head", "body", "script", "style", "iframe", "svg", "a",
+        "html", "head", "body", "script", "style", "iframe", "svg", "a", "div", "span", "form",
+        "input", "button", "img", "meta", "link", "object", "embed", "template", "noscript", "p",
     ]
     .iter()
     .any(|tag| {
@@ -1083,8 +1084,23 @@ mod tests {
             "<script>alert(1)</script>",
             "<script\u{000c}src=x>",
             "<!-- hidden -->",
+            "<div style=\"display:none\"><a href=\"/trap\">hidden</a></div>",
+            "<span hidden>trap</span>",
         ] {
             assert!(looks_like_html(text), "{text}");
+        }
+        for tag in [
+            "div", "span", "form", "input", "button", "img", "meta", "link", "object", "embed",
+            "template", "noscript", "p",
+        ] {
+            for suffix in [">", "/>", " hidden>", "\tstyle=hidden>", "\u{000c}hidden>"] {
+                assert!(looks_like_html(&format!(
+                    " \u{feff}<{}{suffix}",
+                    tag.to_uppercase()
+                )));
+            }
+            assert!(!looks_like_html(&format!("<{tag}-custom>")));
+            assert!(!looks_like_html(&format!("<{tag}example>")));
         }
         for text in [
             "ordinary plain text",
