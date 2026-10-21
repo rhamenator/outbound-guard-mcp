@@ -63,6 +63,8 @@ def installed_smoke(binary, version, cancellation_probe):
                    cwd=REPO, env=env, check=True, timeout=50)
     subprocess.run([sys.executable, str(REPO / "tools/modern_stdio_probe.py"), str(binary)],
                    cwd=REPO, env=env, check=True, timeout=30)
+    subprocess.run([sys.executable, str(REPO / "tools/protocol_id_probe.py"), str(binary)],
+                   cwd=REPO, env=env, check=True, timeout=30)
     probe_env = env.copy()
     if "OUTBOUND_GUARD_TEST_SDK_DIR" in os.environ:
         probe_env["OUTBOUND_GUARD_TEST_SDK_DIR"] = os.environ["OUTBOUND_GUARD_TEST_SDK_DIR"]

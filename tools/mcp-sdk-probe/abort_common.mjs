@@ -27,8 +27,10 @@ export async function runAbortProbe(client, transport, validator, callTool, barr
     );
     console.log('FETCH_STARTED');
     assert.equal((await once(input, 'line'))[0], 'abort');
+    const interleaved = barrier(); // Queue an ordinary request before cancellation.
     controller.abort(new Error('synthetic-sdk-abort'));
     await pending;
+    await interleaved;
     await barrier();
     const resource = await client.readResource({ uri: 'outbound-guard://logs/audit.json' });
     const audit = JSON.parse(resource.contents[0].text);

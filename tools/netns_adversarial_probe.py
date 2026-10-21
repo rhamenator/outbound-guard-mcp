@@ -886,8 +886,12 @@ def test_stdio_cancellation(binary):
             cancel(active_id, _meta=[])
             time.sleep(0.15)
             assert not HTTP.cancel_closed.is_set(), "malformed/wrong-ID cancellation closed the socket"
+            # An ordinary request must not prevent the reader from seeing the
+            # cancellation behind it while the fetch is still running.
+            send({"jsonrpc":"2.0", "id":"interleaved", "method":"ping"})
             started = time.monotonic()
             cancel(active_id if isinstance(active_id, str) else 1, reason=marker)
+            assert receive("interleaved")["result"] == {}
             send({"jsonrpc":"2.0", "id":"barrier", "method":"ping"})
             assert receive("barrier")["result"] == {}  # No reply for the cancelled call or notification.
             assert time.monotonic() - started < 5

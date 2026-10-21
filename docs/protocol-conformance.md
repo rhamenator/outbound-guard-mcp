@@ -32,3 +32,11 @@ Current tests do not constitute exhaustive formal certification, all optional ex
 - [Base messages and metadata](https://modelcontextprotocol.io/specification/2026-07-28/basic)
 - [Versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning), [discovery](https://modelcontextprotocol.io/specification/2026-07-28/server/discover), [tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
 - [Subscriptions](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions), [multi-round-trip requests](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
+
+## Independent implementation review, 2026-10-21
+
+The separate Request Guard maintenance chat performed a read-only review of main `42b9984` against the modern stdio/base/schema requirements and legacy initialization. Scope: metadata, errors/results/discovery, subscription acknowledgement/closure, cancellation and framing. This is a separate reviewer of this implementation, not third-party certification or human release approval.
+
+Finding: a zero-capacity input handoff could leave the stdin reader blocked on ordinary request B while fetch A ran, preventing observation of a later cancellation for A. The correction allows eight queued frames plus one reader-held frame, keeping allocation bounded while allowing that interleaving. At queue saturation, input backpressure remains; this finite queue is not an unlimited control-priority channel. The protocol acceptance gate stays open for final review, client UI cancellation and saturation policy.
+
+Regression evidence: raw wire (string and numeric IDs) and both official SDK clients queue an ordinary request before aborting the live fetch. No reply is permitted for the cancelled fetch; audit, peer closure, recovery and ID reuse are checked. `tools/protocol_id_probe.py` adds 251 deterministic numeric-ID cases against Python Decimal rather than copying Rust normalization logic; accepted integer IDs retain their exact value, fractional IDs omit the invalid ID from the error, and no fetch is dispatched. CI and candidate installation run the corpus without new dependencies or network access.
