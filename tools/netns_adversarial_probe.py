@@ -6,6 +6,7 @@ import http.server
 import json
 import os
 import random
+import select
 import socket
 import socketserver
 import ssl
@@ -94,6 +95,8 @@ class DNS(socketserver.BaseRequestHandler):
 
 class HTTP(http.server.BaseHTTPRequestHandler):
     hits = []
+    cancel_started = threading.Event()
+    cancel_closed = threading.Event()
 
     def log_message(self, *_args):
         pass
@@ -111,7 +114,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
             return
-        if self.path == "/drip":
+        if self.path in ("/drip", "/cancel-drip"):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.send_header("Content-Length", "20")
@@ -120,9 +123,17 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 try:
                     self.wfile.write(b"x")
                     self.wfile.flush()
+                    if self.path == "/cancel-drip":
+                        type(self).cancel_started.set()
+                        if select.select([self.connection], [], [], 1)[0] and not self.connection.recv(1):
+                            type(self).cancel_closed.set()
+                            break
+                    else:
+                        time.sleep(1)
                 except (BrokenPipeError, ConnectionResetError):
+                    if self.path == "/cancel-drip":
+                        type(self).cancel_closed.set()
                     break
-                time.sleep(1)
             return
         if self.path == "/late-eof":
             self.send_response(200)
@@ -628,7 +639,41 @@ def test_budgets(binary):
           f"hourly 1000/1001 across 17 hosts in {elapsed:.2f}s; blocked calls opened no DNS or HTTP")
 
 
-def main(binary):
+def test_cancellation(probe):
+    before_hits = len(HTTP.hits)
+    HTTP.cancel_started.clear()
+    HTTP.cancel_closed.clear()
+    env = os.environ.copy()
+    env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+    process = subprocess.Popen([probe], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True, env=env)
+    try:
+        assert HTTP.cancel_started.wait(4), "cancellable fetch did not receive fixture bytes"
+        time.sleep(0.15)  # Allow the library consumer to enter its next blocking read.
+        started = time.monotonic()
+        process.stdin.write("cancel\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 6)[0], "consumer did not return a cancellation result"
+        result = json.loads(process.stdout.readline())
+        elapsed = time.monotonic() - started
+        assert result["cancelled"]["rule"] == "EGRESS_CANCELLED"
+        assert "body_text" not in result["cancelled"]
+        assert result["recovered"]["body_text"] == "fixture-ok"
+        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
+        assert elapsed < 5, elapsed
+        assert HTTP.cancel_closed.wait(4), "cancelled socket was not closed at the fixture"
+        assert process.poll() is None, "consumer exited before socket cleanup was observed"
+        tail, stderr = process.communicate("finish\n", timeout=3)
+        assert process.returncode == 0 and not stderr and not tail, (process.returncode, stderr, tail)
+        print(f"library cancellation probe: cancelled after fixture byte in {elapsed:.2f}s, "
+              "no partial body, peer observed closed socket, audited denial, next fetch recovered")
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.communicate()
+
+
+def main(binary, cancellation_probe):
     dns = socketserver.ThreadingUDPServer(("127.0.0.1", 53), DNS)
     http_server = http.server.ThreadingHTTPServer((PUBLIC_FIXTURE, 80), HTTP)
     http_server.daemon_threads = True
@@ -755,6 +800,7 @@ def main(binary):
             assert elapsed < 16, (path, elapsed)
             assert HTTP.hits[-1] == f"/{path}"
         github_cases = test_github_secrets(binary)
+        test_cancellation(cancellation_probe)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
         print(f"netns adversarial probe: {1184 + generated + github_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
@@ -767,4 +813,4 @@ def main(binary):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])

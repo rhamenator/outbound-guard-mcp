@@ -72,3 +72,9 @@ The isolated Linux network probe also runs its repeated-call workloads under a t
 Custom stdio clients must send MCP parameters as JSON objects. Optional `_meta` must also be an object; request `progressToken` values may be strings or numbers. Malformed shapes are rejected before tool dispatch, and invalid initialized-notification metadata does not complete the handshake. Valid extension metadata is accepted without being reflected in tool output. Progress notifications and cancellation are not implemented by this validation change.
 
 Candidate server archives include a [dependency inventory and shipped notices](docs/dependencies.md#candidate-inventory-and-notices), with crate archive hashes checked against Cargo.lock. This supports review of the transitive graph; it does not certify dependency safety or license compatibility.
+
+### Cooperative library cancellation (stdio wiring pending)
+
+Rust callers can use `guarded_fetch_cancellable(args, allowed_hosts, &AtomicBool)`, with a fresh shared flag per call. Set the flag to `true` from another thread to request cancellation. Observed cancellation returns audited `EGRESS_CANCELLED` without partial body text and releases the active-fetch permit. Blocking DNS/HTTP operations must return or reach their existing deadlines before observing the flag; OS resolver work may continue as documented. A pre-cancelled call consumes no rate reservation; reservations already spent are not refunded. The normal `guarded_fetch` API is unchanged.
+
+This is a library prerequisite, **not MCP cancellation support**. The sequential stdio dispatcher still cannot process `notifications/cancelled` during an active call. Do not rely on client cancellation to abort its socket yet. See the [controlled cancellation evidence](docs/adversarial-netns.md#cooperative-library-cancellation).
