@@ -17,6 +17,8 @@ GET media-type parameters are restricted to one optional UTF-8 charset declarati
 
 HTTP now uses async total/read timers behind the synchronous API, preventing a pending read from extending the ten-second HTTP budget to the next idle timeout. Tokio becomes direct without adding a locked package or version; raw wire/pre-parse header bounds remain unfinished.
 
+The HTTP/1 transport now enforces configured parser and HTTP/TLS stream budgets using the already locked Hyper/Rustls stack. Serialized requests are bounded before DNS, response trailers are denied, and Reqwest removal reduces locked packages from 133 to 86.
+
 ### Verification added
 
 - Controlled route-free DNS/HTTP fixtures, malformed framing/schema corpora, deterministic IP/framing properties, process-resource probes, official SDK cancellation and Inspector compatibility checks.
