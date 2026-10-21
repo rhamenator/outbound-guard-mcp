@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-INSPECTOR = "@modelcontextprotocol/inspector@2.5.0"
+INSPECTOR = "@modelcontextprotocol/inspector@2.11.0"
 
 
 def call(binary, method, *options, allowed_host=None, expected_exit=0, protocol_era="legacy"):
@@ -24,6 +24,7 @@ def call(binary, method, *options, allowed_host=None, expected_exit=0, protocol_
         command = ["npx", "--yes", INSPECTOR, "--cli", "--config", str(config),
                    "--server", "guard", "--method", method, "--format", "json", *options]
         env = {key:value for key,value in os.environ.items() if not key.startswith("OUTBOUND_GUARD_")}
+        env["npm_config_ignore_scripts"] = "true"
         result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=90)
     if result.returncode != expected_exit:
         raise AssertionError(
@@ -44,27 +45,22 @@ def call(binary, method, *options, allowed_host=None, expected_exit=0, protocol_
     raise AssertionError("Inspector returned no structured result or error")
 
 
-def automatic_fallback(binary):
-    def probe(method, *options, **kwargs):
-        return call(binary, method, *options, protocol_era="auto", **kwargs)
-    initialized = probe("initialize")["result"]
-    assert initialized["protocolVersion"] == "2025-06-18"
-    tools = probe("tools/list", "--strict")["result"]["tools"]
-    assert [tool["name"] for tool in tools] == ["guarded_fetch"]
-    assert tools[0]["outputSchema"]["type"] == "object"
-    blocked = probe("tools/call", "--tool-name", "guarded_fetch", "--tool-args-json",
-                    '{"url":"http://127.0.0.1/"}', expected_exit=5)["result"]
-    assert blocked["isError"] is True
-    assert blocked["structuredContent"]["rule"] == "EGRESS_INVALID_HOST"
-    audit = probe("resources/read", "--uri", "outbound-guard://logs/audit.json")["result"]
-    assert json.loads(audit["contents"][0]["text"])["events"] == []
-    print("Inspector 2.5.0 auto: discovery fallback negotiated 2025-06-18; strict tools, blocked call and audit passed")
-    pinned = call(binary, "tools/list", protocol_era="modern", expected_exit=1)
-    assert "result" not in pinned
-    assert pinned["error"]["code"] == "error"
-    message = pinned["error"]["message"]
-    assert "2026-07-28" in message and "no fallback" in message
-    print("Inspector 2.5.0 pinned modern: unsupported server refused without fallback")
+def modern_eras(binary):
+    for era in ("auto", "modern"):
+        def probe(method, *options, **kwargs):
+            return call(binary, method, *options, protocol_era=era, **kwargs)
+        initialized = probe("initialize")["result"]  # CLI reports the connected era; no modern wire initialize.
+        assert initialized["protocolVersion"] == "2026-07-28"
+        assert initialized["serverInfo"]["name"] == "outbound-guard-mcp"
+        tools = probe("tools/list", "--strict")["result"]["tools"]
+        assert [tool["name"] for tool in tools] == ["guarded_fetch"]
+        assert tools[0]["outputSchema"]["type"] == "object"
+        blocked = probe("tools/call", "--tool-name", "guarded_fetch", "--tool-args-json",
+                        '{"url":"http://127.0.0.1/"}', expected_exit=5)["result"]
+        assert blocked["isError"] is True and blocked["structuredContent"]["rule"] == "EGRESS_INVALID_HOST"
+        audit = probe("resources/read", "--uri", "outbound-guard://logs/audit.json")["result"]
+        assert json.loads(audit["contents"][0]["text"])["events"] == []
+        print(f"Inspector 2.11.0 {era}: modern 2026-07-28 negotiation, strict tools, blocked call and audit passed")
     invalid_config = call(binary, "tools/list", allowed_host="invalid_host", expected_exit=1)
     assert "error" in invalid_config and "result" not in invalid_config
     print("Inspector child environment: invalid configured allowlist prevented startup")
@@ -99,8 +95,8 @@ def main():
     assert contents["mimeType"] == "application/json"
     assert json.loads(contents["text"]) == {"capacity": 256, "scope": "process", "events": []}
     # Each Inspector CLI invocation starts a fresh stdio process, hence an empty log.
-    print("Inspector 2.5.0: initialize, strict tools/list, blocked call, audit resource list/read passed")
-    automatic_fallback(binary)
+    print("Inspector 2.11.0: initialize, strict tools/list, blocked call, audit resource list/read passed")
+    modern_eras(binary)
     if args.live:
         url = urlsplit(args.live)
         if url.scheme != "https" or not url.hostname or url.port not in (None, 443) or url.query or url.fragment:
@@ -115,7 +111,7 @@ def main():
             assert fetched["untrusted_content"] is True
             if method == "HEAD":
                 assert fetched["body_text"] == ""
-        print("Inspector 2.5.0: approved GET and HEAD passed")
+        print("Inspector 2.11.0: approved GET and HEAD passed")
 
 
 if __name__ == "__main__":

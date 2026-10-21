@@ -9,7 +9,7 @@ No stable release is approved by this changelog. Candidate archives identify the
 - Independently installable GPL-3.0-or-later Rust MCP stdio server, with a companion instructional skill. Enforcement covers only traffic executed by `guarded_fetch`.
 - Atomic allowlisted GET/HEAD, special-use address denial, validation of all retained DNS answers and pinned connections, absolute DNS names, TLS hostname verification and optional operator-controlled extra CA.
 - Redirect and encoded-response denial, bounded text/JSON responses, conservative leading-HTML quarantine, local call budgets, heuristic URL-secret checks and redacted bounded audit resources.
-- Legacy MCP 2025-06-18 initialization, tool/output schemas, resources, structured denials and cooperative cancellation. Modern revision support remains unfinished.
+- Legacy MCP 2025-06-18 initialization, tool/output schemas, resources, structured denials and cooperative cancellation. Modern 2026-07-28 stateless metadata, discovery, typed results, version errors and private cache metadata now coexist with legacy compatibility; full release review remains open.
 - Bounded stdio frame size, ten-second partial-frame ingestion deadline and three-second reply write/flush deadline. Timeout can terminate a session with an incomplete transport frame; clients must discard it and reconnect.
 - Standalone help/version/startup configuration diagnostics; installed candidate packaging with source, provenance, checksums, locked dependency inventory and shipped upstream notices. Skill ZIP contains only instructions and GPL license.
 

@@ -44,6 +44,7 @@ enum Session {
     New,
     AwaitingInitialized,
     Ready,
+    Modern,
 }
 
 #[cfg(test)]
@@ -183,7 +184,292 @@ fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Val
     handle_cancellable(message, hosts, session, &AtomicBool::new(false))
 }
 
+const MODERN_VERSION: &str = "2026-07-28";
+const VERSION_KEY: &str = "io.modelcontextprotocol/protocolVersion";
+const CAPABILITIES_KEY: &str = "io.modelcontextprotocol/clientCapabilities";
+const CLIENT_INFO_KEY: &str = "io.modelcontextprotocol/clientInfo";
+
+fn modern_error(id: Option<Value>, code: i32, message: &str) -> Value {
+    let mut response = json!({"jsonrpc":"2.0","error":{"code":code,"message":message}});
+    if let Some(id) = id {
+        response["id"] = id;
+    }
+    response
+}
+
 fn handle_cancellable(
+    message: Value,
+    hosts: &[String],
+    session: &mut Session,
+    cancel: &AtomicBool,
+) -> Option<Value> {
+    let meta = message.pointer("/params/_meta").and_then(Value::as_object);
+    let modern = message.get("method").and_then(Value::as_str) == Some("server/discover")
+        || meta.is_some_and(|meta| {
+            meta.contains_key(VERSION_KEY)
+                || meta.contains_key(CAPABILITIES_KEY)
+                || meta.contains_key(CLIENT_INFO_KEY)
+        });
+    if modern {
+        if *session == Session::New {
+            *session = Session::Modern;
+        }
+        return handle_modern(message, hosts, cancel);
+    }
+    if *session == Session::Modern {
+        if message.get("method").and_then(Value::as_str) == Some("initialize") {
+            *session = Session::New; // An explicit legacy opener selects legacy semantics.
+        } else {
+            return handle_modern(message, hosts, cancel);
+        }
+    }
+    handle_legacy(message, hosts, session, cancel)
+}
+
+fn valid_meta_key(key: &str) -> bool {
+    let (prefix, name) = key
+        .split_once('/')
+        .map_or((None, key), |(prefix, name)| (Some(prefix), name));
+    let valid_name = name.is_empty()
+        || (name
+            .as_bytes()
+            .first()
+            .is_some_and(u8::is_ascii_alphanumeric)
+            && name
+                .as_bytes()
+                .last()
+                .is_some_and(u8::is_ascii_alphanumeric)
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.')));
+    valid_name
+        && prefix.is_none_or(|prefix| {
+            prefix.split('.').all(|label| {
+                label
+                    .as_bytes()
+                    .first()
+                    .is_some_and(u8::is_ascii_alphabetic)
+                    && label
+                        .as_bytes()
+                        .last()
+                        .is_some_and(u8::is_ascii_alphanumeric)
+                    && label
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+            })
+        })
+}
+fn valid_implementation(info: &Value) -> bool {
+    let Some(info) = info.as_object() else {
+        return false;
+    };
+    ["name", "version"].iter().all(|key| {
+        info.get(*key)
+            .and_then(Value::as_str)
+            .is_some_and(|text| !text.is_empty())
+    }) && ["title", "description", "websiteUrl"]
+        .iter()
+        .all(|key| info.get(*key).is_none_or(Value::is_string))
+        && info.get("icons").is_none_or(|icons| {
+            icons.as_array().is_some_and(|icons| {
+                icons.iter().all(|icon| {
+                    icon.as_object().is_some_and(|icon| {
+                        icon.get("src").is_some_and(Value::is_string)
+                            && icon.get("mimeType").is_none_or(Value::is_string)
+                            && icon.get("sizes").is_none_or(|sizes| {
+                                sizes
+                                    .as_array()
+                                    .is_some_and(|sizes| sizes.iter().all(Value::is_string))
+                            })
+                            && icon.get("theme").is_none_or(|theme| {
+                                theme
+                                    .as_str()
+                                    .is_some_and(|s| matches!(s, "light" | "dark"))
+                            })
+                    })
+                })
+            })
+        })
+}
+
+fn valid_client_capabilities(value: &Value) -> bool {
+    let Some(caps) = value.as_object() else {
+        return false;
+    };
+    if ["roots", "sampling", "elicitation"]
+        .iter()
+        .any(|key| caps.get(*key).is_some_and(|v| !v.is_object()))
+    {
+        return false;
+    }
+    for key in ["experimental", "extensions"] {
+        if let Some(value) = caps.get(key) {
+            if !value
+                .as_object()
+                .is_some_and(|map| map.values().all(Value::is_object))
+            {
+                return false;
+            }
+        }
+    }
+    for (key, fields) in [
+        ("sampling", ["context", "tools"]),
+        ("elicitation", ["form", "url"]),
+    ] {
+        if let Some(map) = caps.get(key).and_then(Value::as_object) {
+            if fields
+                .iter()
+                .any(|field| map.get(*field).is_some_and(|v| !v.is_object()))
+            {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+fn handle_modern(message: Value, hosts: &[String], cancel: &AtomicBool) -> Option<Value> {
+    let Some(object) = message.as_object() else {
+        return Some(modern_error(None, -32600, "Invalid Request"));
+    };
+    let id = object.get("id").filter(|id| valid_id(id)).cloned();
+    let error = |code, text| Some(modern_error(id.clone(), code, text));
+    if object.get("jsonrpc").and_then(Value::as_str) != Some("2.0")
+        || object.get("method").and_then(Value::as_str).is_none()
+        || object.contains_key("result")
+        || object.contains_key("error")
+    {
+        return error(-32600, "Invalid Request");
+    }
+    if !object.contains_key("id") {
+        return None;
+    }
+    if id.is_none() {
+        return error(-32600, "Invalid request ID");
+    }
+    if !valid_mcp_params(&message, true) {
+        return error(-32602, "Invalid MCP parameters");
+    }
+    let Some(meta) = message.pointer("/params/_meta").and_then(Value::as_object) else {
+        return error(-32602, "Required per-request metadata is missing");
+    };
+    let Some(version) = meta.get(VERSION_KEY).and_then(Value::as_str) else {
+        return error(-32602, "Invalid protocol version metadata");
+    };
+    let Some(caps) = meta.get(CAPABILITIES_KEY) else {
+        return error(-32602, "Client capabilities metadata is required");
+    };
+    if !valid_client_capabilities(caps) {
+        return error(-32602, "Invalid client capabilities metadata");
+    }
+    if meta
+        .get(CLIENT_INFO_KEY)
+        .is_some_and(|info| !valid_implementation(info))
+    {
+        return error(-32602, "Invalid client identity metadata");
+    }
+    if !meta.keys().all(|key| valid_meta_key(key)) {
+        return error(-32602, "Invalid metadata key");
+    }
+    if let Some(level) = meta.get("io.modelcontextprotocol/logLevel") {
+        if !level.as_str().is_some_and(|level| {
+            [
+                "debug",
+                "info",
+                "notice",
+                "warning",
+                "error",
+                "critical",
+                "alert",
+                "emergency",
+            ]
+            .contains(&level)
+        }) {
+            return error(-32602, "Invalid log level metadata");
+        }
+    }
+    if version != MODERN_VERSION {
+        let mut response = modern_error(id, -32022, "Unsupported protocol version");
+        response["error"]["data"] = json!({"supported":[MODERN_VERSION],"requested":version});
+        return Some(response);
+    }
+    let method = object["method"].as_str().unwrap();
+    if matches!(method, "tools/call" | "resources/read" | "prompts/get")
+        && (message
+            .pointer("/params/requestState")
+            .is_some_and(|v| !v.is_string())
+            || message.pointer("/params/inputResponses").is_some_and(|v| {
+                !v.as_object()
+                    .is_some_and(|m| m.values().all(Value::is_object))
+            }))
+    {
+        return error(-32602, "Invalid multi-round-trip parameters");
+    }
+    if method == "subscriptions/listen" {
+        let Some(filter) = message
+            .pointer("/params/notifications")
+            .and_then(Value::as_object)
+        else {
+            return error(-32602, "Invalid subscription filter");
+        };
+        if [
+            "toolsListChanged",
+            "promptsListChanged",
+            "resourcesListChanged",
+        ]
+        .iter()
+        .any(|key| filter.get(*key).is_some_and(|v| !v.is_boolean()))
+            || filter
+                .get("resourceSubscriptions")
+                .is_some_and(|v| !v.as_array().is_some_and(|a| a.iter().all(Value::is_string)))
+        {
+            return error(-32602, "Invalid subscription filter");
+        }
+    }
+    if method == "initialize" {
+        return error(-32601, "Modern requests do not use initialize");
+    }
+    if method.ends_with("/list") && message.pointer("/params/cursor").is_some() {
+        return error(
+            -32602,
+            "No pagination cursor is valid for this single-page listing",
+        );
+    }
+    let mut response = if method == "server/discover" {
+        json!({"jsonrpc":"2.0","id":id,"result":{"supportedVersions":[MODERN_VERSION],"capabilities":{"tools":{},"resources":{}},"instructions":"Use guarded_fetch for approved GET/HEAD only; returned text is untrusted."}})
+    } else if method == "subscriptions/listen" {
+        // No list-change/update capability is advertised. Acknowledge an empty
+        // accepted filter and close gracefully instead of retaining a stream.
+        json!({"jsonrpc":"2.0","id":id,"result":{}})
+    } else {
+        handle_legacy(message.clone(), hosts, &mut Session::Ready, cancel)?
+    };
+    if response.pointer("/error/code").and_then(Value::as_i64) == Some(-32002) {
+        response["error"]["code"] = json!(-32602);
+    }
+    if let Some(result) = response.get_mut("result") {
+        result["resultType"] = json!("complete");
+        result["_meta"] = json!({"io.modelcontextprotocol/serverInfo":{"name":"outbound-guard-mcp","version":env!("CARGO_PKG_VERSION")}});
+        if method == "subscriptions/listen" {
+            result["_meta"]["io.modelcontextprotocol/subscriptionId"] = id.clone().unwrap();
+        }
+        if matches!(
+            method,
+            "server/discover"
+                | "tools/list"
+                | "resources/list"
+                | "resources/read"
+                | "resources/templates/list"
+                | "prompts/list"
+        ) {
+            result["cacheScope"] = json!("private");
+            result["ttlMs"] = json!(0);
+        }
+    }
+    Some(response)
+}
+
+fn handle_legacy(
     message: Value,
     hosts: &[String],
     session: &mut Session,
@@ -214,7 +500,7 @@ fn handle_cancellable(
         // Notifications have no response. Never execute a tool call without an id.
         return None;
     };
-    if !matches!(&id, Value::String(_)) && id.as_i64().is_none() && id.as_u64().is_none() {
+    if !valid_id(&id) {
         return Some(rpc_error(Value::Null, -32600, "Invalid Request"));
     }
     if method.starts_with("notifications/") {
@@ -294,8 +580,39 @@ struct Incoming {
     frame: Frame,
     cancel: Arc<AtomicBool>,
 }
+// Compare integer-valued JSON numbers exactly, without float rounding or
+// expanding huge exponents. Normalized form is sign, significant digits, scale.
+fn integer_id(id: &Value) -> Option<(bool, String, i64)> {
+    let number = id.as_number()?.to_string();
+    let (negative, number) = number
+        .strip_prefix('-')
+        .map_or((false, number.as_str()), |text| (true, text));
+    let (mantissa, exponent) = number.split_once(['e', 'E']).unwrap_or((number, "0"));
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let digits = format!("{whole}{fraction}");
+    let digits = digits.trim_start_matches('0');
+    if digits.is_empty() {
+        return Some((false, "0".into(), 0));
+    }
+    let significant = digits.trim_end_matches('0');
+    let scale = exponent
+        .parse::<i64>()
+        .ok()?
+        .checked_sub(fraction.len().try_into().ok()?)?
+        .checked_add((digits.len() - significant.len()).try_into().ok()?)?;
+    (scale >= 0).then(|| (negative, significant.into(), scale))
+}
 fn valid_id(id: &Value) -> bool {
-    id.is_string() || id.as_i64().is_some() || id.as_u64().is_some()
+    id.is_string() || integer_id(id).is_some()
+}
+fn same_request_id(left: &Value, right: &Value) -> bool {
+    if let (Some(left), Some(right)) = (left.as_str(), right.as_str()) {
+        return left == right;
+    }
+    match (integer_id(left), integer_id(right)) {
+        (Some(left), Some(right)) => left == right,
+        _ => false,
+    }
 }
 fn apply_cancellation(message: &Value, pending: &Mutex<Vec<PendingFetch>>) -> io::Result<bool> {
     if message.get("method").and_then(Value::as_str) != Some("notifications/cancelled")
@@ -324,7 +641,7 @@ fn apply_cancellation(message: &Value, pending: &Mutex<Vec<PendingFetch>>) -> io
         .map_err(|_| io::Error::other("Cancellation registry unavailable"))?
         .iter()
     {
-        if fetch.id == *id {
+        if same_request_id(&fetch.id, id) {
             fetch.cancel.store(true, Ordering::Release);
         }
     }
@@ -338,7 +655,7 @@ fn main() -> io::Result<()> {
     let check_config = match first.as_deref() {
         None if !extra => false,
         Some(value) if !extra && value == "--help" => {
-            writeln!(io::stdout().lock(), "outbound-guard-mcp [--help | --version | --check-config]\n\nNo arguments: run the MCP stdio server (2025-06-18).\n--check-config: validate startup configuration and exit; no DNS or HTTP probe.\n\nEnvironment:\n  OUTBOUND_GUARD_ALLOWED_HOSTS   Comma-separated exact DNS hosts; empty denies all.\n  OUTBOUND_GUARD_EXTRA_CA_CERT   Optional operator-owned single PEM certificate.\n\nExperimental. Only guarded_fetch traffic is covered; fetched content is untrusted.")?;
+            writeln!(io::stdout().lock(), "outbound-guard-mcp [--help | --version | --check-config]\n\nNo arguments: run the MCP stdio server (2026-07-28; legacy 2025-06-18).\n--check-config: validate startup configuration and exit; no DNS or HTTP probe.\n\nEnvironment:\n  OUTBOUND_GUARD_ALLOWED_HOSTS   Comma-separated exact DNS hosts; empty denies all.\n  OUTBOUND_GUARD_EXTRA_CA_CERT   Optional operator-owned single PEM certificate.\n\nExperimental. Only guarded_fetch traffic is covered; fetched content is untrusted.")?;
             return Ok(());
         }
         Some(value) if !extra && value == "--version" => {
@@ -452,9 +769,15 @@ fn main() -> io::Result<()> {
         };
         let response = match frame {
             Frame::Eof => break,
+            Frame::TooLarge if session == Session::Modern => {
+                Some(modern_error(None, -32600, "Request too large"))
+            }
             Frame::TooLarge => Some(rpc_error(Value::Null, -32600, "Request too large")),
             Frame::Data(data) => match serde_json::from_slice::<Value>(&data) {
                 Ok(message) => handle_cancellable(message, &hosts, &mut session, &cancel),
+                Err(_) if session == Session::Modern => {
+                    Some(modern_error(None, -32700, "Parse error"))
+                }
                 Err(_) => Some(rpc_error(Value::Null, -32700, "Parse error")),
             },
         };
@@ -463,19 +786,30 @@ fn main() -> io::Result<()> {
             .map_err(|_| io::Error::other("Cancellation registry unavailable"))?
             .retain(|fetch| !Arc::ptr_eq(&fetch.cancel, &cancel));
         if let Some(response) = response {
-            output_tx
-                .send(response)
-                .map_err(|_| io::Error::other("Output writer stopped"))?;
-            written_rx
-                .recv_timeout(OUTPUT_TIMEOUT)
-                .map_err(|error| match error {
-                    mpsc::RecvTimeoutError::Timeout => {
-                        io::Error::new(io::ErrorKind::TimedOut, "Output write deadline exceeded")
-                    }
-                    mpsc::RecvTimeoutError::Disconnected => {
-                        io::Error::other("Output writer stopped")
-                    }
-                })??;
+            let mut messages = Vec::with_capacity(2);
+            if let Some(id) =
+                response.pointer("/result/_meta/io.modelcontextprotocol~1subscriptionId")
+            {
+                messages.push(json!({"jsonrpc":"2.0","method":"notifications/subscriptions/acknowledged", "params":{
+                    "_meta":{"io.modelcontextprotocol/subscriptionId":id},"notifications":{}}}));
+            }
+            messages.push(response);
+            for response in messages {
+                output_tx
+                    .send(response)
+                    .map_err(|_| io::Error::other("Output writer stopped"))?;
+                written_rx
+                    .recv_timeout(OUTPUT_TIMEOUT)
+                    .map_err(|error| match error {
+                        mpsc::RecvTimeoutError::Timeout => io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "Output write deadline exceeded",
+                        ),
+                        mpsc::RecvTimeoutError::Disconnected => {
+                            io::Error::other("Output writer stopped")
+                        }
+                    })??;
+            }
         }
     }
     drop(output_tx);
@@ -490,6 +824,81 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn numeric_ids_compare_without_rounding_or_exponent_expansion() {
+        for (left, right) in [
+            ("1", "1.0"),
+            ("-0", "0"),
+            ("1e20", "100000000000000000000"),
+            ("123400e-2", "1234"),
+            ("18446744073709551616000", "184467440737095516160e2"),
+        ] {
+            let left: Value = serde_json::from_str(left).unwrap();
+            let right: Value = serde_json::from_str(right).unwrap();
+            assert!(valid_id(&left) && valid_id(&right));
+            assert!(same_request_id(&left, &right));
+        }
+        for value in ["1.5", "1e-2", "-0.5"] {
+            assert!(!valid_id(&serde_json::from_str(value).unwrap()));
+        }
+        assert!(!same_request_id(&json!("1"), &json!(1)));
+        assert!(!same_request_id(
+            &serde_json::from_str("9007199254740992").unwrap(),
+            &serde_json::from_str("9007199254740993").unwrap()
+        ));
+    }
+
+    fn modern_message(method: &str) -> Value {
+        json!({"jsonrpc":"2.0","id":1,"method":method,"params":{"_meta":{
+            VERSION_KEY:MODERN_VERSION,CAPABILITIES_KEY:{}}}})
+    }
+    #[test]
+    fn modern_discovery_and_tools_are_stateless_and_typed() {
+        let mut session = Session::New;
+        let listed = handle(modern_message("tools/list"), &[], &mut session).unwrap();
+        assert_eq!(listed["result"]["resultType"], "complete");
+        assert_eq!(listed["result"]["tools"][0]["name"], "guarded_fetch");
+        let discovered = handle(modern_message("server/discover"), &[], &mut session).unwrap();
+        assert_eq!(
+            discovered["result"]["supportedVersions"],
+            json!([MODERN_VERSION])
+        );
+        assert_eq!(discovered["result"]["cacheScope"], "private");
+        assert_eq!(discovered["result"]["ttlMs"], 0);
+    }
+    #[test]
+    fn modern_metadata_is_checked_on_every_request() {
+        let mut session = Session::New;
+        handle(modern_message("server/discover"), &[], &mut session).unwrap();
+        let missing = handle(
+            json!({"jsonrpc":"2.0","id":2,"method":"tools/list"}),
+            &[],
+            &mut session,
+        )
+        .unwrap();
+        assert_eq!(missing["error"]["code"], -32602);
+        let mut future = modern_message("server/discover");
+        future["params"]["_meta"][VERSION_KEY] = json!("2099-01-01");
+        let refused = handle(future, &[], &mut session).unwrap();
+        assert_eq!(refused["error"]["code"], -32022);
+        assert_eq!(
+            refused["error"]["data"]["supported"],
+            json!([MODERN_VERSION])
+        );
+        assert!(handle(modern_message("tools/list"), &[], &mut session)
+            .unwrap()
+            .get("result")
+            .is_some());
+    }
+    #[test]
+    fn modern_invalid_ids_are_not_reflected_as_null() {
+        let mut message = modern_message("tools/list");
+        message["id"] = Value::Null;
+        let response = handle(message, &[], &mut Session::New).unwrap();
+        assert_eq!(response["error"]["code"], -32600);
+        assert!(response.get("id").is_none());
+    }
+
     #[test]
     fn expired_partial_frame_is_never_dispatched_even_after_completion() {
         let clock = std::sync::Mutex::new(Some(std::time::Instant::now() - super::FRAME_TIMEOUT));
@@ -614,11 +1023,7 @@ mod tests {
     }
     #[test]
     fn invalid_id_type_is_rejected() {
-        for id in [
-            json!({"x":1}),
-            serde_json::from_str("1e400").unwrap(),
-            serde_json::from_str("18446744073709551616").unwrap(),
-        ] {
+        for id in [json!({"x":1}), json!(true), Value::Null, json!(1.5)] {
             let result = handle(
                 json!({"jsonrpc":"2.0","id":id,"method":"ping"}),
                 &[],
@@ -628,6 +1033,21 @@ mod tests {
             assert_eq!(result["error"]["code"], -32600);
         }
     }
+    #[test]
+    fn large_and_integer_valued_numeric_ids_round_trip() {
+        for text in ["1e400", "18446744073709551616", "1.0"] {
+            let id: Value = serde_json::from_str(text).unwrap();
+            let response = handle(
+                json!({"jsonrpc":"2.0","id":id.clone(),"method":"ping"}),
+                &[],
+                &mut Session::New,
+            )
+            .unwrap();
+            assert_eq!(response["id"], id);
+            assert_eq!(response["result"], json!({}));
+        }
+    }
+
     #[test]
     fn notifications_never_execute_tools_or_get_responses() {
         for method in ["notifications/initialized", "tools/call", "ping"] {
