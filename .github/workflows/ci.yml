@@ -36,7 +36,7 @@ jobs:
       - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"
       - run: bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
       - run: python3 tools/inspector_smoke.py target/debug/outbound-guard-mcp
-      - run: python3 tools/package_candidate.py --output dist/candidate
+      - run: python3 tools/package_candidate.py --container-build --output dist/candidate
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: experimental-candidate-linux-x86_64

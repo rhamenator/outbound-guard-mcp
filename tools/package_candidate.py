@@ -164,6 +164,33 @@ def verify_build_compiler(evidence):
 
 
 PATH_REMAPPING = {"source": "/build/source", "cargo_home": "/build/cargo", "target": "/build/target"}
+BUILDER_IMAGE = "docker.io/library/rust@sha256:8c8b26057f8ba46c755d934453b7abc40e88b1cd51d654a6d15c115564793edd"
+
+
+def container_command(source_root, target_dir, cache_dir, uid, gid, compiler):
+    """No caller environment, credentials, Docker socket or home in the builder."""
+    return ['docker', 'run', '--rm', '--platform', 'linux/amd64',
+            '--user', f'{uid}:{gid}', '--cpus', '2', '--memory', '4g', '--memory-swap', '4g',
+            '--pids-limit', '256', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+            '--read-only', '--tmpfs', '/tmp:rw,nosuid,nodev,size=256m',
+            '--mount', f'type=bind,source={source_root},target=/build/source,readonly',
+            '--mount', f'type=bind,source={target_dir},target=/build/target',
+            '--mount', f'type=bind,source={cache_dir},target=/build/cargo',
+            '--workdir', '/build/source', '--env', 'CARGO_HOME=/build/cargo',
+            '--env', 'RUSTUP_HOME=/usr/local/rustup', '--env', 'CARGO_BUILD_JOBS=2',
+            '--env', 'LC_ALL=C', '--env', 'TZ=UTC',
+            '--env', f'EXPECTED_RUST_VERSION={compiler}',
+            '--env', 'CARGO_ENCODED_RUSTFLAGS=' + '\x1f'.join(
+                f'--remap-path-prefix={path}={path}' for path in PATH_REMAPPING.values()),
+            BUILDER_IMAGE, 'sh', '-ec',
+            'rustc -vV > /build/target/rustc-version.txt\n'
+            'cargo --version > /build/target/cargo-version.txt\n'
+            'grep -qx "release: $EXPECTED_RUST_VERSION" /build/target/rustc-version.txt\n'
+            'grep -q "^cargo $EXPECTED_RUST_VERSION " /build/target/cargo-version.txt\n'
+            'cc --version > /build/target/cc-version.txt\n'
+            'ldd --version > /build/target/libc-version.txt\n'
+            'exec nice -n 10 cargo build --release --locked --bins --examples -j 2 '
+            '--target x86_64-unknown-linux-gnu --target-dir /build/target']
 
 
 def candidate_build_env(source_root, target_dir, environ):
@@ -182,6 +209,7 @@ def candidate_build_env(source_root, target_dir, environ):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new output directory")
+    parser.add_argument('--container-build', action='store_true', help='build in the digest-pinned Linux amd64 native builder (requires Docker)')
     args = parser.parse_args()
     if (platform.system(), platform.machine()) != ("Linux", "x86_64"):
         parser.error("this candidate gate currently supports Linux x86_64 only")
@@ -209,15 +237,33 @@ def main():
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     destination.write_bytes(tar.extractfile(entry).read())
                     destination.chmod(entry.mode & 0o777)
-        evidence = build_evidence(Path(folder) / "source", source)
-        verify_build_compiler(evidence)
+        source_root = Path(folder) / 'source'
+        evidence = build_evidence(source_root, source)
         evidence['path_remapping'] = PATH_REMAPPING
-        build_env = candidate_build_env(Path(folder) / 'source', REPO / 'target', os.environ)
-        subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "--bins", "--examples", "-j", "2",
-                        "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(REPO / "target")],
-                       cwd=Path(folder) / "source", env=build_env, check=True)
-        binary = (REPO / "target/x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
-        cancellation_probe = REPO / "target/x86_64-unknown-linux-gnu/release/examples/cancel_fetch_probe"
+        target_dir = REPO / 'target'
+        if args.container_build:
+            target_dir = REPO / 'target/candidate-container'
+            cache_dir = REPO / 'target/candidate-container-cargo'
+            for directory in (target_dir, cache_dir):
+                directory.mkdir(parents=True, exist_ok=True)
+            # The temporary export must be traversable by a rootless/remapped builder.
+            Path(folder).chmod(0o755)
+            subprocess.run(container_command(source_root, target_dir, cache_dir, os.getuid(), os.getgid(),
+                                             evidence['toolchain_channel']), check=True)
+            evidence.update(rustc_verbose_version=(target_dir / 'rustc-version.txt').read_text().strip(),
+                            cargo_version=(target_dir / 'cargo-version.txt').read_text().strip())
+            evidence['native_builder'] = {'image': BUILDER_IMAGE, 'platform': 'linux/amd64',
+                'cc_version': (target_dir / 'cc-version.txt').read_text().splitlines()[0],
+                'libc_version': (target_dir / 'libc-version.txt').read_text().splitlines()[0]}
+            verify_build_compiler(evidence)
+        else:
+            verify_build_compiler(evidence)
+            build_env = candidate_build_env(source_root, target_dir, os.environ)
+            subprocess.run(["nice", "-n", "10", "cargo", "build", "--release", "--locked", "--bins", "--examples", "-j", "2",
+                            "--target", "x86_64-unknown-linux-gnu", "--target-dir", str(target_dir)],
+                           cwd=source_root, env=build_env, check=True)
+        binary = (target_dir / "x86_64-unknown-linux-gnu/release/outbound-guard-mcp").read_bytes()
+        cancellation_probe = target_dir / "x86_64-unknown-linux-gnu/release/examples/cancel_fetch_probe"
         dependencies = dependency_files(Path(folder) / "source")
     root = f"outbound-guard-mcp-{version}-candidate.{revision[:12]}-linux-x86_64"
     files = {"bin/outbound-guard-mcp": binary, **dependencies}
