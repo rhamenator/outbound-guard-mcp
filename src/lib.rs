@@ -1,6 +1,6 @@
 //! Atomic outbound GET/HEAD policy. Only this tool's own sockets are guarded.
 
-use reqwest::{blocking::Client, header, redirect::Policy, Url};
+use reqwest::{blocking::Client as BlockingClient, header, redirect::Policy, Client, Url};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, VecDeque},
@@ -54,7 +54,7 @@ fn load_extra_ca() -> Result<Option<reqwest::Certificate>, &'static str> {
     }
     let cert = certs.pop().ok_or(error)?;
     // Certificate parsing can defer DER validation until the TLS client is built.
-    Client::builder()
+    BlockingClient::builder()
         .no_proxy()
         .add_root_certificate(cert.clone())
         .build()
@@ -638,7 +638,7 @@ pub fn guarded_fetch(args: &Value, allowed_hosts: &[String]) -> Value {
     guarded_fetch_cancellable(args, allowed_hosts, &AtomicBool::new(false))
 }
 
-/// Cooperative library cancellation. Blocking DNS/HTTP operations finish or hit
+/// Cooperative library cancellation. Pending DNS/HTTP operations finish or hit
 /// their existing deadlines before observing cancellation.
 pub fn guarded_fetch_cancellable(
     args: &Value,
@@ -744,11 +744,47 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
         Ok(target) => target,
         Err(denial) => return denial.value(),
     };
+    let runtime = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(_) => {
+            return Denial::new(
+                "EGRESS_CLIENT_FAILURE",
+                "The bounded HTTP runtime could not start.",
+            )
+            .value()
+        }
+    };
+    runtime.block_on(async {
+        match tokio::time::timeout(
+            HTTP_TOTAL_TIMEOUT,
+            guarded_http_fetch(&target, extra_ca, cancel),
+        )
+        .await
+        {
+            Ok(result) => result,
+            Err(_) => Denial::new(
+                "EGRESS_RESPONSE_TIMEOUT",
+                "The response exceeded the total time limit.",
+            )
+            .value(),
+        }
+    })
+}
+
+async fn guarded_http_fetch(
+    target: &Target,
+    extra_ca: &Option<reqwest::Certificate>,
+    cancel: &AtomicBool,
+) -> Value {
     let mut builder = Client::builder()
         .no_proxy()
         .redirect(Policy::none())
         .connect_timeout(Duration::from_secs(3))
-        .timeout(HTTP_IDLE_TIMEOUT)
+        .timeout(HTTP_TOTAL_TIMEOUT)
+        .read_timeout(HTTP_IDLE_TIMEOUT)
         .resolve_to_addrs(&target.host, &target.addresses);
     if let Some(cert) = extra_ca {
         builder = builder.add_root_certificate(cert.clone());
@@ -772,7 +808,10 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
     if let Some(denial) = cancelled(cancel) {
         return denial;
     }
-    let sent = request.header(header::ACCEPT_ENCODING, "identity").send();
+    let sent = request
+        .header(header::ACCEPT_ENCODING, "identity")
+        .send()
+        .await;
     if let Some(denial) = cancelled(cancel) {
         return denial;
     }
@@ -903,7 +942,6 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
     let mut body = Vec::new();
     let body_started = Instant::now();
     let mut transfer_rate = TransferRate::default();
-    let mut chunk = [0u8; 8192];
     loop {
         if let Some(denial) = cancelled(cancel) {
             return denial;
@@ -915,14 +953,12 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
             )
             .value();
         }
-        let remaining = target.max_return_bytes + 1 - body.len();
-        let read_len = remaining.min(chunk.len());
-        let read = response.read(&mut chunk[..read_len]);
+        let read = response.chunk().await;
         if let Some(denial) = cancelled(cancel) {
             return denial;
         }
-        // A blocking read may cross the total deadline. Check it before rate,
-        // EOF, or read-error classification so timing does not change the rule.
+        // Keep deadline classification ahead of rate, EOF and read errors.
+        // The async total timer also interrupts a pending read.
         if http_started.elapsed() >= HTTP_TOTAL_TIMEOUT {
             return Denial::new(
                 "EGRESS_RESPONSE_TIMEOUT",
@@ -931,7 +967,10 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
             .value();
         }
         if let Ok(bytes) = &read {
-            if !transfer_rate.observe(body_started.elapsed(), *bytes) {
+            if !transfer_rate.observe(
+                body_started.elapsed(),
+                bytes.as_ref().map_or(0, |chunk| chunk.len()),
+            ) {
                 return Denial::new(
                     "EGRESS_RESPONSE_TOO_SLOW",
                     "Use an endpoint delivering at least 500 bytes per second over completed three-second windows.",
@@ -940,8 +979,17 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
             }
         }
         match read {
-            Ok(0) => break,
-            Ok(n) => body.extend_from_slice(&chunk[..n]),
+            Ok(None) => break,
+            Ok(Some(chunk)) => {
+                if chunk.len() > target.max_return_bytes - body.len() {
+                    return Denial::new(
+                        "EGRESS_RESPONSE_LIMIT",
+                        "Reduce the response size or raise the bounded per-call limit.",
+                    )
+                    .value();
+                }
+                body.extend_from_slice(&chunk);
+            }
             Err(_) => {
                 return Denial::new(
                     "EGRESS_READ_FAILURE",
@@ -949,13 +997,6 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
                 )
                 .value();
             }
-        }
-        if body.len() > target.max_return_bytes {
-            return Denial::new(
-                "EGRESS_RESPONSE_LIMIT",
-                "Reduce the response size or raise the bounded per-call limit.",
-            )
-            .value();
         }
     }
     let text = match String::from_utf8(body) {
