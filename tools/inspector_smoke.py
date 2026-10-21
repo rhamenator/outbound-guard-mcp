@@ -43,6 +43,8 @@ def main():
     listed = call(binary, "tools/list", "--strict")["result"]["tools"]
     assert [tool["name"] for tool in listed] == ["guarded_fetch"]
     assert listed[0]["inputSchema"]["required"] == ["url"]
+    assert listed[0]["outputSchema"]["type"] == "object"
+    assert len(listed[0]["outputSchema"]["oneOf"]) == 2
     blocked = call(
         binary, "tools/call", "--tool-name", "guarded_fetch", "--tool-args-json",
         '{"url":"http://127.0.0.1/"}', expected_exit=5,

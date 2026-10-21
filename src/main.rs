@@ -125,6 +125,26 @@ fn valid_mcp_params(message: &Value, request: bool) -> bool {
             .is_none_or(|token| token.is_string() || token.is_number())
 }
 
+fn fetch_output_schema() -> Value {
+    let correlation = json!({"type":"string","pattern":"^egress-[1-9][0-9]*$"});
+    json!({"type":"object","oneOf":[
+        {"type":"object","properties":{
+            "status":{"const":"BLOCKED"},
+            "rule":{"type":"string","pattern":"^EGRESS_[A-Z0-9_]+$","not":{"const":"EGRESS_ALLOWED"}},
+            "remediation":{"type":"string","minLength":1},
+            "correlation_id":correlation.clone()},
+         "required":["status","rule","remediation"],"additionalProperties":false},
+        {"type":"object","properties":{
+            "status":{"const":"SAFE"},"rule":{"const":"EGRESS_ALLOWED"},
+            "remediation":{"type":"string","minLength":1},"correlation_id":correlation,
+            "url":{"type":"string"},
+            "status_code":{"type":"integer","minimum":100,"maximum":999},
+            "body_text":{"type":"string","maxLength":262144},"untrusted_content":{"const":true}},
+         "required":["status","rule","remediation","correlation_id","url","status_code","body_text","untrusted_content"],
+         "additionalProperties":false}
+    ]})
+}
+
 #[cfg(test)]
 fn handle(message: Value, hosts: &[String], session: &mut Session) -> Option<Value> {
     handle_cancellable(message, hosts, session, &AtomicBool::new(false))
@@ -191,7 +211,8 @@ fn handle_cancellable(
             "inputSchema":{"type":"object","properties":{"url":{"type":"string","maxLength":2048},
                 "method":{"type":"string","enum":["GET","HEAD"]},
                 "max_return_bytes":{"type":"integer","minimum":1,"maximum":262144}},
-                "required":["url"],"additionalProperties":false}}]}),
+                "required":["url"],"additionalProperties":false},
+            "outputSchema":fetch_output_schema()}]}),
         "resources/list" => json!({"resources":[{"uri":AUDIT_URI,"name":"Egress audit log",
             "description":"Last 256 completed guarded fetch decisions, redacted and process-local.","mimeType":"application/json"}]}),
         "resources/templates/list" => json!({"resourceTemplates":[]}),
