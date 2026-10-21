@@ -926,7 +926,7 @@ mod tests {
         let before = EGRESS_BUDGET.lock().unwrap().all_calls.len();
         let result = guarded_fetch_cancellable(
             &json!({"url":"https://example.com/"}),
-            &["example.com".into()],
+            &[], // A broken cancellation check must not reach an external host.
             &AtomicBool::new(true),
         );
         assert_eq!(result["rule"], "EGRESS_CANCELLED");
