@@ -50,6 +50,48 @@ def audit_probe(binary, env, marker):
     print("audit probe: 300 correlated denials, 256 redacted events retained, unknown/missing URIs rejected")
 
 
+def metadata_probe(binary, env, marker):
+    messages = [{"jsonrpc":"2.0", "id":0, "method":"initialize", "params":{
+        "protocolVersion":"2025-06-18", "capabilities":{},
+        "clientInfo":{"name":"metadata-probe", "version":"1"}}}]
+    for meta in (None, [], marker):
+        messages.append({"jsonrpc":"2.0", "method":"notifications/initialized", "params":{"_meta":meta}})
+    messages += [{"jsonrpc":"2.0", "id":1, "method":"tools/list"},
+                 {"jsonrpc":"2.0", "method":"notifications/initialized"}]
+    expected = [(0,None), (1,-32002)]
+    bad_params = [[], {"_meta":None}, {"_meta":[]}, {"_meta":marker}]
+    bad_params += [{"_meta":{"progressToken":token}} for token in (None, True, {}, [])]
+    for params in bad_params:
+        for method in ("ping", "tools/list", "tools/call"):
+            id_ = 10 + len(expected)
+            if isinstance(params, dict):
+                params = dict(params, name="guarded_fetch", arguments={"url":"http://127.0.0.1/"})
+            messages.append({"jsonrpc":"2.0", "id":id_, "method":method,"params":params})
+            expected.append((id_,-32602))
+    for index, token in enumerate(("progress", 0, -1, 1.5), 100):
+        messages.append({"jsonrpc":"2.0", "id":index,"method":"ping",
+            "params":{"_meta":{"progressToken":token,"example/custom":[marker,None]}}})
+        expected.append((index,None))
+    messages.append({"jsonrpc":"2.0", "id":104,"method":"resources/read",
+        "params":{"uri":"outbound-guard://logs/audit.json"}})
+    expected.append((104,None))
+    result = subprocess.run([binary],input=b"".join(map(frame,messages)),capture_output=True,
+                            env=env,timeout=10,check=True)
+    assert not result.stderr and marker.encode() not in result.stdout
+    replies = [json.loads(line) for line in result.stdout.splitlines()]
+    assert len(replies) == len(expected)
+    for reply,(id_,code) in zip(replies,expected):
+        assert reply["id"] == id_, reply
+        if code is None:
+            assert "result" in reply and "error" not in reply, reply
+        else:
+            assert reply.get("error", {}).get("code") == code and "result" not in reply, reply
+    audit = json.loads(replies[-1]["result"]["contents"][0]["text"])
+    assert audit["events"] == [], "malformed metadata dispatched a tool"
+    print("metadata probe: 24 malformed requests correlated/rejected, invalid initialized metadata "
+          "did not advance handshake, four valid extension/progress-token cases accepted, no tool audit or marker echo")
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: adversarial_stdio_probe.py PATH_TO_SERVER")
@@ -102,6 +144,7 @@ def main():
     assert marker.encode() not in result.stdout + result.stderr
     print("stdio adversarial probe: 17 frames, 14 expected replies, no network or secret echo")
     audit_probe(sys.argv[1], env, marker)
+    metadata_probe(sys.argv[1], env, marker)
 
 
 if __name__ == "__main__":
