@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Linux stdio stress probe: oversized frames stay bounded and do not desync RPC."""
 
+import fcntl
 import json
 import os
 import resource
@@ -104,6 +105,34 @@ def deadline_cases(binary):
             child.wait()
 
 
+def output_backpressure(binary):
+    env = {key: value for key, value in os.environ.items() if not key.startswith("OUTBOUND_GUARD_")}
+    child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, env=env)
+    try:
+        # A valid ping ID yields a response larger than this deliberately unread
+        # pipe. No network, tool execution or unbounded parent buffering needed.
+        fcntl.fcntl(child.stdout, fcntl.F_SETPIPE_SZ, 4096)
+        marker = "PRIVATE_OUTPUT_MARKER" * 1000
+        start = time.monotonic()
+        child.stdin.write(frame("ping", marker))
+        child.stdin.flush()
+        child.wait(timeout=6)
+        elapsed = time.monotonic() - start
+        assert child.returncode != 0 and 2 <= elapsed <= 6
+        stderr = child.stderr.read()
+        assert b"Output write deadline exceeded" in stderr and marker.encode() not in stderr, stderr
+        # Bytes already written cannot be retracted. No complete JSON reply may
+        # escape; clients must discard the partial frame and reconnect.
+        partial = child.stdout.read()
+        assert partial and b"\n" not in partial and len(partial) <= 4096
+        print(f"stdout backpressure probe: unread 4 KiB pipe terminated in {elapsed:.2f}s; fixed diagnostic, partial transport frame only")
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.wait()
+
+
 def main(binary):
     signal.alarm(45)
     replies = run(binary, 160, b"\n" + frame("ping", 17))
@@ -118,6 +147,7 @@ def main(binary):
     assert eof_replies[0]["error"]["code"] == -32600
 
     deadline_cases(binary)
+    output_backpressure(binary)
 
     # Linux reports ru_maxrss in KiB. Keep headroom for runtime and CI variance.
     peak_kib = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
