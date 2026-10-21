@@ -15,6 +15,7 @@ use std::{
 
 const MAX_LINE: usize = 64 * 1024;
 const FRAME_TIMEOUT: Duration = Duration::from_secs(10);
+const OUTPUT_TIMEOUT: Duration = Duration::from_secs(3);
 
 fn frame_timeout() -> io::Error {
     io::Error::new(io::ErrorKind::TimedOut, "Input frame deadline exceeded")
@@ -417,8 +418,27 @@ fn main() -> io::Result<()> {
                 let _ = tx.send(Err(error));
             }
         })?;
-    let stdout = io::stdout();
-    let mut writer = stdout.lock();
+    // One writer and one outstanding response. The dispatcher waits for flush
+    // acknowledgement before admitting another response, bounding queue memory.
+    let (output_tx, output_rx) = mpsc::sync_channel::<Value>(1);
+    let (written_tx, written_rx) = mpsc::sync_channel::<io::Result<()>>(1);
+    let output_thread = thread::Builder::new()
+        .name("mcp-stdout".into())
+        .spawn(move || {
+            let stdout = io::stdout();
+            let mut writer = stdout.lock();
+            while let Ok(response) = output_rx.recv() {
+                let result = (|| -> io::Result<()> {
+                    serde_json::to_writer(&mut writer, &response)?;
+                    writer.write_all(b"\n")?;
+                    writer.flush()
+                })();
+                let failed = result.is_err();
+                if written_tx.send(result).is_err() || failed {
+                    break;
+                }
+            }
+        })?;
     let mut session = Session::New;
     loop {
         let Incoming { frame, cancel } = loop {
@@ -443,11 +463,25 @@ fn main() -> io::Result<()> {
             .map_err(|_| io::Error::other("Cancellation registry unavailable"))?
             .retain(|fetch| !Arc::ptr_eq(&fetch.cancel, &cancel));
         if let Some(response) = response {
-            serde_json::to_writer(&mut writer, &response)?;
-            writer.write_all(b"\n")?;
-            writer.flush()?;
+            output_tx
+                .send(response)
+                .map_err(|_| io::Error::other("Output writer stopped"))?;
+            written_rx
+                .recv_timeout(OUTPUT_TIMEOUT)
+                .map_err(|error| match error {
+                    mpsc::RecvTimeoutError::Timeout => {
+                        io::Error::new(io::ErrorKind::TimedOut, "Output write deadline exceeded")
+                    }
+                    mpsc::RecvTimeoutError::Disconnected => {
+                        io::Error::other("Output writer stopped")
+                    }
+                })??;
         }
     }
+    drop(output_tx);
+    output_thread
+        .join()
+        .map_err(|_| io::Error::other("Output writer failed"))?;
     input_thread
         .join()
         .map_err(|_| io::Error::other("Input reader failed"))?;
