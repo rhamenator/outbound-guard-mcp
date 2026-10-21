@@ -43,3 +43,9 @@ Candidate `provenance.json` includes the exact `rustc -vV` and Cargo version str
 Before compiler/version/build execution, packaging rejects nonempty explicit compiler, wrapper, Rust flags, Cargo profile and target linker/runner override variables. Errors report variable names only, never their values. Clear those overrides before creating a review candidate; do not silently strip them and misrepresent a custom build. `RUSTUP_TOOLCHAIN` is allowed and the actual selected compiler is recorded.
 
 This is a narrow environment gate. PATH executables, the installed toolchain, Cargo's configuration/dependency cache, native build tools and the host remain trusted build inputs. It is not a hermetic sandbox, a malicious-builder defense, signed provenance, or cross-host reproducibility evidence. Signing and independent rebuilds remain open in issue #65.
+
+## Minimum compiler gate
+
+The manifest declares Rust `1.89`. A separate Ubuntu 24.04 CI job installs `1.89.0`, explicitly runs `cargo +1.89.0 test --locked --all-targets` and builds the binaries/examples, then exercises the built server's CLI, modern wire protocol and numeric-ID corpus. It uses a separate compiler cache key and two build jobs. An assertion ties the tested version to the manifest so a future minimum-version edit cannot silently retain an obsolete job.
+
+This job verifies the locked dependency graph on Linux x86_64 GNU with the declared minimum compiler. The main stable CI job still runs the full network, SDK, Inspector, resource and packaging gates. It is not an MSRV promise for arbitrary future unlocked dependency versions, other targets or all feature combinations. Candidate provenance records its own observed build compiler; the MSRV job does not make a stable-channel release artifact a Rust 1.89 build. A passing job is required evidence before advertising minimum-compiler compatibility; see the PR/CI record in issue #65.
