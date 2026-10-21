@@ -60,3 +60,5 @@ Provider-signature extension: the [GitLab/PyPI corpus](adversarial-netns.md#gitl
 Mislabeled fragment-root evidence: [thirteen hidden-link fixtures](adversarial-netns.md#mislabeled-html-fragment-roots) cover common container/form/image/template roots with no body returned. Leading-signature matching remains a heuristic; unrecognized roots, nonleading markup, CSS visibility and arbitrary prompt injection remain outside this protection.
 
 Exact-name resolution: [hostile search-suffix fixtures](adversarial-netns.md#absolute-dns-and-hostile-search-suffix) reproduce the pre-fix wrong-name lookup, then require zero suffixed DNS questions after absolute lookup enforcement. Private-answer rejection remained effective in the pre-fix case. System resolver/hosts data remains trusted operator configuration.
+
+HEAD evidence: [controlled HEAD fixtures and official SDK](adversarial-netns.md#controlled-head-requests) check method preservation, empty-body results, header/framing policy, redirect refusal and first-byte timeout. HEAD success is independent of a future GET decision and does not assess representation content.
