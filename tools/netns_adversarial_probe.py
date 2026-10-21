@@ -394,13 +394,65 @@ def call(binary, host, path, scheme="http", extra_ca=None):
     return call_sequence(binary, [(host, path, scheme)], extra_ca=extra_ca)[0]
 
 
-def call_sequence(binary, targets, extra_ca=None):
+def call_sequence(binary, targets, extra_ca=None, resource_probe=False):
     arguments = [{"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}
                  for host, path, scheme in targets]
-    return call_arguments(binary, arguments, extra_ca)[0]
+    return call_arguments(binary, arguments, extra_ca, resource_probe=resource_probe)[0]
 
 
-def call_arguments(binary, arguments, extra_ca=None, redaction_markers=()):
+def resource_limited_run(binary, payload, env):
+    # The child is exec'd under an OS descriptor cap, without a preexec_fn in
+    # this multithreaded fixture process. prlimit is supplied by util-linux.
+    process = subprocess.Popen(["prlimit", "--nofile=64:64", "--", binary],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, env=env)
+    stopped = threading.Event()
+    samples = []
+    errors = []
+
+    def sample():
+        while not stopped.is_set():
+            try:
+                fds = len(os.listdir(f"/proc/{process.pid}/fd"))
+                with open(f"/proc/{process.pid}/status", encoding="ascii") as status:
+                    fields = dict(line.split(":", 1) for line in status if ":" in line)
+                with open(f"/proc/{process.pid}/limits", encoding="ascii") as limits:
+                    capped = any(line.split()[3:5] == ["64", "64"]
+                                 for line in limits if line.startswith("Max open files"))
+                if "VmHWM" in fields:
+                    samples.append((fds, int(fields["VmHWM"].split()[0]), capped))
+            except (FileNotFoundError, ProcessLookupError):
+                pass  # Process exit can race a procfs read.
+            except Exception as error:
+                errors.append(repr(error))
+                return
+            stopped.wait(0.005)
+
+    monitor = threading.Thread(target=sample, daemon=True)
+    monitor.start()
+    try:
+        stdout, stderr = process.communicate(payload, timeout=20)
+    except BaseException:
+        process.kill()
+        process.communicate()
+        raise
+    finally:
+        stopped.set()
+        monitor.join(timeout=2)
+    assert not monitor.is_alive() and not errors, errors
+    assert len(samples) >= 2, "resource sampling did not observe the fetch process"
+    assert any(item[2] for item in samples), "child descriptor cap was not observed"
+    peak_fds = max(item[0] for item in samples)
+    peak_kib = max(item[1] for item in samples)
+    assert peak_fds <= 64, peak_fds
+    assert peak_kib < 128 * 1024, f"network child peak RSS {peak_kib} KiB"
+    assert process.returncode == 0, (process.returncode, stderr[:200])
+    print(f"network resource probe: hard 64-FD limit; sampled peak {peak_fds} FDs, "
+          f"VmHWM {peak_kib} KiB across {len(samples)} samples")
+    return subprocess.CompletedProcess([binary], process.returncode, stdout, stderr)
+
+
+def call_arguments(binary, arguments, extra_ca=None, redaction_markers=(), resource_probe=False):
     handshake = [
         {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
             "protocolVersion": "2025-06-18", "capabilities": {},
@@ -429,8 +481,12 @@ def call_arguments(binary, arguments, extra_ca=None, redaction_markers=()):
     audit_request = {"jsonrpc": "2.0", "id": "audit-snapshot", "method": "resources/read",
                     "params": {"uri": "outbound-guard://logs/audit.json"}}
     discovery = {"jsonrpc": "2.0", "id": "schema", "method": "tools/list"}
-    result = subprocess.run([binary], input="".join(json.dumps(request) + "\n" for request in handshake + [discovery] + requests + [audit_request]), text=True,
-                            capture_output=True, timeout=20, env=env, check=True)
+    payload = "".join(json.dumps(request) + "\n" for request in handshake + [discovery] + requests + [audit_request])
+    if resource_probe:
+        result = resource_limited_run(binary, payload, env)
+    else:
+        result = subprocess.run([binary], input=payload, text=True,
+                                capture_output=True, timeout=20, env=env, check=True)
     if result.stderr:
         raise AssertionError(f"server emitted stderr: {result.stderr[:200]}")
     lines = result.stdout.splitlines()
@@ -538,7 +594,7 @@ def test_budgets(binary):
     before_aaaa = len(DNS.aaaa_names)
     targets = [("ALLOWED.TEST" if index % 2 else "allowed.test",
                 "json-truncated" if index % 2 else "plain", "http") for index in range(60)]
-    decisions = call_sequence(binary, targets + [("allowed.test", "plain", "http")])
+    decisions = call_sequence(binary, targets + [("allowed.test", "plain", "http")], resource_probe=True)
     assert [decision["rule"] for decision in decisions[:-1]] == [
         "EGRESS_INVALID_JSON" if index % 2 else "EGRESS_ALLOWED" for index in range(60)]
     assert decisions[-1]["rule"] == "EGRESS_RATE_LIMIT", decisions[-1]
@@ -549,7 +605,7 @@ def test_budgets(binary):
 
     before_hits, before_queries = len(HTTP.hits), len(DNS.a_names)
     before_aaaa = len(DNS.aaaa_names)
-    decisions = call_sequence(binary, [("budget-failure.test", "plain", "http")] * 61)
+    decisions = call_sequence(binary, [("budget-failure.test", "plain", "http")] * 61, resource_probe=True)
     assert all(decision["rule"] == "EGRESS_DNS_FAILURE" for decision in decisions[:-1])
     assert decisions[-1]["rule"] == "EGRESS_RATE_LIMIT", decisions[-1]
     assert len(HTTP.hits) == before_hits
@@ -560,7 +616,7 @@ def test_budgets(binary):
     before_aaaa = len(DNS.aaaa_names)
     targets = [(HOURLY_HOSTS[index % len(HOURLY_HOSTS)], "plain", "http") for index in range(1001)]
     started = time.monotonic()
-    decisions = call_sequence(binary, targets)
+    decisions = call_sequence(binary, targets, resource_probe=True)
     elapsed = time.monotonic() - started
     assert all(decision["rule"] == "EGRESS_ALLOWED" for decision in decisions[:-1])
     assert decisions[-1]["rule"] == "EGRESS_RATE_LIMIT", decisions[-1]
