@@ -58,3 +58,5 @@ Stdio cancellation: the [wire cancellation cases](adversarial-netns.md#stdio-can
 Provider-signature extension: the [GitLab/PyPI corpus](adversarial-netns.md#gitlab-and-pypi-token-signatures) adds 42 blocked synthetic paths and 28 allowed lookalikes, with no DNS/HTTP or marker echo for denials. Custom prefixes and other credential shapes remain gaps; the policy does not identify all secrets.
 
 Mislabeled fragment-root evidence: [thirteen hidden-link fixtures](adversarial-netns.md#mislabeled-html-fragment-roots) cover common container/form/image/template roots with no body returned. Leading-signature matching remains a heuristic; unrecognized roots, nonleading markup, CSS visibility and arbitrary prompt injection remain outside this protection.
+
+Exact-name resolution: [hostile search-suffix fixtures](adversarial-netns.md#absolute-dns-and-hostile-search-suffix) reproduce the pre-fix wrong-name lookup, then require zero suffixed DNS questions after absolute lookup enforcement. Private-answer rejection remained effective in the pre-fix case. System resolver/hosts data remains trusted operator configuration.

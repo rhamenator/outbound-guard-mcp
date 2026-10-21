@@ -202,7 +202,13 @@ pub trait Resolver {
 pub struct SystemResolver;
 impl Resolver for SystemResolver {
     fn resolve(&self, host: &str, port: u16) -> std::io::Result<Vec<SocketAddr>> {
-        let host = host.to_owned();
+        // A terminal dot makes the lookup absolute: resolver search/ndots
+        // settings must not select a different name than the approved host.
+        // Keep this resolver-only; URL, Host and TLS SNI retain the original.
+        let mut host = host.to_owned();
+        if !host.ends_with('.') {
+            host.push('.');
+        }
         resolve_bounded(&DNS_WORKER_ACTIVE, DNS_TIMEOUT, move || {
             (host.as_str(), port)
                 .to_socket_addrs()

@@ -106,3 +106,7 @@ The URL scanner also blocks GitLab’s documented token prefixes and the PyPI `p
 ### Mislabeled HTML fragments
 
 The leading-HTML signature check also covers common fragment roots such as div/span containers, forms, inputs, images, metadata/link elements, embedded objects, templates, noscript and paragraphs. A plain-text response beginning with these tags is denied as EGRESS_HTML_MISLABELED without returning its body. Matching is case-insensitive and requires a tag boundary. This is a bounded leading-signature heuristic, not DOM rendering, CSS visibility analysis, a complete HTML parser or prompt-injection sanitization. Markup later in plain text and HTML strings inside valid JSON can remain untrusted output.
+
+### Absolute DNS lookups
+
+The system resolver receives an absolute hostname (a terminal dot is added only to its lookup input), preventing search-domain/ndots expansion from choosing a different name. The approved hostname in the URL, HTTP Host and TLS SNI stays unchanged, and every returned address still passes policy before connection pinning. Controlled Linux tests use a hostile search suffix and ndots:5 and require zero suffixed queries. This does not replace trust in the operating system resolver/hosts configuration, certify every platform resolver, or add DNSSEC validation.
