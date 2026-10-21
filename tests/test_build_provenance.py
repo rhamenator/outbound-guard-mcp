@@ -12,6 +12,18 @@ spec.loader.exec_module(candidate)
 
 
 class BuildEvidenceTests(unittest.TestCase):
+    def test_internal_path_flags_preserve_argument_boundaries_and_reject_overrides(self):
+        env = {'CARGO_HOME': '/cache with spaces', 'KEEP': 'unchanged'}
+        result = candidate.candidate_build_env(Path('/source with spaces'), Path('/target with spaces'), env)
+        self.assertEqual(result['CARGO_ENCODED_RUSTFLAGS'].split('\x1f'), [
+            '--remap-path-prefix=/source with spaces=/build/source',
+            '--remap-path-prefix=/cache with spaces=/build/cargo',
+            '--remap-path-prefix=/target with spaces=/build/target'])
+        self.assertEqual(result['KEEP'], 'unchanged')
+        self.assertNotIn('CARGO_ENCODED_RUSTFLAGS', env)
+        with self.assertRaises(RuntimeError):
+            candidate.candidate_build_env(Path('/source'), Path('/target'), {'RUSTFLAGS':'private override'})
+
     def test_candidate_requires_exact_pinned_compiler_and_cargo(self):
         evidence = dict(toolchain_channel='1.99.1', rustc_verbose_version='rustc fixture\nrelease: 1.99.1',
                         cargo_version='cargo 1.99.1 (fixture)')
