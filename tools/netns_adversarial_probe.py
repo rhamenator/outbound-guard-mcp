@@ -96,13 +96,40 @@ class DNS(socketserver.BaseRequestHandler):
 
 class HTTP(http.server.BaseHTTPRequestHandler):
     hits = []
+    methods = []
     cancel_started = threading.Event()
     cancel_closed = threading.Event()
 
     def log_message(self, *_args):
         pass
 
+    def do_HEAD(self):
+        self.methods.append("HEAD")
+        self.hits.append(self.path)
+        if self.path == "/head-delayed":
+            time.sleep(11)
+        try:
+            self.send_response(302 if self.path == "/head-redirect" else 200)
+            self.send_header("Content-Type", "application/json" if self.path == "/head-json-empty"
+                             else "application/octet-stream")
+            self.send_header("Content-Length", "0" if self.path == "/head-json-empty" else "1024")
+            if self.path == "/head-redirect":
+                self.send_header("Location", "http://private.test/should-not-hit")
+            elif self.path == "/head-encoded":
+                self.send_header("Content-Encoding", "gzip")
+            elif self.path == "/head-duplicate-type":
+                self.send_header("Content-Type", "text/plain")
+            elif self.path == "/head-framing":
+                self.send_header("Transfer-Encoding", "chunked")
+            elif self.path == "/head-many-headers":
+                for index in range(70):
+                    self.send_header(f"X-Fixture-{index}", "x")
+            self.end_headers()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
     def do_GET(self):
+        self.methods.append("GET")
         self.hits.append(self.path)
         if self.path == "/delayed":
             time.sleep(11)
@@ -600,6 +627,35 @@ def test_schema_mutations(binary):
     return len(decisions)
 
 
+def test_head_requests(binary):
+    cases = [
+        ("head-ok", {"EGRESS_ALLOWED"}),
+        ("head-json-empty", {"EGRESS_ALLOWED"}),
+        ("head-redirect", {"EGRESS_REDIRECT_DENIED"}),
+        ("head-encoded", {"EGRESS_ENCODED_RESPONSE"}),
+        ("head-duplicate-type", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
+        ("head-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
+        ("head-many-headers", {"EGRESS_RESPONSE_HEADERS_LIMIT"}),
+        ("head-delayed", {"EGRESS_NETWORK_FAILURE"}),
+    ]
+    before_hits, before_methods = len(HTTP.hits), len(HTTP.methods)
+    started = time.monotonic()
+    decisions, _ = call_arguments(binary, [{"url":"http://allowed.test/" + path, "method":"HEAD"}
+                                          for path, _ in cases])
+    for (path, rules), decision in zip(cases, decisions):
+        assert decision["rule"] in rules, (path, decision)
+        if decision["rule"] == "EGRESS_ALLOWED":
+            assert decision["body_text"] == "" and decision["untrusted_content"] is True
+        else:
+            assert "body_text" not in decision
+    assert time.monotonic() - started < 7, "HEAD delayed-header deadline exceeded"
+    assert HTTP.hits[before_hits:] == ["/" + path for path, _ in cases]
+    assert HTTP.methods[before_methods:] == ["HEAD"] * len(cases), "HEAD fell back to GET"
+    print("HEAD probe: eight cases; empty body, metadata policy, redirect/framing/header "
+          "denials and first-byte timeout passed; no GET fallback or redirect target")
+    return len(cases)
+
+
 def test_provider_secrets(binary, prefixes, label, installation_case=False):
     tokens = [prefix + "A" * 20 for prefix in prefixes]
     blocked_paths = [path for token in tokens
@@ -780,6 +836,7 @@ def test_sdk_cancellation(binary):
     HTTP.cancel_started.clear()
     HTTP.cancel_closed.clear()
     before_hits = len(HTTP.hits)
+    before_methods = len(HTTP.methods)
     env = os.environ.copy()
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
     process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"], os.path.join(sdk_dir, "cancel.mjs"), binary],
@@ -798,14 +855,15 @@ def test_sdk_cancellation(binary):
         elapsed = time.monotonic() - started
         assert elapsed < 5
         assert HTTP.cancel_closed.wait(4) and process.poll() is None
-        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
+        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain", "/head-ok"]
+        assert HTTP.methods[before_methods:] == ["GET", "GET", "HEAD"]
         process.stdin.write("finish\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
         print(f"official SDK 1.32.1 cancellation: AbortSignal rejected; audited cancellation, "
               f"socket closed while client live, recovery and output-schema checks passed ({elapsed:.2f}s)")
-        return 3
+        return 4
     finally:
         if process.poll() is None:
             process.kill()
@@ -951,6 +1009,7 @@ def main(binary, cancellation_probe):
         steady = call(binary, "allowed.test", "steady-rate")
         assert steady["rule"] == "EGRESS_ALLOWED" and steady["body_text"] == "x" * 2400
         assert HTTP.hits[-1] == "/steady-rate"
+        head_cases = test_head_requests(binary)
         github_cases = test_provider_secrets(binary,
             ("github_pat_", "ghu_", "ghs_", "ghr_"), "GitHub", installation_case=True)
         provider_cases = test_provider_secrets(binary,
@@ -965,7 +1024,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1190 + len(root_tags) + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1190 + len(root_tags) + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

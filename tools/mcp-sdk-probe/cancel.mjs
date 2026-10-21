@@ -66,6 +66,13 @@ try {
   const missing = { ...recovered.structuredContent };
   delete missing.body_text;
   assert.equal(validate(missing).valid, false);
+  const head = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://allowed.test/head-ok', method: 'HEAD',
+  } });
+  assert.equal(head.structuredContent.rule, 'EGRESS_ALLOWED');
+  assert.equal(head.structuredContent.body_text, '');
+  assert.equal(head.structuredContent.status_code, 200);
+  assert.equal(validate(head.structuredContent).valid, true);
   console.log('CANCELLED_AND_RECOVERED');
   // Parent checks peer socket closure while this SDK and server are still live.
   assert.equal((await once(input, 'line'))[0], 'finish');
