@@ -2,6 +2,8 @@
 
 Status: acceptance criteria, not a claim of completion. A stable release requires each gate to have a passing test or durable review record linked from a release issue. No gate may be waived silently.
 
+The [release evidence index](RELEASE_CHECKLIST.md) maps available evidence to open work; [issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) records exact-candidate reviews. Neither is a release approval.
+
 ## 1. Core egress boundary
 
 - A `guarded_fetch` call applies URL, method, header, body, DNS, connection, redirect, and response policy in one operation. A preview tool is never an authorization token.

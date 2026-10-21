@@ -118,3 +118,5 @@ The system resolver receives an absolute hostname (a terminal dot is added only 
 ### Credential-free requests
 
 The current tool does not support authenticated sessions or cookie persistence. Controlled same-process GET/HEAD tests verify that Set-Cookie and a Basic authentication challenge do not produce Cookie, Authorization, Proxy-Authorization, provider-token or Referer headers on later calls, retries, or redirect traffic. Four synthetic credential environment variables are also checked for request/result/audit isolation. A returned HTTP 401 can still be a SAFE policy decision with untrusted text; it does not mean authentication succeeded. See the [credential-isolation evidence and scope](docs/adversarial-netns.md#credential-isolation-across-calls).
+
+Release preparation is tracked in the [evidence checklist](docs/RELEASE_CHECKLIST.md), [unreleased changelog](CHANGELOG.md), and [issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65). Passing individual probes does not approve a stable release.
