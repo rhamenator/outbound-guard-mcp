@@ -129,16 +129,31 @@ try:
   response(3)
   send({'jsonrpc':'2.0','id':5,'method':'session/prompt','params':{'sessionId':sid,'prompt':[{'type':'text','text':recovery}]}})
  else:
-  send({'id':5,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':recovery}]}});response(5)
+  send({'id':5,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':recovery}]}});recovery_turn=response(5)['turn']['id']
  deadline=time.monotonic()+40
  while time.monotonic()<deadline:
   lines=(root/'wire.jsonl').read_text().splitlines()
   if any(json.loads(line).get('rule')=='EGRESS_ALLOWED' for line in lines):break
   time.sleep(.02)
+ smoke='Use ONLY outbound_guard guarded_fetch. First GET http://127.0.0.1/ once; then HEAD http://allowed.test/head-ok once. No other tools or retries. Report both actual results.'
  if name=='cursor':
-  smoke='Use ONLY outbound_guard guarded_fetch. First GET http://127.0.0.1/ once; then HEAD http://allowed.test/head-ok once. No other tools or retries. Report both actual results.'
+  response(5)
   send({'jsonrpc':'2.0','id':6,'method':'session/prompt','params':{'sessionId':sid,'prompt':[{'type':'text','text':smoke}]}})
   response(6)
+ elif name=='claude':send({'type':'user','message':{'role':'user','content':smoke}})
+ else:
+  deadline=time.monotonic()+40
+  while time.monotonic()<deadline:
+   messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
+   if any(m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==recovery_turn for m in messages):break
+   time.sleep(.02)
+  else:raise AssertionError('recovery turn did not complete')
+  send({'id':6,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':smoke}]}});response(6)
+ deadline=time.monotonic()+40
+ while time.monotonic()<deadline:
+  observed=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
+  if len([e for e in observed if e.get('rule')=='EGRESS_ALLOWED'])==2:break
+  time.sleep(.02)
  events=[json.loads(s) for s in (root/'wire.jsonl').read_text().splitlines()]
  cancels=[e for e in events if e.get('method')=='notifications/cancelled']
  fetches=[e for e in events if e.get('method')=='tools/call']
@@ -149,7 +164,7 @@ try:
   errors=[m.get('params',{}).get('error',{}).get('codexErrorInfo') for m in [json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()] if m.get('method')=='error']
   print(json.dumps({'client_error_classes':errors}),flush=True)
  assert any(e.get('rule')=='EGRESS_ALLOWED' for e in events), 'recovery did not succeed'
- if name=='cursor':
+ if name in ('claude','codex','cursor'):
   assert len(fetches)==4 and any(e.get('rule')=='EGRESS_INVALID_HOST' for e in events)
   assert fetches[-1]['http_method']=='HEAD' and [e.get('status_code') for e in events if e.get('rule')=='EGRESS_ALLOWED']==[200,200]
  assert (root/'closed').exists() and p.poll() is None
