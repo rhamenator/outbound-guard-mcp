@@ -1234,6 +1234,91 @@ def test_sdk_cancellation(binary, modern=False):
             process.wait()
 
 
+def test_repeated_cancellation(binary):
+    wrapper = ('import os,resource,sys; resource.setrlimit(resource.RLIMIT_NOFILE,(64,64)); '
+               'os.execv(sys.argv[1],[sys.argv[1]])')
+    cycles = 30
+    for modern in (False, True):
+        env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+        env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test'
+        child = subprocess.Popen([sys.executable,'-c',wrapper,binary], stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        def send(method, id_=None, params=None):
+            params = dict(params or {})
+            if modern:
+                params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+                                   'io.modelcontextprotocol/clientCapabilities':{}}
+            message = {'jsonrpc':'2.0','method':method,'params':params}
+            if id_ is not None:
+                message['id'] = id_
+            child.stdin.write(json.dumps(message)+'\n')
+            child.stdin.flush()
+        def receive(id_):
+            assert select.select([child.stdout], [], [], 4)[0], 'repeated-cancel response deadline'
+            reply = json.loads(child.stdout.readline())
+            assert reply['id'] == id_, reply
+            return reply['result']
+        def fetch(path):
+            # Reuse the same completed/cancelled ID throughout every cycle.
+            send('tools/call','fetch',{'name':'guarded_fetch','arguments':{'url':f'http://allowed.test/{path}'}})
+        def resources():
+            status = Path(f'/proc/{child.pid}/status').read_text()
+            rss = int(next(line.split()[1] for line in status.splitlines() if line.startswith('VmRSS:')))
+            return len(list(Path(f'/proc/{child.pid}/fd').iterdir())), len(list(Path(f'/proc/{child.pid}/task').iterdir())), rss
+        before_hits = len(HTTP.hits)
+        peak_fd = peak_threads = peak_rss = 0
+        try:
+            if not modern:
+                send('initialize','init',{'protocolVersion':'2025-06-18','capabilities':{},
+                     'clientInfo':{'name':'repeated-cancel-probe','version':'1'}})
+                receive('init')
+                send('notifications/initialized')
+            send('ping','warm')
+            receive('warm')
+            baseline_fd, baseline_threads, _ = resources()
+            for index in range(cycles):
+                HTTP.cancel_started.clear()
+                HTTP.cancel_closed.clear()
+                fetch('cancel-silent-body')
+                assert HTTP.cancel_started.wait(3), 'silent body did not start'
+                started = time.monotonic()
+                send('notifications/cancelled',params={'requestId':'fetch'})
+                send('ping','barrier')
+                receive('barrier')  # Any cancelled tool reply fails ID correlation.
+                assert HTTP.cancel_closed.wait(1), 'cancelled socket retained'
+                assert time.monotonic() - started < 1
+                fetch('plain')
+                result = receive('fetch')['structuredContent']
+                assert result['rule'] == 'EGRESS_ALLOWED' and result['body_text'] == 'fixture-ok'
+                fd, threads, rss = resources()
+                peak_fd, peak_threads, peak_rss = max(peak_fd,fd), max(peak_threads,threads), max(peak_rss,rss)
+                assert fd <= baseline_fd and threads <= baseline_threads + 1, (index,fd,threads)
+                assert rss < 65536, (index,rss)
+            # Sixty dispatched attempts, including cancellations, spend sixty slots.
+            dns_before, hits_before = DNS.queries, len(HTTP.hits)
+            fetch('plain')
+            assert receive('fetch')['structuredContent']['rule'] == 'EGRESS_RATE_LIMIT'
+            assert DNS.queries == dns_before and len(HTTP.hits) == hits_before
+            send('resources/read','audit',{'uri':'outbound-guard://logs/audit.json'})
+            events = json.loads(receive('audit')['contents'][0]['text'])['events']
+            assert [e['rule'] for e in events] == ['EGRESS_CANCELLED','EGRESS_ALLOWED']*cycles + ['EGRESS_RATE_LIMIT']
+            assert HTTP.hits[before_hits:] == ['/cancel-silent-body','/plain']*cycles
+            child.stdin.close()
+            assert child.wait(timeout=3) == 0 and not child.stdout.read() and not child.stderr.read()
+            print(f'repeated cancellation {"modern" if modern else "legacy"}: {cycles} cancel/recovery cycles, '
+                  f'ID reuse and 61st-attempt budget denial; retained samples {peak_fd} FDs/{peak_threads} threads/{peak_rss} KiB under hard NOFILE64')
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.wait()
+            for handle in (child.stdin,child.stdout,child.stderr):
+                try:
+                    handle.close()
+                except BrokenPipeError:
+                    pass
+    return 2 * (cycles*2 + 1)
+
+
 def test_descriptor_exhaustion(binary):
     # Set limits in a separate exec wrapper, never preexec_fn in this threaded parent.
     wrapper = ('import os,resource,sys; n=int(sys.argv[1]); '
@@ -1778,6 +1863,7 @@ def main(binary, cancellation_probe):
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         silent_cases = test_silent_transport_cancellation(binary)
+        repeated_cases = test_repeated_cancellation(binary)
         descriptor_cases = test_descriptor_exhaustion(binary)
         connect_cases = test_connect_blackhole(binary)
         post_dns_cases = test_post_dns_syscalls(binary)
@@ -1787,7 +1873,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
