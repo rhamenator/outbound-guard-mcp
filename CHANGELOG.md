@@ -4,6 +4,11 @@
 
 No stable release is approved by this changelog. Candidate archives identify the exact source commit in their provenance. The [release checklist](docs/RELEASE_CHECKLIST.md) and [tracking issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) retain open gates.
 
+### Security
+
+- Patch `rustls-webpki` to0.103.16 and `webpki-roots` to1.0.10 for RUSTSEC-2026-0382/0381 (CVE-2026-111943). Older experimental archives contain the affected versions and must be rebuilt; their previous passing tests/signatures do not establish current dependency safety.
+- Add a fresh full-lock RustSec audit to CI and require it before trusted-main provenance signing. No advisory exemptions; yanked-package checking is separately excluded and documented.
+
 ### Implemented
 
 - Independently installable GPL-3.0-or-later Rust MCP stdio server, with a companion instructional skill. Enforcement covers only traffic executed by `guarded_fetch`.
