@@ -7,6 +7,7 @@ import re
 import sys
 
 root = Path(sys.argv[1])
+target = sys.argv[2] if len(sys.argv) > 2 else 'policy'
 log = (root / 'campaign.log').read_text()
 assert 'inline 8-bit counters' in log and 'PC tables' in log, 'instrumentation missing'
 match = re.search(r'#(\d+)\s+DONE\s+cov: (\d+) ft: (\d+)', log)
@@ -19,6 +20,7 @@ corpus = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
 report = {'seed': 306373022, 'executions': int(match[1]), 'coverage_counters': int(match[2]),
           'features': int(match[3]), 'new_units_added': int(added[1]), 'corpus': corpus,
           'limits': '60s target; 2s/input; hard 1GiB address space/64 FDs/90s CPU; no ASan',
-          'scope': 'validate only, stub DNS; no sockets, HTTP parser or MCP transport'}
+          'scope': ('validate only, stub DNS; no sockets, HTTP parser or MCP transport' if target == 'policy'
+                    else 'actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets')}
 (root / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps({k: v for k, v in report.items() if k != 'corpus'}))
