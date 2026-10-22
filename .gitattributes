@@ -1,0 +1,3 @@
+
+# Preserve authoritative IANA snapshot bytes and CRLF records.
+tests/fixtures/iana/*.csv -text whitespace=cr-at-eol

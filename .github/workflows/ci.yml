@@ -87,6 +87,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo build --locked --bins --examples
+      - run: python3 tools/iana_ip_policy_probe.py target/debug/examples/ip_policy_probe
       - run: python3 tools/cli_smoke.py target/debug/outbound-guard-mcp "$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
       - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
       - name: Ensure adversarial probe tools
@@ -135,6 +136,7 @@ jobs:
         run: python3 -c 'import tomllib; assert tomllib.load(open("Cargo.toml", "rb"))["package"]["rust-version"] == "1.89"'
       - run: cargo +1.89.0 test --locked --all-targets
       - run: cargo +1.89.0 build --locked --bins --examples
+      - run: python3 tools/iana_ip_policy_probe.py target/debug/examples/ip_policy_probe
       - run: python3 tools/cli_smoke.py target/debug/outbound-guard-mcp "$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
       - run: python3 tools/modern_stdio_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/protocol_id_probe.py target/debug/outbound-guard-mcp
