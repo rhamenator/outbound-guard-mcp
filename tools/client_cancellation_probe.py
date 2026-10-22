@@ -9,13 +9,12 @@ This probes client control APIs, not desktop buttons or terminal Escape keys.
 import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit
 assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __doc__
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
-assert skill_zip is None or sys.argv[1] in ('claude','cursor'), 'skill mode currently tests Claude/Cursor only'
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
 script_dir=pathlib.Path(__file__).resolve().parent
 root=pathlib.Path(tempfile.mkdtemp(prefix='outbound-cancel-'));root.chmod(0o700)
 ns='outbound-client-cancel-'+str(os.getpid())
 (root/'namespace').write_text(ns)
-skill_dir=root/('.claude/skills/outbound-guard' if sys.argv[1]=='claude' else '.cursor/skills/outbound-guard')
+skill_dir=root/({'claude':'.claude','cursor':'.cursor','codex':'.agents'}[sys.argv[1]]+'/skills/outbound-guard')
 p = backend = None
 owns_namespace = cleaned = False
 def cleanup():
@@ -110,6 +109,17 @@ if skill_zip:
  try:
   skill_prompt='First invoke the outbound-guard skill using the Skill tool. Follow its instructions for this controlled fixture: use guarded_fetch to GET http://127.0.0.1/ once, GET http://allowed.test/plain once and HEAD http://allowed.test/head-ok once, in that order. The operator already approved allowed.test and installed the server. Use no other tools; report actual results.'
   if name=='claude':send({'type':'user','message':{'role':'user','content':skill_prompt}})
+  elif name=='codex':
+   send({'id':1,'method':'initialize','params':{'clientInfo':{'name':'outbound_skill_probe','version':'1'}}});response(1)
+   send({'method':'initialized','params':{}})
+   send({'id':20,'method':'skills/list','params':{'cwds':[str(root)],'forceReload':True}})
+   listing=response(20)
+   discovered=[s for entry in listing['data'] if entry['cwd']==str(root) for s in entry['skills'] if s['name']=='outbound-guard' and s.get('enabled') and s.get('path')==str(skill_dir/'SKILL.md')]
+   assert len(discovered)==1,'native skill discovery did not return the installed enabled skill'
+   assert not any(entry.get('errors') for entry in listing['data']),'native skill discovery returned errors'
+   send({'id':2,'method':'thread/start','params':{'cwd':str(root),'approvalPolicy':'never','sandbox':'read-only','ephemeral':True}});tid=response(2)['thread']['id']
+   skill_prompt=skill_prompt.replace('First invoke the outbound-guard skill using the Skill tool.', '$outbound-guard')
+   send({'id':3,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':skill_prompt},{'type':'skill','name':'outbound-guard','path':str(skill_dir/'SKILL.md')}]}});skill_turn=response(3)['turn']['id']
   else:
    skill_prompt=skill_prompt.replace('First invoke the outbound-guard skill using the Skill tool.', 'First discover and read the outbound-guard skill with native skill discovery.')
    send({'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':1,'clientCapabilities':{}}});response(1)
@@ -137,6 +147,14 @@ if skill_zip:
      'project_path_seen':str(skill_dir) in json.dumps(messages)}}),flush=True)
    assert len(results)==1 and not results[0].get('is_error'), 'Skill tool result missing or failed'
    assert str(skill_dir) in json.dumps(messages), 'project skill source not observed in native transcript'
+  elif name=='codex':
+   deadline=time.monotonic()+40
+   while time.monotonic()<deadline:
+    messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
+    completed=[m['params']['turn'] for m in messages if m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==skill_turn]
+    if completed:break
+    time.sleep(.05)
+   assert completed and completed[0]['status']=='completed','native skill turn did not complete successfully'
   else:
    calls={}
    for message in messages:
@@ -155,15 +173,15 @@ if skill_zip:
   fetches=[e for e in events if e.get('method')=='tools/call']
   assert [e['http_method'] for e in fetches]==['GET','GET','HEAD']
   assert [e['status_code'] for e in events if 'status_code' in e]==[200,200]
-  print(json.dumps({'client':name,'native_skill_loaded':True,'native_skill_invoked':True if name=='claude' else None,
+  print(json.dumps({'client':name,'native_skill_loaded':True,'native_skill_discovered':True if name=='codex' else None,'explicit_skill_input_accepted':True if name=='codex' else None,'native_turn_completed':True if name=='codex' else None,'native_skill_invoked':True if name=='claude' else None,
    'skill_tool_result_success':True if name=='claude' else None,'native_project_read_completed':True if name=='cursor' else None,
    'skill_zip_sha256':hashlib.sha256(skill_zip.read_bytes()).hexdigest(),
    'installed_skill_sha256':hashlib.sha256((skill_dir/'SKILL.md').read_bytes()).hexdigest(),
    'binary_sha256':hashlib.sha256(pathlib.Path(binary).read_bytes()).hexdigest(),
    'installation_scope':'temporary project '+str(skill_dir.relative_to(root)),
-   'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else ['observed native read'],
+   'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[200,200], 'scope':'explicit named skill request; native Claude Skill tool or Cursor project file read; not automatic trigger reliability'}),flush=True)
+   'status_codes':[200,200], 'scope':'explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence'}),flush=True)
  finally:cleanup()
  sys.exit(0)
 try:

@@ -1,0 +1,45 @@
+{
+  "client": "codex",
+  "native_skill_loaded": true,
+  "native_skill_discovered": true,
+  "explicit_skill_input_accepted": true,
+  "native_turn_completed": true,
+  "native_skill_invoked": null,
+  "skill_tool_result_success": null,
+  "native_project_read_completed": null,
+  "skill_zip_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+  "installed_skill_sha256": "9d55ad0d551a7cf6de86b33b4280a9e153f48ee160f142b0e0421e5e8774dddf",
+  "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+  "installation_scope": "temporary project .agents/skills/outbound-guard",
+  "native_project_source_observed": true,
+  "setting_sources": null,
+  "builtin_tools": null,
+  "http_methods": [
+    "GET",
+    "GET",
+    "HEAD"
+  ],
+  "rules": [
+    "EGRESS_INVALID_HOST",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED"
+  ],
+  "status_codes": [
+    200,
+    200
+  ],
+  "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+  "date_utc": "2026-10-22",
+  "version": "0.151.0",
+  "artifact_source_sha": "23b9cdc6c350b8ad241e2d83df3a54a2b4b68e3f",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39848569009",
+  "archive_sha256": "d3d47b1a5820ef7a2e5e6e463dde9fc149c2a4585bb1b63dbef8a435ccfac881",
+  "activation_method": "skills/list returns enabled installed path; explicit skill input accepted by turn/start; turn/completed status completed",
+  "status": "one explicit named-skill workflow observed; experimental, no release approval",
+  "limitations": [
+    "native skill input acknowledgment is not proof of automatic triggering or model adherence",
+    "no separate Skill tool or file-read acknowledgment claimed for Codex",
+    "desktop/terminal controls and client cancellation delivery remain separate",
+    "no skill enforcement or coverage of other tools"
+  ]
+}
