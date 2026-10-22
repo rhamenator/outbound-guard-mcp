@@ -1,0 +1,1 @@
+{"name":"outbound-guard-inspector-probe","private":true,"dependencies":{"@modelcontextprotocol/inspector":"2.11.0"}}
