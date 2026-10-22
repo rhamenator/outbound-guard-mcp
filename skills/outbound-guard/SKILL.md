@@ -73,4 +73,4 @@ Pending TLS handshake cancellation is tested with a silent peer after ClientHell
 
 ## Optional operator process limits
 
-The repository documents a Linux user-systemd/cgroup-v2 wrapper and deployment probe in `docs/linux-deployment-limits.md`. This requires a working user manager and delegated controllers. Hard OS limits may disconnect the MCP session; treat that as failure and request operator recovery. Do not replay calls or bypass the server after a disconnect. Audit and rate state reset on restart and are not shared across server instances.
+The repository documents a Linux user-systemd/cgroup-v2 wrapper, deployment probe and bounded OOM test in `docs/linux-deployment-limits.md`. This requires a working user manager and delegated controllers. Hard OS limits may disconnect the MCP session; treat that as failure and request operator recovery. Do not replay calls or bypass the server after a disconnect. Audit and rate state reset on restart and are not shared across server instances.
