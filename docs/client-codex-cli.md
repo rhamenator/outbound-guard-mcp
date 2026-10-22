@@ -26,3 +26,17 @@ Codex CLI 0.151.0 used an isolated ephemeral session with a read-only sandbox an
 This is candidate evidence, not final stable-release certification. Client UI cancellation, authenticated Cursor and the other quality-bar gates remain open.
 
 The [2026-10-21 control-path cancellation review](client-cancellation.md) records actual wire behavior separately from agent-turn interruption and deadline recovery. It does not certify desktop or terminal UI controls.
+
+## Native companion-skill loading, 2026-10-22
+
+Codex CLI 0.151.0 discovered the exact clean ZIP installed in a temporary project's `.agents/skills/outbound-guard` directory. Its app-server `skills/list` returned the enabled skill at that installed path without discovery errors. The probe supplied `$outbound-guard` and an explicit `skill` input item to `turn/start`; the turn completed successfully after three actual MCP calls: loopback GET denied with `EGRESS_INVALID_HOST`, approved GET and HEAD each allowed with HTTP 200. [Machine-readable evidence](evidence/codex-skill-activation-2026-10-22.json) identifies the tested archive, ZIP, installed skill and binary hashes.
+
+This uses the native interfaces described in the [official OpenAI app-server documentation](https://learn.chatgpt.com/docs/app-server#skills) and the [repository skill location](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills). To repeat against a separately installed binary and inspected companion ZIP:
+
+```bash
+python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+The opt-in probe requires an authenticated Codex CLI and passwordless sudo for its disposable, route-free network namespace. Model inference uses the normal account and may incur usage. Only the server and controlled DNS/HTTP fixtures run in the namespace; the client retains its normal inference connectivity. The isolated client uses a read-only sandbox, ephemeral thread and explicit approval for `guarded_fetch`; normal client configuration and credentials are not modified. Temporary files and owned fixture processes are removed afterward.
+
+The observed native discovery, accepted skill input and completed MCP workflow establish this explicit loading path. They do not prove automatic trigger reliability, model adherence to every instruction, a separate native file-read event, desktop/terminal controls, or prompt socket cancellation. The companion skill grants no enforcement over other tools. No skill contents changed in this test.
