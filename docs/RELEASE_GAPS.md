@@ -1,0 +1,29 @@
+# Remaining release gaps and next engineering work
+
+Review baseline: main `699a627ed2ccfec89e7739f9899612c5b73b9e46` (2026-10-22). This is a source/evidence reconciliation, not independent security approval. [QUALITY_BAR.md](QUALITY_BAR.md) remains authoritative. Passing CI and the expanding finite fixture corpus do not close the following differences or waive requirements. Record acceptance or rejection of scope changes in [issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65).
+
+## Priority engineering and verification
+
+| Priority | Remaining gap | Concrete next step and completion evidence |
+| --- | --- | --- |
+| 1 | Independent adversarial review beyond the current finite corpora | Review URL normalization, DNS pinning/fallback, response framing and cancellation with an independent oracle or coverage-guided campaign. Preserve tool/version, source, seed/corpus, resource limits, findings and regression cases. The strace gate currently observes selected pre-DNS denials only; extend observations to controlled post-DNS forbidden destinations without equating DNS traffic with forbidden HTTP. |
+| 2 | Final native-client and installed-skill matrix | Select a candidate identity and repeat configured denial/GET/HEAD and cancellation controls for each advertised client. The 2026-10-22 replay records one completed control path each, with extra denial/HEAD only for Cursor. Test desktop/terminal controls separately or retain precise unverified-client limitations in the approval record. Reinspect the clean skill ZIP for that candidate; do not transfer a prior archive's installation evidence automatically. |
+| 3 | OS/process resource and failure boundaries | Exercise resolver allocation/failed startup, connection fallback, repeated cancellation and multiple processes under explicit host quotas. Existing RSS/FD samples and bounded queues are finite observations, not aggregate CPU/kernel-memory quotas. A permanently stuck native resolver still denies every subsequent lookup in that process. Document a tested deployment limit/recovery strategy and its supported platforms. |
+| 4 | Product/distribution review | Review exact dependency notices/licenses, metadata, permissions, error remediation and clean skill contents. Retain package hashes, matching independent rebuild and signed trusted-main verification for the approved candidate. CI artifacts expire after seven days; durable issue evidence must identify their hashes and results. |
+
+## Quality-bar differences requiring implementation or explicit scope review
+
+| Requirement | Current implementation and evidence | What remains |
+| --- | --- | --- |
+| Redirect revalidation and atomic multi-hop budgets | `transport::send` sends one request; `guarded_http_fetch` denies all redirection statuses. Controlled loops/private/cross-host redirects are not followed. | Safe redirect execution is unimplemented. Refusing every redirect is a narrower capability; it cannot silently stand in for the roadmap requirement. |
+| Expansion-ratio controls | Encoded responses are rejected; HTTP/TLS application stream bytes and decoded return size have caps. | No compressed response is accepted or decompressed. Expansion-ratio enforcement for supported compression is unimplemented. Packet accounting and kernel buffers are separate limits. |
+| Cancellation releases reservations | Active-fetch permit/socket is released on observed cancellation; DNS retains its one-worker gate until native exit. Already spent rate reservations are never refunded. | Distinguish concurrency permit from rate-budget spend. Implement another accounting policy or obtain explicit acceptance of the current conservative spend policy. Do not advertise refunds. |
+| Entropy warnings and known-secret coverage | `has_known_secret` and `high_entropy_segment` inspect accepted URL input; either match produces `EGRESS_SECRET_DETECTED`. Header/body fields, query strings and percent encoding are rejected. | Entropy is a denial, not the quality bar's warning. Provider shapes and entropy are incomplete and can reject public token-shaped paths. Generic secret-proof exfiltration prevention is not established. |
+| Prompt-injection quarantine | Supported MIME/JSON syntax checks and leading HTML signatures reject some responses; allowed content has `untrusted_content: true`. | Valid JSON/plaintext instructions and HTML strings can pass unchanged. No general sanitizer, DOM visibility parser, or quarantine workflow is implemented. A marker is not quarantine. |
+| Client cancellation delivery | Server DNS/HTTP/TLS wait cancellation and saturated admission have controlled evidence. Claude sent matching cancellation in its tested stream control; Codex/Cursor did not in tested app-server/ACP controls. | The server cannot infer an interrupt the client never delivers. Resolve client integration or retain this as an explicitly reviewed limitation; a cancelled turn is not a passing socket-cancellation gate. |
+
+## Approval boundary
+
+No stable tag, marketplace submission, or production-ready claim is authorized by this document. Complete the engineering/evidence work and present an exact candidate with any remaining scope differences for human review. Review cannot be replaced by repeatedly producing new candidate hashes or adding passing cases to the same finite corpus.
+
+The user's adversarial gate separately applies to `ai-scraping-defense`, `ai-scraping-defense-rust`, `ai-scraping-defense-iis` and `ai-scraping-defense-mcp`, as well as the other guard repositories. Record each one's commit, interfaces, toolset, findings and limitations. Outbound Guard results certify none of those repositories.

@@ -11,6 +11,8 @@ Status: experimental; no stable release approved. [Tracking issue #65](https://g
 | Product and supply chain | [Candidate gate](candidate-packaging.md), [dependency evidence](dependencies.md), [unreleased changelog](../CHANGELOG.md) | Final metadata/license/dependency and distribution review; retain passing independent rebuild and signed trusted-main provenance for the exact candidate. Inventory/checksums alone are not legal approval or publisher authentication. |
 | Human release decision | This index and issue #65 | Explicit approval of the exact tested artifacts and buyer-facing claims before stable publication. |
 
+The [remaining-gap review](RELEASE_GAPS.md) separates next engineering/verification steps from concrete differences between the current narrow implementation and the quality bar. No difference is silently accepted by passing CI.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, version/platform/toolchain, CI URLs, package/skill checksums, test corpus versions and results, client versions/configuration/permissions, limitations, and reviewer decision. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.
