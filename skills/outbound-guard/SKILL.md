@@ -66,3 +66,5 @@ Real-client control-path evidence: Claude Code 2.1.301 emitted MCP cancellation 
 If `EGRESS_DNS_TIMEOUT` is followed by `EGRESS_DNS_BUSY`, wait before retrying even a different approved host. One OS lookup may still be running; new lookups remain denied until it exits, and spent budgets are not refunded. Never route the request through another tool to bypass this denial. An operator may need to investigate the system resolver if the condition persists.
 
 DNS cancellation stops waiting cooperatively (25 ms polling interval, subject to scheduling); it cannot interrupt the native OS lookup. Until that worker exits, new lookups fail closed with `EGRESS_DNS_BUSY`. Wait before retrying. Cancellation does not refund spent budgets.
+
+When a client sends MCP cancellation, pending HTTP waits are checked at 25 ms intervals without restarting the ten-second HTTP deadline. Cancellation closes the pending request and returns no partial content. Controlled silent-header and silent-body tests cover both protocol modes; client notification delivery and scheduler delays still apply.
