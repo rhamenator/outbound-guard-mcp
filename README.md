@@ -138,3 +138,7 @@ For independent native rebuilds, use the [digest-pinned candidate builder](docs/
 A timed-out OS DNS lookup may continue after the three-second tool DNS deadline. While that single lookup is still running, `EGRESS_DNS_BUSY` denies new lookups for every host; wait before retrying and do not bypass the guard. Spent budgets remain counted. [Live resolver-stall tests](docs/adversarial-netns.md#live-os-dns-worker-exhaustion-and-recovery) check one-worker retention, no extra DNS/HTTP, late-result discard and recovery in both protocol modes.
 
 The [silent TLS cancellation fixture](docs/adversarial-netns.md#cancellation-during-a-silent-tls-handshake) receives a ClientHello but sends no handshake response. Both protocol modes must close the socket promptly after MCP cancellation, suppress the cancelled reply and recover. This does not certify every network state or make a client send cancellation notifications.
+
+### Optional Linux deployment quotas
+
+See [process limits and recovery](docs/linux-deployment-limits.md) for a tested user-systemd/cgroup-v2 probe and stdio wrapper. OS limits can disconnect a client before structured errors; audit and rate state reset on restart. This optional deployment recipe does not change the experimental release status.
