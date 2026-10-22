@@ -79,7 +79,7 @@ def installed_smoke(binary, version, cancellation_probe):
 
 
 def dependency_files(source_root):
-    """Inventory resolved normal/build crates, with their shipped notices."""
+    """Inventory resolved normal/build crates, with verified notices and source archives."""
     metadata = json.loads(subprocess.check_output([
         "cargo", "metadata", "--locked", "--offline", "--format-version", "1",
         "--filter-platform", "x86_64-unknown-linux-gnu"], cwd=source_root))
@@ -105,8 +105,11 @@ def dependency_files(source_root):
         checksum = locked[(name, version, source)]["checksum"]
         crate = Path(package["manifest_path"]).parent.resolve()
         cached = crate.parents[2] / "cache" / crate.parent.name / f"{name}-{version}.crate"
-        with cached.open("rb") as downloaded:
-            assert hashlib.file_digest(downloaded, "sha256").hexdigest() == checksum, "registry archive checksum mismatch"
+        assert cached.stat().st_size <= 16 * 1024 * 1024, "review oversized registry source archive"
+        archive_data = cached.read_bytes()
+        assert digest(archive_data) == checksum, "registry archive checksum mismatch"
+        source_archive = f"dependency-sources/{name}-{version}.crate"
+        files[source_archive] = archive_data
         notices = {path for path in crate.iterdir()
                    if path.name.lower().startswith(("license", "copying", "notice")) and path.is_file()}
         if package.get("license_file"):
@@ -117,7 +120,7 @@ def dependency_files(source_root):
             assert path.is_file() and path.stat().st_size <= 1024 * 1024, "unbounded notice file"
             relative = path.relative_to(crate).as_posix()
             data = path.read_bytes()
-            with tarfile.open(cached) as downloaded:
+            with tarfile.open(fileobj=io.BytesIO(archive_data)) as downloaded:
                 member = downloaded.getmember(f"{name}-{version}/{relative}")
                 assert member.isfile() and member.size == len(data), "notice archive entry mismatch"
                 assert downloaded.extractfile(member).read() == data, "notice content differs from locked archive"
@@ -127,11 +130,12 @@ def dependency_files(source_root):
         assert names and package.get("license"), f"review missing license metadata/notices for {name}"
         inventory.append({"name": name, "version": version, "source": source,
                           "checksum_sha256": checksum, "license_expression": package["license"],
-                          "features": sorted(nodes[id_]["features"]), "notice_files": names})
-    files["dependency-inventory.json"] = (json.dumps({"schema_version": 1,
+                          "features": sorted(nodes[id_]["features"]), "notice_files": names,
+                          "source_archive": source_archive})
+    files["dependency-inventory.json"] = (json.dumps({"schema_version": 2,
         "target": "x86_64-unknown-linux-gnu", "scope": "resolved normal and build dependencies",
         "packages": inventory}, indent=2, sort_keys=True) + "\n").encode()
-    print(f"dependency inventory: {len(inventory)} locked crates with checksum-verified shipped notices")
+    print(f"dependency inventory: {len(inventory)} locked crates with checksum-verified shipped notices and original source archives")
     return files
 
 

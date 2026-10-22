@@ -6,6 +6,7 @@ import io
 import json
 from pathlib import Path, PurePosixPath
 import tarfile
+import tomllib
 
 
 LIMIT = 64 * 1024 * 1024
@@ -52,12 +53,34 @@ def inspect(path):
             build['source_archive_sha256'] != digest(files['source.tar.gz']) or
             build['cargo_lock_sha256'] != digest(source['Cargo.lock'])):
         raise ValueError('candidate content does not match provenance')
+    # Original dependency archives are opaque bytes: never extract/execute them.
+    dependency_sources = {name: digest(data) for name, data in files.items()
+                          if name.startswith('dependency-sources/')}
+    inventory = json.loads(files.get('dependency-inventory.json', b'{"packages":[]}'))
+    packages = inventory['packages']
+    declarations = [package.get('source_archive') for package in packages]
+    if inventory.get("schema_version") == 2 or dependency_sources or any(declarations):
+        locked = {(p['name'], p['version'], p.get('source')): p.get('checksum')
+                  for p in tomllib.loads(source['Cargo.lock'].decode())['package']}
+        expected = set()
+        for package in packages:
+            path = f"dependency-sources/{package['name']}-{package['version']}.crate"
+            if path in expected:
+                raise ValueError('duplicate dependency source declaration')
+            checksum = locked.get((package['name'], package['version'], package['source']))
+            if (package.get('source_archive') != path or not checksum or
+                    checksum != package['checksum_sha256'] or dependency_sources.get(path) != checksum):
+                raise ValueError('dependency source archive differs from locked inventory')
+            expected.add(path)
+        if expected != set(dependency_sources):
+            raise ValueError('unlisted dependency source archive')
     # Normalize archive headers/root/revision differences, retaining every source byte.
     manifest = {name: digest(value) for name, value in sorted(source.items())}
     return {
         'archive_sha256': digest(data), 'revision': provenance['revision'],
         'source_files_sha256': digest(json.dumps(manifest, sort_keys=True).encode()),
         'binary_sha256': provenance['binary_sha256'],
+        'dependency_sources_sha256': digest(json.dumps(dependency_sources, sort_keys=True).encode()),
         'settings': {**{key: build[key] for key in (
             'target', 'profile', 'locked', 'jobs', 'toolchain_channel',
             'rustc_verbose_version', 'cargo_version', 'cargo_lock_sha256')},
@@ -68,7 +91,7 @@ def inspect(path):
 
 
 def compare(left, right):
-    fields = ('source_files_sha256', 'settings', 'package', 'binary_sha256')
+    fields = ('source_files_sha256', 'settings', 'package', 'binary_sha256', 'dependency_sources_sha256')
     differences = [field for field in fields if left[field] != right[field]]
     return {'matching': not differences, 'differences': differences,
             'left': left, 'right': right,

@@ -56,6 +56,40 @@ class CandidateComparisonTests(unittest.TestCase):
                 self.assertFalse(report['matching'])
                 self.assertIn(field, report['differences'])
 
+    def test_dependency_sources_are_locked_and_compared_without_extraction(self):
+        files = comparison.members(candidate())
+        dependency = b'opaque original crate archive'
+        checksum = comparison.digest(dependency)
+        registry = 'registry+https://github.com/rust-lang/crates.io-index'
+        lock = (f'[[package]]\nname="fixture"\nversion="1.0.0"\nsource="{registry}"\nchecksum="{checksum}"\n').encode()
+        source = archive([('Cargo.lock', lock), ('src/main.rs', b'input')], root='source')
+        provenance = json.loads(files['provenance.json'])
+        provenance['build']['cargo_lock_sha256'] = comparison.digest(lock)
+        provenance['build']['source_archive_sha256'] = comparison.digest(source)
+        path = 'dependency-sources/fixture-1.0.0.crate'
+        files.update({'source.tar.gz': source, 'provenance.json': json.dumps(provenance).encode(),
+                      path: dependency, 'dependency-inventory.json': json.dumps({'schema_version':2,
+                      'packages':[{'name':'fixture','version':'1.0.0','source':registry,
+                      'checksum_sha256':checksum,'source_archive':path}]}).encode()})
+        valid = self.inspect(archive(files.items()))
+        self.assertTrue(comparison.compare(valid, self.inspect(archive(files.items())))['matching'])
+        historical = self.inspect(candidate())
+        self.assertNotEqual(valid['dependency_sources_sha256'], historical['dependency_sources_sha256'])
+        for mutation in ('tamper', 'missing', 'unlisted', 'missing-reference'):
+            damaged = dict(files)
+            if mutation == 'tamper':
+                damaged[path] = b'modified source'
+            elif mutation == 'missing':
+                del damaged[path]
+            elif mutation == 'unlisted':
+                damaged['dependency-sources/extra.crate'] = b'unlisted'
+            else:
+                inv = json.loads(damaged['dependency-inventory.json'])
+                del inv['packages'][0]['source_archive']
+                damaged['dependency-inventory.json'] = json.dumps(inv).encode()
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                self.inspect(archive(damaged.items()))
+
     def test_tampering_and_duplicate_members_fail(self):
         with self.assertRaises(ValueError):
             self.inspect(candidate(corrupt=True))
