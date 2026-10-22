@@ -68,3 +68,5 @@ If `EGRESS_DNS_TIMEOUT` is followed by `EGRESS_DNS_BUSY`, wait before retrying e
 DNS cancellation stops waiting cooperatively (25 ms polling interval, subject to scheduling); it cannot interrupt the native OS lookup. Until that worker exits, new lookups fail closed with `EGRESS_DNS_BUSY`. Wait before retrying. Cancellation does not refund spent budgets.
 
 When a client sends MCP cancellation, pending HTTP waits are checked at 25 ms intervals without restarting the ten-second HTTP deadline. Cancellation closes the pending request and returns no partial content. Controlled silent-header and silent-body tests cover both protocol modes; client notification delivery and scheduler delays still apply.
+
+Pending TLS handshake cancellation is tested with a silent peer after ClientHello in both protocol modes. It still requires the client to send MCP cancellation. This evidence does not guarantee every TCP/TLS state or native desktop Stop control; do not bypass the guard after a cancelled or failed request.
