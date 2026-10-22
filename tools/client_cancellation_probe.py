@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """Opt-in authenticated client-control observations against route-free fixtures.
 
-Usage: python3 tools/client_cancellation_probe.py claude|codex|cursor BINARY
+Usage: python3 tools/client_cancellation_probe.py claude|codex|cursor BINARY [CLAUDE_SKILL_ZIP]
 Requires existing client authentication and passwordless sudo for disposable netns.
 Model inference may incur account usage; no credentials are read or printed.
 This probes client control APIs, not desktop buttons or terminal Escape keys.
 """
 import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit
-assert len(sys.argv)==3 and sys.argv[1] in ('claude','codex','cursor'), __doc__
+assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __doc__
+skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
+assert skill_zip is None or sys.argv[1]=='claude', 'skill mode currently tests Claude only'
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
 script_dir=pathlib.Path(__file__).resolve().parent
 root=pathlib.Path(tempfile.mkdtemp(prefix='outbound-cancel-'));root.chmod(0o700)
 ns='outbound-client-cancel-'+str(os.getpid())
 (root/'namespace').write_text(ns)
+skill_dir=root/'.claude/skills/outbound-guard'
 p = backend = None
 owns_namespace = cleaned = False
 def cleanup():
@@ -39,6 +42,15 @@ def cleanup():
   except subprocess.TimeoutExpired:backend.terminate();backend.wait(timeout=4)
  shutil.rmtree(root)
 atexit.register(cleanup)
+if skill_zip:
+ import zipfile
+ with zipfile.ZipFile(skill_zip) as archive:
+  assert sorted(archive.namelist())==['outbound-guard/LICENSE','outbound-guard/SKILL.md']
+  skill_dir.mkdir(parents=True)
+  for name in ('SKILL.md','LICENSE'):
+   (skill_dir/name).write_bytes(archive.read('outbound-guard/'+name))
+
+
 def sudo(*args,**kw):return subprocess.run(['sudo','-n',*args],check=True,stdout=subprocess.DEVNULL,**kw)
 sudo('ip','netns','add',ns);owns_namespace=True
 sudo('ip','-n',ns,'link','set','lo','up');sudo('ip','-n',ns,'address','add','11.0.0.1/32','dev','lo')
@@ -61,6 +73,11 @@ if auth.exists():(clienthome/'auth.json').symlink_to(auth)
 (clienthome/'config.toml').write_text('approval_policy="never"\nsandbox_mode="read-only"\n[mcp_servers.outbound_guard]\ncommand="python3"\nargs='+json.dumps(bridge)+'\nenabled_tools=["guarded_fetch"]\nrequired=true\n[mcp_servers.outbound_guard.tools.guarded_fetch]\napproval_mode="approve"\n')
 name=sys.argv[1]
 cmd=['claude','-p','--restricted','--strict-mcp-config','--mcp-config',str(config),'--allowedTools','mcp__outbound_guard__guarded_fetch','--tools','','--permission-mode','dontAsk','--no-session-persistence','--output-format','stream-json','--input-format','stream-json','--verbose'] if name=='claude' else ([str(pathlib.Path.home()/'.local/bin/agent'),'--approve-mcps','--trust','acp'] if name=='cursor' else ['codex','app-server','--listen','stdio://'])
+if skill_zip:
+ cmd.remove('--restricted')
+ cmd.extend(['--setting-sources','project','--replay-user-messages'])
+ cmd[cmd.index('--tools')+1]='Skill'
+ cmd[cmd.index('--allowedTools')+1]='Skill(outbound-guard *),mcp__outbound_guard__guarded_fetch'
 env=os.environ.copy()
 if name=='codex':env['CODEX_HOME']=str(clienthome)
 p=subprocess.Popen(cmd,cwd=root,env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open(root/'client.stderr','w'),text=True,bufsize=1)
@@ -89,6 +106,43 @@ def response(id_):
   if m.get('id')==id_ and 'method' not in m:
    assert 'result' in m,m
    return m['result']
+if skill_zip:
+ try:
+  skill_prompt='First invoke the outbound-guard skill using the Skill tool. Follow its instructions for this controlled fixture: use guarded_fetch to GET http://127.0.0.1/ once, GET http://allowed.test/plain once and HEAD http://allowed.test/head-ok once, in that order. The operator already approved allowed.test and installed the server. Use no other tools; report actual results.'
+  send({'type':'user','message':{'role':'user','content':skill_prompt}})
+  deadline=time.monotonic()+80
+  while time.monotonic()<deadline:
+   events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()] if (root/'wire.jsonl').exists() else []
+   if [e.get('rule') for e in events if 'rule' in e]==['EGRESS_INVALID_HOST','EGRESS_ALLOWED','EGRESS_ALLOWED']:break
+   assert p.poll() is None,'client exited before skill workflow completed'
+   time.sleep(.05)
+  else:raise AssertionError('skill workflow did not complete expected tool calls')
+  messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
+  blocks=[b for m in messages for b in m.get('message',{}).get('content',[]) if isinstance(b,dict)]
+  invocations=[b for b in blocks if b.get('type')=='tool_use' and b.get('name')=='Skill' and b.get('input',{}).get('skill')=='outbound-guard']
+  assert len(invocations)==1,'native Skill tool invocation not observed'
+  results=[b for b in blocks if b.get('type')=='tool_result' and b.get('tool_use_id')==invocations[0]['id']]
+  if not (len(results)==1 and not results[0].get('is_error')):
+   print(json.dumps({'skill_diagnostic':{'result_count':len(results),'error_flags':[r.get('is_error') for r in results],
+    'result_error_classes':[[word for word in ('permission','denied','unknown skill','not found','not allowed','restricted') if word in str(r.get('content','')).lower()] for r in results],
+    'skill_arguments_present':bool(invocations[0].get('input',{}).get('args')),
+    'message_types':sorted(set(m.get('type','unknown') for m in messages)),
+    'project_path_seen':str(skill_dir) in json.dumps(messages)}}),flush=True)
+  assert len(results)==1 and not results[0].get('is_error'), 'Skill tool result missing or failed'
+  assert str(skill_dir) in json.dumps(messages), 'project skill source not observed in native transcript'
+  fetches=[e for e in events if e.get('method')=='tools/call']
+  assert [e['http_method'] for e in fetches]==['GET','GET','HEAD']
+  assert [e['status_code'] for e in events if 'status_code' in e]==[200,200]
+  print(json.dumps({'client':'claude','native_skill_invoked':True,'skill_tool_result_success':True,
+   'skill_zip_sha256':hashlib.sha256(skill_zip.read_bytes()).hexdigest(),
+   'installed_skill_sha256':hashlib.sha256((skill_dir/'SKILL.md').read_bytes()).hexdigest(),
+   'binary_sha256':hashlib.sha256(pathlib.Path(binary).read_bytes()).hexdigest(),
+   'installation_scope':'temporary project .claude/skills/outbound-guard',
+   'native_project_source_observed':True,'setting_sources':['project'],'builtin_tools':['Skill'],
+   'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
+   'status_codes':[200,200], 'scope':'explicit Skill tool invocation; not automatic trigger reliability or other clients'}),flush=True)
+ finally:cleanup()
+ sys.exit(0)
 try:
  if name=='claude':send({'type':'user','message':{'role':'user','content':prompt}})
  elif name=='cursor':

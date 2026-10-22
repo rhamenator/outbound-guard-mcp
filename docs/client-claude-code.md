@@ -31,3 +31,18 @@ Claude Code 2.1.301 used `--restricted --strict-mcp-config --allowedTools mcp__o
 This is candidate evidence, not final stable-release certification. Client UI cancellation, authenticated Cursor and the other quality-bar gates remain open.
 
 The [2026-10-21 control-path cancellation review](client-cancellation.md) records actual wire behavior separately from agent-turn interruption and deadline recovery. It does not certify desktop or terminal UI controls.
+
+
+## Native companion-skill activation
+
+On 2026-10-22, Claude Code 2.1.301 loaded the exact clean skill ZIP for source 23b9cdc6c350 from a private project's `.claude/skills/outbound-guard/` directory. The probe observed an explicit native `Skill` invocation, a successful correlated tool result and the temporary project source path in the private transcript. It then required guarded loopback denial, approved GET200 and HEAD200, in that order. [Redacted activation evidence](evidence/claude-skill-activation-2026-10-22.json) records exact binary/ZIP/SKILL.md hashes. Normal client authentication was reused; project/config/transcript state was removed after the check.
+
+Project skill placement and named invocation follow the [official Claude skills documentation](https://code.claude.com/docs/en/skills). Install the ZIP's `outbound-guard/` folder under `.claude/skills/` in the project where the client starts, and configure the separately installed MCP server as above. This test authorized only the `Skill` built-in and `guarded_fetch`, selected project settings sources and used a strict private MCP configuration. It did not enable shell, browser or file-edit tools. Model inference uses the client's normal account and may incur usage.
+
+The earlier `--restricted` control-test configuration returned `Unknown skill` in this version; successful MCP calls after that error did not count as activation. The skill test uses `--setting-sources project`, permits only `Skill(outbound-guard *)` plus the MCP tool and observes user-message echoes for the skill result. Reproduce it with the optional fourth argument:
+
+```sh
+python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+This optional authenticated probe needs the existing disposable-namespace sudo permissions described in the cancellation guide. Ordinary stdio/skill use requires no sudo. The check establishes one explicit invocation in Claude 2.1.301; automatic trigger reliability and native skill activation in Codex/Cursor remain open. A skill is guidance, and the server only guards calls actually sent through its tool.

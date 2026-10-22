@@ -1,0 +1,48 @@
+{
+  "client": "claude",
+  "native_skill_invoked": true,
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+  "installed_skill_sha256": "9d55ad0d551a7cf6de86b33b4280a9e153f48ee160f142b0e0421e5e8774dddf",
+  "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+  "installation_scope": "temporary project .claude/skills/outbound-guard",
+  "native_project_source_observed": true,
+  "setting_sources": [
+    "project"
+  ],
+  "builtin_tools": [
+    "Skill"
+  ],
+  "http_methods": [
+    "GET",
+    "GET",
+    "HEAD"
+  ],
+  "rules": [
+    "EGRESS_INVALID_HOST",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED"
+  ],
+  "status_codes": [
+    200,
+    200
+  ],
+  "scope": "explicit Skill tool invocation; not automatic trigger reliability or other clients",
+  "date_utc": "2026-10-22",
+  "version": "2.1.301",
+  "artifact_source_sha": "23b9cdc6c350b8ad241e2d83df3a54a2b4b68e3f",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39848569009",
+  "archive_sha256": "d3d47b1a5820ef7a2e5e6e463dde9fc149c2a4585bb1b63dbef8a435ccfac881",
+  "installation": "checksum-verified fresh server extraction; exact clean skill ZIP installed in private project; normal account authentication",
+  "status": "explicit native activation observed; experimental, no release approval",
+  "initial_harness_findings": [
+    "restricted control configuration produced Unknown skill; MCP calls alone did not count as skill activation",
+    "replay-user-messages enabled to observe Skill result; project settings source selected, only Skill builtin and guarded_fetch authorized"
+  ],
+  "limitations": [
+    "one explicit named Skill invocation, not automatic trigger rate",
+    "Codex/Cursor native skill loading not tested",
+    "no skill enforcement or coverage of other tools",
+    "client control/cancellation/UI tests remain separate"
+  ]
+}
