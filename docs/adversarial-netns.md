@@ -199,3 +199,13 @@ The namespace also assigns an unserved public-policy address `11.0.0.2` to loopb
 Strace must show exactly four TCP connects across the complete post-DNS sequence, in order: served fixture, served redirect fixture, refused approved address, served fallback. The trace must also contain `ECONNREFUSED`. HTTP-hit and audit sequences independently check successful fallback and subsequent denial. The refused-address alias has no external route and is removed with the disposable namespace. Four additional tool decisions bring the complete corpus to2,101.
 
 This proves the exercised Linux TCP-refusal fallback and per-call DNS pinning behavior. It does not prove every address order/platform, SYN timeout, TLS-handshake fallback, HTTP reconnect or retry path. No server capability or dependency changed.
+
+### TCP SYN blackhole deadline and cancellation
+
+The launcher assigns `11.0.0.3` only inside its freshly created route-free namespace and installs an nftables rule **inside that namespace** dropping TCP packets to that address on port80. The host firewall is not modified. The development launcher now requires `nft` (the distribution's `nftables` package), in addition to its existing privileged namespace setup; ordinary server installations need neither nftables nor sudo. Deleting the owned namespace removes its rules and addresses, including on launcher failure.
+
+DNS for `syn-stall.test` returns the blackholed approved address before the served fixture. Both protocol eras require a tool call to stop at the shared three-second connect/TLS deadline with `EGRESS_NETWORK_FAILURE`, no partial body and no HTTP hit at the fallback address. The timer must not renew for another address. The nft packet counter proves packets actually reached the drop rule, and the namespace's `/proc/net/tcp` must contain no residual SYN_SENT socket after timeout.
+
+A second call is cancelled only after the rule counter advances and a SYN_SENT socket exists. A following ping must return within one second, with no cancelled tool reply or remaining SYN_SENT socket. A subsequent approved GET and exact audit sequence prove recovery. These six additional decisions bring the controlled corpus to2,107. The private resolver mount is checked before the probe; it reads counters but modifies no firewall rules itself.
+
+This is a finite Linux connect-blackhole observation, not a timing guarantee under arbitrary scheduling, a host egress firewall, or proof for every kernel/TCP/TLS state. Existing TLS silent-handshake, refused-address fallback and HTTP total-deadline fixtures remain separate evidence.
