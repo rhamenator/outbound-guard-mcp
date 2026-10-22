@@ -70,7 +70,11 @@ jobs:
             auditor-version.txt
           retention-days: 7
   policy-fuzz:
-    name: LLVM policy fuzz campaign
+    name: LLVM ${{ matrix.target }} fuzz campaign
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [policy, frame]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -90,13 +94,14 @@ jobs:
         run: |
           export LIBFUZZER_RUNTIME="$(clang-18 --print-file-name=libclang_rt.fuzzer_no_main-x86_64.a)"
           export POLICY_FUZZ_CLANG=clang-18
-          export POLICY_FUZZ_OUTPUT="$RUNNER_TEMP/policy-fuzz-evidence"
+          export POLICY_FUZZ_TARGET="${{ matrix.target }}"
+          export POLICY_FUZZ_OUTPUT="$RUNNER_TEMP/${{ matrix.target }}-fuzz-evidence"
           bash tools/policy_fuzz.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
-          name: llvm-policy-fuzz-evidence
-          path: ${{ runner.temp }}/policy-fuzz-evidence
+          name: llvm-${{ matrix.target }}-fuzz-evidence
+          path: ${{ runner.temp }}/${{ matrix.target }}-fuzz-evidence
           retention-days: 7
   rust:
     runs-on: ubuntu-24.04

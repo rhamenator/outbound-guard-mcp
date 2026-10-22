@@ -101,6 +101,29 @@ fn read_frame_tracked<R: BufRead>(
     }
 }
 
+// Development harness only; the normal server has no additional entry point.
+#[cfg(feature = "policy-fuzz")]
+pub fn fuzz_frame_stream(input: &[u8]) {
+    let capacities = [1, 2, 7, 64, 8192, MAX_LINE + 1];
+    let capacity = capacities[input.first().copied().unwrap_or(0) as usize % capacities.len()];
+    let mut reader = io::BufReader::with_capacity(capacity, input);
+    for expected in input.split_inclusive(|byte| *byte == b'\n') {
+        let frame = read_frame_tracked(&mut reader, &Mutex::new(None)).unwrap();
+        match frame {
+            Frame::Data(actual) => {
+                assert!(expected.len() <= MAX_LINE);
+                assert_eq!(actual, expected);
+            }
+            Frame::TooLarge => assert!(expected.len() > MAX_LINE),
+            _ => panic!("framer lost synchronization"),
+        }
+    }
+    assert!(matches!(
+        read_frame_tracked(&mut reader, &Mutex::new(None)).unwrap(),
+        Frame::Eof
+    ));
+}
+
 fn rpc_error(id: Value, code: i32, message: &str) -> Value {
     json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
 }
