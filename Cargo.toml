@@ -22,3 +22,7 @@ webpki-roots = "1.0.10"
 [profile.release]
 strip = "symbols"
 panic = "abort"
+
+[features]
+# Development-only policy harness; no added runtime dependencies.
+policy-fuzz = []

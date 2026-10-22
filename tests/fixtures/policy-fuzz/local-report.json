@@ -1,0 +1,15 @@
+{
+  "seed": 306373022,
+  "executions": 780363,
+  "coverage_counters": 4193,
+  "features": 17262,
+  "new_units_added": 5161,
+  "limits": "60s target; 2s/input; hard 1GiB address space/64 FDs/90s CPU; no ASan",
+  "scope": "validate only, stub DNS; no sockets, HTTP parser or MCP transport",
+  "corpus_files": 1560,
+  "corpus_archive_sha256": "a3ddb0dbbd08117322d81ccf4ceea48e57211f8a1b1b825ccdbb5523ff57d5c9",
+  "runtime_identity": "c5df7495c36c7dd395561f53a72aad967b527f61c3c186e9ef7f32ae670d3b4a  /usr/lib/llvm-21/lib/clang/21/lib/linux/libclang_rt.fuzzer_no_main-x86_64.a",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "clang": "Ubuntu clang version 21.1.8 (6ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-21/bin\n",
+  "input_hashes": "89b15309882f9052f15cff01af7f28e8f777749167c7d5fec5685d6ab73a4d29  Cargo.toml\nf71b1d556d0f0bca581d4bd139d00789c90d780e39f358a4dab7fb62a3280bbb  Cargo.lock\nf6aeb45180145ad3a64a8f4f88064d8265af651e7ff5086147543859b7609196  src/lib.rs\n4bfcac01170a72a37026ed9b9f36bd94326462a9d666ff35f9e799bcaa310163  src/main.rs\n7b2ee0938d7efe994d755aab84ee4d1dd0caddd3b57d11c3c6ce5830869027ac  src/transport.rs\nb18b7220a2419d71d7e006f6889c593ce5294bce9660c5ca422b06c31b39f132  examples/policy_fuzz.rs\n574230efe98cd837d62e18d00d1ac4d9618b73eb7aa9afdecdfcce84941243bf  tools/policy_fuzz.sh\n"
+}

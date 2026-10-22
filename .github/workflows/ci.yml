@@ -69,6 +69,35 @@ jobs:
             advisory-db-commit.txt
             auditor-version.txt
           retention-days: 7
+  policy-fuzz:
+    name: LLVM policy fuzz campaign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
+      - name: Read pinned compiler
+        id: compiler
+        run: python3 -c 'import os,tomllib; print("channel="+tomllib.load(open("rust-toolchain.toml","rb"))["toolchain"]["channel"],file=open(os.environ["GITHUB_OUTPUT"],"a"))'
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: ${{ steps.compiler.outputs.channel }}
+      - name: Install development LLVM runtime and fetch locked crates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libclang-rt-18-dev
+          cargo fetch --locked
+      - name: Run network-free coverage-guided policy campaign
+        run: |
+          export LIBFUZZER_RUNTIME="$(clang-18 --print-file-name=libclang_rt.fuzzer_no_main-x86_64.a)"
+          export POLICY_FUZZ_CLANG=clang-18
+          export POLICY_FUZZ_OUTPUT="$RUNNER_TEMP/policy-fuzz-evidence"
+          bash tools/policy_fuzz.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: llvm-policy-fuzz-evidence
+          path: ${{ runner.temp }}/policy-fuzz-evidence
+          retention-days: 7
   rust:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -197,7 +226,7 @@ jobs:
 
   attest-candidate:
     name: Sign verified candidate provenance
-    needs: [rust, independent-rebuild, rustsec-audit, sdk-audit]
+    needs: [rust, independent-rebuild, rustsec-audit, sdk-audit, policy-fuzz]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'rhamenator/outbound-guard-mcp'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
