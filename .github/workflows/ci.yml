@@ -108,3 +108,71 @@ jobs:
           path: dist/rebuild-comparison.json
           retention-days: 7
           if-no-files-found: warn
+
+  attest-candidate:
+    name: Sign verified candidate provenance
+    needs: [rust, independent-rebuild]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'rhamenator/outbound-guard-mcp'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download tested candidate and matching rebuild evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name experimental-candidate-linux-x86_64 --dir dist/candidate
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name independent-rebuild-comparison-linux-x86_64 --dir dist/evidence
+      - name: Validate artifact bytes against successful independent comparison
+        run: |
+          (cd dist/candidate && sha256sum -c SHA256SUMS)
+          python3 - <<'PYCODE'
+          import hashlib, json, os
+          from pathlib import Path
+          report = json.loads(Path('dist/evidence/rebuild-comparison.json').read_text())
+          assert report['matching'] is True and report['differences'] == []
+          archives = list(Path('dist/candidate').glob('*.tar.gz'))
+          assert len(archives) == 1
+          assert report['left']['archive_sha256'] == hashlib.sha256(archives[0].read_bytes()).hexdigest()
+          assert report['left']['revision'] == report['right']['revision'] == os.environ['GITHUB_SHA']
+          assert report['left']['binary_sha256'] == report['right']['binary_sha256']
+          PYCODE
+      - name: Attest experimental archives and checksum manifest
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/candidate/*
+          push-to-registry: false
+          create-storage-record: false
+      - name: Verify signatures and exact trusted workflow/source identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh --version
+          for artifact in dist/candidate/*; do
+            gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/ci.yml" --source-ref refs/heads/main --source-digest "$GITHUB_SHA" --deny-self-hosted-runners --format json > "$artifact.verification.json"
+          done
+          archive=$(find dist/candidate -maxdepth 1 -name '*.tar.gz' -print -quit)
+          cp "$archive" dist/tampered-candidate.tar.gz
+          printf '\000' >> dist/tampered-candidate.tar.gz
+          if gh attestation verify dist/tampered-candidate.tar.gz --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Tampered candidate unexpectedly verified'
+            exit 1
+          fi
+          if gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY" --source-digest 0000000000000000000000000000000000000000 >/dev/null 2>&1; then
+            echo 'Incorrect source identity unexpectedly verified'
+            exit 1
+          fi
+      - name: Retain signed bundle and verifier results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: experimental-candidate-provenance-linux-x86_64
+          path: |
+            ${{ steps.attest.outputs.bundle-path }}
+            dist/candidate/*.verification.json
+          retention-days: 7
+          if-no-files-found: error

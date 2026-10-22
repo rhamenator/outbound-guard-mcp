@@ -26,3 +26,5 @@ The user's adversarial-testing requirement separately applies to `ai-scraping-de
 The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. The offline verifier detects this mismatch; cross-host reproducibility remains open pending compiler alignment and a successful replay.
 
 Independent executable reproducibility is now a [continuous CI gate](candidate-packaging.md#continuous-independent-rebuild-gate): a clean second runner rebuilds and adversarially tests the candidate before comparing it with the primary artifact. This is not signing, physical-host attestation or human release approval; retain the report for the exact release candidate.
+
+[Signed experimental provenance](candidate-packaging.md#signed-experimental-candidate-workflow-provenance) is generated only after trusted main builds and independent comparison succeed. Require an actual passing main signing/verifier job, matching reviewed source and artifact hashes; PR checks alone cannot close this gate. Human stable-release approval remains separate.
