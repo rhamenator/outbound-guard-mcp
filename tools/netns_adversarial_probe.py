@@ -56,6 +56,7 @@ RECORDS = {
 HOURLY_HOSTS = [f"budget-{index}.test" for index in range(17)]
 RECORDS.update({host: [PUBLIC_FIXTURE] for host in HOURLY_HOSTS})
 RECORDS["budget-failure.test"] = []
+RECORDS["dns-stall.test"] = [PUBLIC_FIXTURE]
 V6_RECORDS = {
     "v6-loopback.test": ["::1"],
     "v6-mapped.test": ["::ffff:127.0.0.1"],
@@ -67,6 +68,7 @@ V6_RECORDS = {
 
 
 class DNS(socketserver.BaseRequestHandler):
+    stall_release = threading.Event()
     rebind_a_queries = 0
     queries = 0
     names = []
@@ -95,6 +97,8 @@ class DNS(socketserver.BaseRequestHandler):
             type(self).a_names.append(name)
         elif qtype == 28:
             type(self).aaaa_names.append(name)
+        if name == 'dns-stall.test' and not type(self).stall_release.wait(timeout=8):
+            return
         addresses = (RECORDS.get(name, []) if qtype == 1 else
                      V6_RECORDS.get(name, []) if qtype == 28 else [])
         if name == "rebind.test" and qtype == 1:
@@ -1090,6 +1094,102 @@ def test_sdk_cancellation(binary, modern=False):
             process.wait()
 
 
+def test_dns_worker_exhaustion(binary):
+    """Real libc lookup outlives its caller; busy requests cannot create more workers."""
+    name = os.environ.get('OUTBOUND_GUARD_TEST_NETNS', '')
+    assert name.startswith('outbound-guard-probe-') and name.removeprefix('outbound-guard-probe-').isdigit()
+    resolver_file = Path('/etc/netns') / name / 'resolv.conf'
+    # Refuse to alter resolver configuration outside the disposable launcher's bind mount.
+    assert resolver_file.samefile('/etc/resolv.conf'), 'not the private namespace resolver mount'
+    original = resolver_file.read_text()
+    assert 'timeout:1 attempts:1' in original and 'search-trap.test' in original
+    cases = 0
+    try:
+        resolver_file.write_text('nameserver 127.0.0.1\noptions timeout:6 attempts:1\n')
+        for modern in (False, True):
+            DNS.stall_release = threading.Event()
+            env = {key: value for key, value in os.environ.items() if not key.startswith('OUTBOUND_GUARD_')}
+            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test,dns-stall.test'
+            child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, text=True, env=env)
+            def send(method, id_, params=None):
+                params = dict(params or {})
+                if modern:
+                    params['_meta'] = {'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                                       'io.modelcontextprotocol/clientCapabilities': {}}
+                child.stdin.write(json.dumps({'jsonrpc':'2.0', 'id':id_, 'method':method, 'params':params}) + '\n')
+                child.stdin.flush()
+            def receive(id_):
+                assert select.select([child.stdout], [], [], 6)[0], 'resolver probe response deadline'
+                reply = json.loads(child.stdout.readline())
+                assert reply['id'] == id_, reply
+                return reply['result']
+            def fetch(id_, host):
+                send('tools/call', id_, {'name':'guarded_fetch', 'arguments':{'url':f'http://{host}/plain'}})
+                return receive(id_)['structuredContent']
+            def tasks():
+                return {path.name for path in Path(f'/proc/{child.pid}/task').iterdir()}
+            try:
+                if not modern:
+                    send('initialize', 'init', {'protocolVersion':'2025-06-18', 'capabilities':{},
+                        'clientInfo':{'name':'resolver-probe', 'version':'1'}})
+                    receive('init')
+                    child.stdin.write(json.dumps({'jsonrpc':'2.0', 'method':'notifications/initialized'}) + '\n')
+                    child.stdin.flush()
+                send('ping', 'warm')
+                receive('warm')
+                baseline = tasks()
+                before_queries, before_hits = DNS.queries, len(HTTP.hits)
+                started = time.monotonic()
+                assert fetch('timeout', 'dns-stall.test')['rule'] == 'EGRESS_DNS_TIMEOUT'
+                elapsed = time.monotonic() - started
+                assert 2.5 <= elapsed < 5, elapsed
+                assert len(tasks() - baseline) == 1, 'expected exactly one lingering OS resolver'
+                assert DNS.queries > before_queries and len(HTTP.hits) == before_hits
+                held_queries = DNS.queries
+                peak_fds = peak_rss = 0
+                for index in range(20):
+                    host = 'dns-stall.test' if index % 2 == 0 else 'allowed.test'
+                    assert fetch(f'busy-{index}', host)['rule'] == 'EGRESS_DNS_BUSY'
+                    assert len(tasks() - baseline) == 1, 'busy calls multiplied resolver threads'
+                    peak_fds = max(peak_fds, len(list(Path(f'/proc/{child.pid}/fd').iterdir())))
+                    status = Path(f'/proc/{child.pid}/status').read_text()
+                    peak_rss = max(peak_rss, int(next(line.split()[1] for line in status.splitlines() if line.startswith('VmRSS:'))))
+                assert DNS.queries == held_queries and len(HTTP.hits) == before_hits
+                assert peak_fds < 32 and peak_rss < 65536, (peak_fds, peak_rss)
+                DNS.stall_release.set()
+                deadline = time.monotonic() + 2
+                while tasks() != baseline and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                assert tasks() == baseline, 'resolver did not exit after releasing DNS'
+                assert len(HTTP.hits) == before_hits, 'late resolver completion caused HTTP'
+                assert fetch('recovery', 'allowed.test')['rule'] == 'EGRESS_ALLOWED'
+                assert HTTP.hits[before_hits:] == ['/plain']
+                send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
+                events = json.loads(receive('audit')['contents'][0]['text'])['events']
+                assert [item['rule'] for item in events] == ['EGRESS_DNS_TIMEOUT'] + ['EGRESS_DNS_BUSY'] * 20 + ['EGRESS_ALLOWED']
+                child.stdin.close()
+                assert child.wait(timeout=3) == 0 and not child.stdout.read() and not child.stderr.read()
+                print(f'live DNS worker {"modern" if modern else "legacy"}: timeout {elapsed:.2f}s; '
+                      f'20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; '
+                      f'sampled {peak_rss} KiB/{peak_fds} FDs')
+                cases += 22
+            finally:
+                DNS.stall_release.set()
+                if child.poll() is None:
+                    child.kill()
+                    child.wait()
+                for stream in (child.stdin, child.stdout, child.stderr):
+                    try:
+                        stream.close()
+                    except BrokenPipeError:
+                        pass
+    finally:
+        DNS.stall_release.set()
+        resolver_file.write_text(original)
+    return cases
+
+
 def main(binary, cancellation_probe):
     dns = socketserver.ThreadingUDPServer(("127.0.0.1", 53), DNS)
     http_server = http.server.ThreadingHTTPServer((PUBLIC_FIXTURE, 80), HTTP)
@@ -1265,12 +1365,13 @@ def main(binary, cancellation_probe):
         test_saturated_cancellation(binary)
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
+        dns_worker_cases = test_dns_worker_exhaustion(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

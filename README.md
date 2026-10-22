@@ -132,3 +132,5 @@ For release engineering, [compare independently built candidates offline](docs/c
 Source builds select Rust/Cargo 1.99.1 through `rust-toolchain.toml`; the minimum supported compiler remains 1.89 and is tested separately. Candidate packaging rejects a selected compiler/Cargo version that differs from the exact build pin. See [compiler evidence](docs/candidate-packaging.md#compilerbuild-evidence).
 
 For independent native rebuilds, use the [digest-pinned candidate builder](docs/candidate-packaging.md#pinned-native-candidate-builder). It requires Docker during packaging; installed server binaries do not require Docker.
+
+A timed-out OS DNS lookup may continue after the three-second tool DNS deadline. While that single lookup is still running, `EGRESS_DNS_BUSY` denies new lookups for every host; wait before retrying and do not bypass the guard. Spent budgets remain counted. [Live resolver-stall tests](docs/adversarial-netns.md#live-os-dns-worker-exhaustion-and-recovery) check one-worker retention, no extra DNS/HTTP, late-result discard and recovery in both protocol modes.

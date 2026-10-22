@@ -19,4 +19,4 @@ sudo -n ip -n "$ns" link set lo up
 sudo -n ip -n "$ns" address add 11.0.0.1/32 dev lo
 sudo -n install -d -m 755 "/etc/netns/$ns"
 printf 'nameserver 127.0.0.1\nsearch search-trap.test\noptions ndots:5 timeout:1 attempts:1\n' | sudo -n tee "/etc/netns/$ns/resolv.conf" >/dev/null
-sudo -n ip netns exec "$ns" env "OUTBOUND_GUARD_TEST_NODE=$sdk_node" "OUTBOUND_GUARD_TEST_SDK_DIR=${OUTBOUND_GUARD_TEST_SDK_DIR:-}" python3 "$repo_dir/tools/netns_adversarial_probe.py" "$(realpath "$binary")" "$(realpath "$cancel_probe")"
+sudo -n ip netns exec "$ns" env "OUTBOUND_GUARD_TEST_NETNS=$ns" "OUTBOUND_GUARD_TEST_NODE=$sdk_node" "OUTBOUND_GUARD_TEST_SDK_DIR=${OUTBOUND_GUARD_TEST_SDK_DIR:-}" python3 "$repo_dir/tools/netns_adversarial_probe.py" "$(realpath "$binary")" "$(realpath "$cancel_probe")"

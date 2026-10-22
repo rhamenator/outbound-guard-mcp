@@ -75,3 +75,5 @@ HTTP total-deadline evidence now uses cancellable async I/O and a stricter late-
 Modern stateless stdio metadata/discovery and legacy compatibility are now exercised by [revision-specific wire and official-client checks](protocol-conformance.md). Historical modern refusal is not the current behavior. The client matrix and independent conformance/release review remain open; the transport is still stdio only.
 
 [Seeded black-box framing mutation](adversarial-stdio.md#seeded-frame-mutation-and-recovery) adds 626 cases per era, recovery after each, empty audit and sampled resource bounds. It is finite property evidence; coverage-guided fuzzing and full protocol/client attack coverage remain open.
+
+[Live OS DNS worker exhaustion](adversarial-netns.md#live-os-dns-worker-exhaustion-and-recovery) now verifies a real lookup outliving its three-second caller deadline, twenty busy denials without thread/query/socket multiplication, late-answer discard and successful recovery after release in both eras. Private namespace resolver configuration is inode-checked and restored. OS allocation/NSS cancellation and a permanently stuck resolver remain outside this finite proof.
