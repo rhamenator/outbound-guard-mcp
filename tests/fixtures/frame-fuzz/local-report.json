@@ -1,0 +1,13 @@
+{
+  "seed": 306373022,
+  "executions": 2461,
+  "coverage_counters": 271,
+  "features": 1582,
+  "new_units_added": 63,
+  "limits": "60s target; 2s/input; hard 1GiB address space/64 FDs/90s CPU; no ASan",
+  "scope": "actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets",
+  "corpus_archive_sha256": "202547d591a142fdeb09f2c6dfb9666d9f4179727353d21c25d4f0a2803f68b5",
+  "input_hashes": "89b15309882f9052f15cff01af7f28e8f777749167c7d5fec5685d6ab73a4d29  Cargo.toml\nf71b1d556d0f0bca581d4bd139d00789c90d780e39f358a4dab7fb62a3280bbb  Cargo.lock\nf6aeb45180145ad3a64a8f4f88064d8265af651e7ff5086147543859b7609196  src/lib.rs\nfde2437cc55233abdabe29de8ddd7634a13dd517150c91142bdb13f980c1f3e1  src/main.rs\n7b2ee0938d7efe994d755aab84ee4d1dd0caddd3b57d11c3c6ce5830869027ac  src/transport.rs\n98d3a1784d00c4b39cf976f9d09beb0a13e017bfbf25813dc503508ea0637937  examples/frame_fuzz.rs\nb18b7220a2419d71d7e006f6889c593ce5294bce9660c5ca422b06c31b39f132  examples/policy_fuzz.rs\n9dc0d2544be48c1c73d405ab28f9fea6567e46f04f68c990b9aae16c927e4056  tools/policy_fuzz.sh\n",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "clang": "Ubuntu clang version 21.1.8 (6ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-21/bin\n"
+}
