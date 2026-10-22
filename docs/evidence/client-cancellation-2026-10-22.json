@@ -1,0 +1,105 @@
+{
+  "date_utc": "2026-10-22",
+  "artifact_source_sha": "5c937811120a865564240b693f8bf558fd909ab3",
+  "status": "experimental; no human release approval",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39719409458",
+  "provenance_url": "https://github.com/rhamenator/outbound-guard-mcp/attestations/58487472",
+  "archive_sha256": "8e7fc6dd91f7c95b4a13956f38c6e26e45801387cbf0c2c56bd9f939ff730426",
+  "skill_sha256": "a4b529b2304810d16c71ef56a9b48847bbc6093369eaa52d0edc432b7aca3a0f",
+  "installation": "fresh extraction of CI archive after SHA256SUMS verification; private temporary MCP configuration; existing normal client authentication",
+  "clients": [
+    {
+      "client": "claude",
+      "binary_sha256": "6549e77a5b450c630a3909f43d9bdf2521f820ec599ad9528c5df8e74d9e8388",
+      "control_path": "stream-json interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": true,
+      "cancelled_fetch_replied": false,
+      "cancel_notifications": 1,
+      "http_methods": [
+        "GET",
+        "GET"
+      ],
+      "status_codes": [
+        200
+      ],
+      "fetches": 2,
+      "socket_closed_after_seconds": 0.061,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2.1.301"
+    },
+    {
+      "client": "codex",
+      "binary_sha256": "6549e77a5b450c630a3909f43d9bdf2521f820ec599ad9528c5df8e74d9e8388",
+      "control_path": "app-server turn/interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET"
+      ],
+      "status_codes": [
+        200
+      ],
+      "fetches": 2,
+      "socket_closed_after_seconds": 3.019,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "0.151.0"
+    },
+    {
+      "client": "cursor",
+      "binary_sha256": "6549e77a5b450c630a3909f43d9bdf2521f820ec599ad9528c5df8e74d9e8388",
+      "control_path": "ACP session/cancel",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "HEAD"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "fetches": 4,
+      "socket_closed_after_seconds": 3.015,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2026.10.19-6bbf2c4"
+    }
+  ],
+  "limitations": [
+    "Single completed control-path observation per client; timings are samples, not guarantees.",
+    "Codex and Cursor did not send MCP cancellation; prompt-cancellation acceptance remains unmet for these tested control paths.",
+    "Desktop buttons, terminal keys, saturated client queues and every DNS/TLS phase were not exercised.",
+    "Only Cursor additionally exercised loopback denial and HEAD in this replay.",
+    "These results certify neither a later source/artifact nor a stable release."
+  ],
+  "cleanup": "Harness removed its temporary namespace, private configuration and wire/client logs after each run; normal client authentication retained."
+}
