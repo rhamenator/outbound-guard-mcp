@@ -9,6 +9,30 @@ permissions:
   contents: read
 
 jobs:
+  sdk-audit:
+    name: Locked SDK npm audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
+      - name: Record development audit tools and lockfile identity
+        run: |
+          node --version > sdk-audit-tools.txt
+          npm --version >> sdk-audit-tools.txt
+          sha256sum tools/mcp-sdk-probe/package-lock.json > sdk-audit-lockfile.sha256
+      - name: Audit all locked SDK dependency classes without installing code
+        run: npm audit --prefix tools/mcp-sdk-probe --package-lock-only --include=dev --include=optional --include=peer --ignore-scripts --audit-level=low --json > sdk-npm-audit.json
+      - name: Require complete zero-finding audit response
+        run: python3 -c 'import json; r=json.load(open("sdk-npm-audit.json")); assert "error" not in r; assert r["auditReportVersion"] == 2; assert r["metadata"]["vulnerabilities"]["total"] == 0'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: locked-sdk-advisory-report
+          path: |
+            sdk-npm-audit.json
+            sdk-audit-tools.txt
+            sdk-audit-lockfile.sha256
+          retention-days: 7
   rustsec-audit:
     name: Full-lock RustSec audit
     runs-on: ubuntu-24.04
@@ -163,7 +187,7 @@ jobs:
 
   attest-candidate:
     name: Sign verified candidate provenance
-    needs: [rust, independent-rebuild, rustsec-audit]
+    needs: [rust, independent-rebuild, rustsec-audit, sdk-audit]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'rhamenator/outbound-guard-mcp'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
