@@ -42,3 +42,5 @@ The [TLS-patched installed-archive replay](client-cancellation.md#tls-patched-in
 The [locked SDK advisory gate](dependencies.md#locked-development-sdk-advisory-gate) now checks the JavaScript probe lockfile independently of RustSec and is required before signing. Its report does not certify on-demand Inspector transitives or native clients; those remain separately scoped supply-chain evidence.
 
 [Locked Inspector installation](dependencies.md#locked-inspector-installation-and-advisory-coverage) replaces on-demand npx resolution. A separate Inspector advisory report now complements the SDK report and both are signing prerequisites. This supersedes the earlier Inspector-transitive exclusion while leaving native-client and broader source-review limits explicit.
+
+[Checksum-verified dependency source archives](candidate-packaging.md#checksum-verified-dependency-source-archives) are now packaged for the selected Linux normal/build graph and included in independent comparison. This strengthens distribution evidence while leaving exact license/corresponding-source obligations, offline/all-platform builds and human approval explicitly open.

@@ -47,6 +47,9 @@ class InventoryTests(unittest.TestCase):
         package = json.loads(data)["packages"][0]
         self.assertEqual(package["license_expression"], "MIT")
         self.assertEqual(files[package["notice_files"][0]], self.notice.read_bytes())
+        self.assertEqual(files[package["source_archive"]], self.archive.read_bytes())
+        self.assertEqual(hashlib.sha256(files[package["source_archive"]]).hexdigest(), package["checksum_sha256"])
+        self.assertEqual(json.loads(data)["schema_version"], 2)
 
     def test_changed_notice_is_rejected(self):
         self.notice.write_bytes(b"X" * self.notice.stat().st_size)
