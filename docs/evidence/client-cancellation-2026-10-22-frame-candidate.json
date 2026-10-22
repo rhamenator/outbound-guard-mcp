@@ -1,0 +1,119 @@
+{
+  "date_utc": "2026-10-22",
+  "artifact_source_sha": "23b9cdc6c350b8ad241e2d83df3a54a2b4b68e3f",
+  "status": "experimental candidate, no human release approval",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39848569009",
+  "provenance_url": "https://github.com/rhamenator/outbound-guard-mcp/attestations/58808511",
+  "archive_sha256": "d3d47b1a5820ef7a2e5e6e463dde9fc149c2a4585bb1b63dbef8a435ccfac881",
+  "skill_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+  "skill_members": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "installation": "fresh archive extraction after SHA256SUMS verification; temporary private MCP configs; existing normal account authentication; native skill activation not tested",
+  "clients": [
+    {
+      "client": "claude",
+      "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+      "control_path": "stream-json interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": true,
+      "cancelled_fetch_replied": false,
+      "cancel_notifications": 1,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "HEAD"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "fetches": 4,
+      "socket_closed_after_seconds": 0.061,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2.1.301"
+    },
+    {
+      "client": "codex",
+      "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+      "control_path": "app-server turn/interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "HEAD"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "fetches": 4,
+      "socket_closed_after_seconds": 3.012,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "0.151.0"
+    },
+    {
+      "client": "cursor",
+      "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+      "control_path": "ACP session/cancel",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "HEAD"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "fetches": 4,
+      "socket_closed_after_seconds": 2.994,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2026.10.19-6bbf2c4"
+    }
+  ],
+  "limitations": [
+    "client control APIs, not desktop buttons or terminal Escape",
+    "no saturated native-client queue or all-phase cancellation matrix",
+    "Codex/Cursor did not deliver MCP cancellation; their calls ended on server slow-response policy",
+    "finite single samples, no latency guarantee",
+    "does not prove traffic sent through other tools",
+    "does not approve stable release or waive quality-bar differences"
+  ]
+}
