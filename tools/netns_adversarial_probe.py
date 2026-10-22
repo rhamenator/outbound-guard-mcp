@@ -1106,7 +1106,7 @@ def test_dns_worker_exhaustion(binary):
     cases = 0
     try:
         resolver_file.write_text('nameserver 127.0.0.1\noptions timeout:6 attempts:1\n')
-        for modern in (False, True):
+        for modern, cancelled in ((False, False), (True, False), (False, True), (True, True)):
             DNS.stall_release = threading.Event()
             env = {key: value for key, value in os.environ.items() if not key.startswith('OUTBOUND_GUARD_')}
             env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test,dns-stall.test'
@@ -1141,9 +1141,25 @@ def test_dns_worker_exhaustion(binary):
                 baseline = tasks()
                 before_queries, before_hits = DNS.queries, len(HTTP.hits)
                 started = time.monotonic()
-                assert fetch('timeout', 'dns-stall.test')['rule'] == 'EGRESS_DNS_TIMEOUT'
-                elapsed = time.monotonic() - started
-                assert 2.5 <= elapsed < 5, elapsed
+                if cancelled:
+                    send('tools/call', 'cancel-dns', {'name':'guarded_fetch',
+                         'arguments':{'url':'http://dns-stall.test/plain'}})
+                    deadline = time.monotonic() + 2
+                    while DNS.queries == before_queries and time.monotonic() < deadline:
+                        time.sleep(0.005)
+                    assert DNS.queries > before_queries, 'lookup did not start'
+                    started = time.monotonic()
+                    child.stdin.write(json.dumps({'jsonrpc':'2.0', 'method':'notifications/cancelled',
+                                      'params':{'requestId':'cancel-dns'}}) + '\n')
+                    child.stdin.flush()
+                    send('ping', 'after-cancel')
+                    receive('after-cancel')  # Also rejects an unexpected cancelled tool reply.
+                    elapsed = time.monotonic() - started
+                    assert elapsed < 1, elapsed
+                else:
+                    assert fetch('timeout', 'dns-stall.test')['rule'] == 'EGRESS_DNS_TIMEOUT'
+                    elapsed = time.monotonic() - started
+                    assert 2.5 <= elapsed < 5, elapsed
                 assert len(tasks() - baseline) == 1, 'expected exactly one lingering OS resolver'
                 assert DNS.queries > before_queries and len(HTTP.hits) == before_hits
                 held_queries = DNS.queries
@@ -1167,10 +1183,10 @@ def test_dns_worker_exhaustion(binary):
                 assert HTTP.hits[before_hits:] == ['/plain']
                 send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
                 events = json.loads(receive('audit')['contents'][0]['text'])['events']
-                assert [item['rule'] for item in events] == ['EGRESS_DNS_TIMEOUT'] + ['EGRESS_DNS_BUSY'] * 20 + ['EGRESS_ALLOWED']
+                assert [item['rule'] for item in events] == ['EGRESS_CANCELLED' if cancelled else 'EGRESS_DNS_TIMEOUT'] + ['EGRESS_DNS_BUSY'] * 20 + ['EGRESS_ALLOWED']
                 child.stdin.close()
                 assert child.wait(timeout=3) == 0 and not child.stdout.read() and not child.stderr.read()
-                print(f'live DNS worker {"modern" if modern else "legacy"}: timeout {elapsed:.2f}s; '
+                print(f'live DNS worker {"modern" if modern else "legacy"}: {"cancellation" if cancelled else "timeout"} {elapsed:.2f}s; '
                       f'20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; '
                       f'sampled {peak_rss} KiB/{peak_fds} FDs')
                 cases += 22

@@ -205,6 +205,13 @@ pub trait Resolver {
 pub struct SystemResolver;
 impl Resolver for SystemResolver {
     fn resolve(&self, host: &str, port: u16) -> std::io::Result<Vec<SocketAddr>> {
+        CancellableSystemResolver(&AtomicBool::new(false)).resolve(host, port)
+    }
+}
+
+struct CancellableSystemResolver<'a>(&'a AtomicBool);
+impl Resolver for CancellableSystemResolver<'_> {
+    fn resolve(&self, host: &str, port: u16) -> io::Result<Vec<SocketAddr>> {
         // A terminal dot makes the lookup absolute: resolver search/ndots
         // settings must not select a different name than the approved host.
         // Keep this resolver-only; URL, Host and TLS SNI retain the original.
@@ -212,7 +219,7 @@ impl Resolver for SystemResolver {
         if !host.ends_with('.') {
             host.push('.');
         }
-        resolve_bounded(&DNS_WORKER_ACTIVE, DNS_TIMEOUT, move || {
+        resolve_bounded(&DNS_WORKER_ACTIVE, DNS_TIMEOUT, self.0, move || {
             (host.as_str(), port)
                 .to_socket_addrs()
                 .map(|answers| answers.take(MAX_DNS_ADDRESSES + 1).collect())
@@ -221,15 +228,20 @@ impl Resolver for SystemResolver {
 }
 
 // getaddrinfo cannot be cancelled portably. Keep at most one outstanding OS lookup;
-// after a timeout, deny further requests until that worker has actually exited.
+// after timeout or waiter cancellation, deny requests until the worker exits.
 fn resolve_bounded<F>(
     gate: &'static AtomicBool,
     timeout: Duration,
+    cancel: &AtomicBool,
     lookup: F,
 ) -> io::Result<Vec<SocketAddr>>
 where
     F: FnOnce() -> io::Result<Vec<SocketAddr>> + Send + 'static,
 {
+    if cancel.load(Ordering::Acquire) {
+        return Err(io::Error::from(io::ErrorKind::Interrupted));
+    }
+    let started = Instant::now();
     if gate
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
         .is_err()
@@ -255,16 +267,27 @@ where
         gate.store(false, Ordering::Release);
         return Err(error);
     }
-    match receiver.recv_timeout(timeout) {
-        Ok(result) => result,
-        Err(mpsc::RecvTimeoutError::Timeout) => Err(io::Error::new(
-            io::ErrorKind::TimedOut,
-            "DNS deadline exceeded",
-        )),
-        Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::new(
-            io::ErrorKind::BrokenPipe,
-            "DNS worker exited without a result",
-        )),
+    loop {
+        if cancel.load(Ordering::Acquire) {
+            return Err(io::Error::from(io::ErrorKind::Interrupted));
+        }
+        let remaining = timeout.saturating_sub(started.elapsed());
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "DNS deadline exceeded",
+            ));
+        }
+        match receiver.recv_timeout(remaining.min(Duration::from_millis(25))) {
+            Ok(result) => return result,
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::BrokenPipe,
+                    "DNS worker exited without a result",
+                ));
+            }
+        }
     }
 }
 
@@ -742,13 +765,18 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
             .value()
         }
     };
-    let validation = validate_with_reservation(args, allowed_hosts, &SystemResolver, |host| {
-        if cancel.load(Ordering::Acquire) {
-            Err(cancellation_denial())
-        } else {
-            reserve_egress_call(host)
-        }
-    });
+    let validation = validate_with_reservation(
+        args,
+        allowed_hosts,
+        &CancellableSystemResolver(cancel),
+        |host| {
+            if cancel.load(Ordering::Acquire) {
+                Err(cancellation_denial())
+            } else {
+                reserve_egress_call(host)
+            }
+        },
+    );
     if let Some(denial) = cancelled(cancel) {
         return denial;
     }
@@ -1516,14 +1544,22 @@ mod tests {
     fn dns_deadline_fails_closed_without_spawning_more_workers() {
         static TEST_GATE: AtomicBool = AtomicBool::new(false);
         let (release_sender, release_receiver) = mpsc::channel();
-        let timed_out = resolve_bounded(&TEST_GATE, Duration::from_millis(20), move || {
-            release_receiver.recv().unwrap();
-            Ok(vec![addr("8.8.8.8")])
-        });
+        let timed_out = resolve_bounded(
+            &TEST_GATE,
+            Duration::from_millis(20),
+            &AtomicBool::new(false),
+            move || {
+                release_receiver.recv().unwrap();
+                Ok(vec![addr("8.8.8.8")])
+            },
+        );
         assert_eq!(timed_out.unwrap_err().kind(), io::ErrorKind::TimedOut);
-        let busy = resolve_bounded(&TEST_GATE, Duration::from_millis(20), || {
-            panic!("a second DNS worker must not start")
-        });
+        let busy = resolve_bounded(
+            &TEST_GATE,
+            Duration::from_millis(20),
+            &AtomicBool::new(false),
+            || panic!("a second DNS worker must not start"),
+        );
         assert_eq!(busy.unwrap_err().kind(), io::ErrorKind::WouldBlock);
         release_sender.send(()).unwrap();
         for _ in 0..100 {
@@ -1534,11 +1570,69 @@ mod tests {
         }
         assert!(!TEST_GATE.load(Ordering::Acquire));
         assert_eq!(
-            resolve_bounded(&TEST_GATE, Duration::from_secs(1), || Ok(vec![addr(
-                "8.8.8.8"
-            )]))
+            resolve_bounded(
+                &TEST_GATE,
+                Duration::from_secs(1),
+                &AtomicBool::new(false),
+                || Ok(vec![addr("8.8.8.8")])
+            )
             .unwrap(),
             vec![addr("8.8.8.8")]
+        );
+    }
+    #[test]
+    fn dns_cancellation_retains_worker_until_lookup_exits() {
+        static GATE: AtomicBool = AtomicBool::new(false);
+        let cancel = AtomicBool::new(true);
+        assert_eq!(
+            resolve_bounded(&GATE, DNS_TIMEOUT, &cancel, || {
+                panic!("pre-cancelled lookup must not start")
+            })
+            .unwrap_err()
+            .kind(),
+            io::ErrorKind::Interrupted
+        );
+        assert!(!GATE.load(Ordering::Acquire));
+        cancel.store(false, Ordering::Release);
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        thread::scope(|scope| {
+            let cancel_ref = &cancel;
+            scope.spawn(move || {
+                entered_rx.recv().unwrap();
+                cancel_ref.store(true, Ordering::Release);
+            });
+            let started = Instant::now();
+            let result = resolve_bounded(&GATE, DNS_TIMEOUT, &cancel, move || {
+                entered_tx.send(()).unwrap();
+                release_rx.recv().unwrap();
+                Ok(vec![addr("8.8.8.8")])
+            });
+            assert_eq!(result.unwrap_err().kind(), io::ErrorKind::Interrupted);
+            assert!(started.elapsed() < Duration::from_secs(1));
+        });
+        assert!(GATE.load(Ordering::Acquire));
+        assert_eq!(
+            resolve_bounded(&GATE, DNS_TIMEOUT, &AtomicBool::new(false), || {
+                panic!("cancelled native worker still owns the gate")
+            })
+            .unwrap_err()
+            .kind(),
+            io::ErrorKind::WouldBlock
+        );
+        release_tx.send(()).unwrap();
+        for _ in 0..200 {
+            if !GATE.load(Ordering::Acquire) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(!GATE.load(Ordering::Acquire));
+        assert!(
+            resolve_bounded(&GATE, DNS_TIMEOUT, &AtomicBool::new(false), || {
+                Ok(vec![addr("8.8.8.8")])
+            })
+            .is_ok()
         );
     }
     #[test]
