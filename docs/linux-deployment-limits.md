@@ -25,3 +25,16 @@ systemd-run --user --quiet --wait --pipe --collect \
 Replace the binary path and approved host. Each invocation creates a separate group; sharing aggregate quotas across multiple client invocations requires an operator-managed common slice. This example does not install such a slice, authenticate a client, or add a network firewall. A lower CPU quota can delay cooperative timeout observation. Hitting a hard OS limit may terminate the process before it returns structured JSON. Require clients to treat disconnects as failures; never retry through an unguarded tool.
 
 After process failure, close the failed MCP session and launch a replacement through the same limits and host configuration, then repeat discovery and a known denial/allow control. Do not configure automatic replay of tool calls: a failed response does not establish whether a remote operation occurred. Audit history, rate budgets and correlation IDs are process-local and reset on restart; there is no shared cross-process rate governor or durable audit. External supervision/logging and a shared egress governor are required if those are deployment requirements. A restart can replace a permanently stuck native DNS worker, but this probe does not induce that failure or certify a resolver recovery policy.
+
+
+## Deliberate memory exhaustion control
+
+An additional optional host test exercises actual cgroup OOM behavior:
+
+```sh
+python3 tools/systemd_memory_pressure_probe.py target/debug/outbound-guard-mcp
+```
+
+The outer supervisor creates one randomly named transient user service with aggregate 64 MiB memory, zero swap, 16 tasks, 50% CPU and 64 descriptors per process. `OOMPolicy=kill` must set `memory.oom.group=1`. Inside that group, a live server first answers modern MCP ping. A Python helper then touches at most 128 MiB in one-MiB chunks. The outer supervisor, which remains outside that group, requires systemd's `Result=oom-kill`, failed state, and no remaining group processes. It stops/resets only its exact owned unit on success, failure or timeout. Finally it runs the ordinary deployment probe in a fresh limited group to demonstrate MCP service after this failure.
+
+On 2026-10-22, Linux 7.0.0-38-generic/systemd 259.5 produced the required OOM result and fresh-group recovery. This is deliberate helper-induced aggregate exhaustion, not an exploit that makes the server allocate unbounded memory. The result is process termination/disconnect, **not a structured MCP error**. It does not establish active-request completion, automatic recovery, durable state, every OOM victim-selection policy, PID exhaustion or CPU-saturation behavior. The hard no-swap 64 MiB limit applies only to that test group; no host memory limit or global OOM policy is changed. This test is separate from hosted CI and requires the same user-manager/controller permissions as the first probe.
