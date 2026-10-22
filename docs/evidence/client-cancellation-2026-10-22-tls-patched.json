@@ -1,0 +1,113 @@
+{
+  "date_utc": "2026-10-22",
+  "artifact_source_sha": "174a2d0d3ba9393f6ffa35aa9e2db15330093509",
+  "status": "TLS-patched experimental candidate; no human release approval",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39759548442",
+  "provenance_url": "https://github.com/rhamenator/outbound-guard-mcp/attestations/58585650",
+  "archive_sha256": "200a09fd444ca8a079d03b3ae6c2ae4fbcd9e49c6f9bb24523c49d4a8fac8950",
+  "skill_sha256": "a4b529b2304810d16c71ef56a9b48847bbc6093369eaa52d0edc432b7aca3a0f",
+  "installed_tls_versions": {
+    "rustls-webpki": "0.103.16",
+    "webpki-roots": "1.0.10"
+  },
+  "skill_members": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "installation": "fresh CI archive extraction after SHA256SUMS verification; private temporary MCP configuration; existing normal account authentication",
+  "clients": [
+    {
+      "client": "claude",
+      "binary_sha256": "ca4912a67ab4e1c3509508fc7e9ac46824715e742d153f166431f74019770046",
+      "control_path": "stream-json interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": true,
+      "cancelled_fetch_replied": false,
+      "cancel_notifications": 1,
+      "http_methods": [
+        "GET",
+        "GET"
+      ],
+      "status_codes": [
+        200
+      ],
+      "fetches": 2,
+      "socket_closed_after_seconds": 0.061,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2.1.301"
+    },
+    {
+      "client": "codex",
+      "binary_sha256": "ca4912a67ab4e1c3509508fc7e9ac46824715e742d153f166431f74019770046",
+      "control_path": "app-server turn/interrupt",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET"
+      ],
+      "status_codes": [
+        200
+      ],
+      "fetches": 2,
+      "socket_closed_after_seconds": 3.014,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "0.151.0"
+    },
+    {
+      "client": "cursor",
+      "binary_sha256": "ca4912a67ab4e1c3509508fc7e9ac46824715e742d153f166431f74019770046",
+      "control_path": "ACP session/cancel",
+      "socket_closed": true,
+      "live_client": true,
+      "client_control_acknowledged": true,
+      "matching_wire_cancellation": false,
+      "cancelled_fetch_replied": true,
+      "cancel_notifications": 0,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "HEAD"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "fetches": 4,
+      "socket_closed_after_seconds": 3.015,
+      "recovery_allowed": true,
+      "rules": [
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED"
+      ],
+      "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+      "version": "2026.10.19-6bbf2c4"
+    }
+  ],
+  "limitations": [
+    "Single control-path observation per client; timings are samples.",
+    "Only Cursor additionally exercised loopback denial and HEAD in this replay.",
+    "Codex/Cursor did not deliver MCP cancellation; their prompt-cancellation acceptance remains unmet.",
+    "No desktop/terminal controls, saturated client queues or complete network-phase matrix.",
+    "These observations identify this exact installed archive; not a later artifact or stable-release approval."
+  ],
+  "cleanup": "Harness removed temporary namespaces, configurations and wire/client logs; normal authentication retained."
+}
