@@ -25,3 +25,18 @@ After installing Outbound Guard, create a project-local `.cursor/mcp.json`:
 From that project directory, run `agent mcp enable outbound_guard` and `agent mcp list-tools outbound_guard`. The command runs relative to the current project; do not assume a workspace flag on an unrelated invocation changes MCP command discovery. Check that only `guarded_fetch` is advertised. Ask the client to call a loopback URL first, then the exact approved hostname using GET and HEAD. Retain normal per-tool permission prompts. The public echo example requires outgoing HTTPS, sends the destination the request URL and may change or become unavailable. Replace it with exact hosts you trust.
 
 Only actual `guarded_fetch` traffic is enforced. Installing the companion skill or registering the server does not intercept other Cursor tools or processes. Root/network-namespace permissions are solely requirements of the development fixture harness, not of a normal installation. Final release-candidate/client UI tests and the other quality-bar gates remain open.
+
+
+## Native companion-skill read and workflow
+
+Cursor CLI 2026.10.19-6bbf2c4 loaded the exact clean ZIP's SKILL.md from a private project's `.cursor/skills/outbound-guard/` directory on 2026-10-22. A named-skill request produced a completed native read of that installed file, observed through merged ACP tool-call updates. The subsequent MCP calls produced loopback denial, approved GET200 and HEAD200, in exact order. [Redacted evidence](evidence/cursor-skill-activation-2026-10-22.json) records binary/ZIP/SKILL.md hashes; no private transcript is retained.
+
+Project placement follows the [official Cursor skills documentation](https://cursor.com/docs/skills). Install the ZIP's `outbound-guard/` folder under the project's `.cursor/skills/`; configure the separately installed MCP server and approved hosts as above. The probe uses existing normal client authentication and an owned route-free DNS/HTTP fixture namespace. Native reading is observed separately from Claude's named Skill-tool acknowledgment; these are different client mechanisms.
+
+```sh
+python3 tools/client_cancellation_probe.py cursor /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+This optional authenticated probe requires the disposable-namespace sudo setup documented in the cancellation guide; ordinary MCP/skill use requires no sudo. Model inference can incur normal account usage. Only two expected ZIP files are installed, and private config/transcript/skill state is removed afterward. One initial harness setup failed before inference because the skill directory already created `.cursor/`; directory creation is now idempotent within the owned workspace.
+
+This check covers an explicit named request and completed native file read. Automatic trigger reliability, IDE UI/menu behavior, Codex loading and cancellation delivery remain separate gaps. Skill guidance does not intercept traffic sent through other tools.

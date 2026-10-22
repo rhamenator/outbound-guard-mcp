@@ -1,0 +1,43 @@
+{
+  "client": "cursor",
+  "skill_zip_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+  "installed_skill_sha256": "9d55ad0d551a7cf6de86b33b4280a9e153f48ee160f142b0e0421e5e8774dddf",
+  "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+  "installation_scope": "temporary project .cursor/skills/outbound-guard",
+  "native_project_source_observed": true,
+  "setting_sources": null,
+  "builtin_tools": [
+    "observed native read"
+  ],
+  "http_methods": [
+    "GET",
+    "GET",
+    "HEAD"
+  ],
+  "rules": [
+    "EGRESS_INVALID_HOST",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED"
+  ],
+  "status_codes": [
+    200,
+    200
+  ],
+  "scope": "explicit named skill request; native Claude Skill tool or Cursor project file read; not automatic trigger reliability",
+  "native_skill_loaded": true,
+  "native_project_read_completed": true,
+  "activation_method": "completed native read of the installed project SKILL.md, observed through ACP tool-call updates",
+  "date_utc": "2026-10-22",
+  "version": "2026.10.19-6bbf2c4",
+  "artifact_source_sha": "23b9cdc6c350b8ad241e2d83df3a54a2b4b68e3f",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39848569009",
+  "archive_sha256": "d3d47b1a5820ef7a2e5e6e463dde9fc149c2a4585bb1b63dbef8a435ccfac881",
+  "status": "one explicit named-skill read/workflow observed; experimental, no release approval",
+  "limitations": [
+    "not a Claude-style Skill tool acknowledgment",
+    "no automatic trigger rate measurement or IDE skill menu verification",
+    "Codex native loading untested; client cancellation behavior remains separate",
+    "no skill enforcement or coverage of other tools"
+  ],
+  "report_note": "Cursor read acknowledgment is recorded separately from the Claude Skill-tool fields; original generic field labels normalized to match observed event kind"
+}
