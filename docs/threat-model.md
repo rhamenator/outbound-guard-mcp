@@ -31,9 +31,9 @@ The process-local audit resource `outbound-guard://logs/audit.json` retains at m
 
 The [Codex CLI](client-codex-cli.md) and [Claude Code](client-claude-code.md) smoke tests demonstrate real client discovery, a blocked call, and approved GET/HEAD. [Inspector](../tools/inspector_smoke.py) and the [isolated socket probe](adversarial-netns.md) cover protocol and hostile fixture slices. No test here proves whole-agent egress coverage.
 
-Cursor remains untested. An official Linux Cursor CLI package was inspected and run temporarily on this host, but `agent status` reported **Not logged in** and the MCP listing did not complete. No Cursor tool call was observed; the temporary package and test configuration were removed. A signed-in Cursor client must perform its own discovery, blocked-call, and approved-call smoke test before the client gate can close.
+The initial unsigned Cursor attempt was inconclusive, but subsequent authenticated Cursor ACP discovery, denial, GET and HEAD calls passed against controlled fixtures. See the dated [real-client cancellation evidence](client-cancellation.md): the tested Codex/Cursor control paths did not send wire cancellation; terminal/desktop UI coverage and final-candidate repeats remain open. Do not treat earlier sign-in failures as the current client status, or successful calls as proof of prompt cancellation.
 
-Other stable-release blockers include full MCP revision conformance, request and response resource/concurrency limits, broader secret handling, prompt-injection quarantine, broader property/coverage-guided fuzzing, cross-host build reproducibility and signing, and human review. They remain tracked in [QUALITY_BAR.md](QUALITY_BAR.md).
+Remaining stable-release work includes final independent protocol/client review, native/OS resource limitations, broader secret handling/quarantine, broader property/coverage-guided fuzzing and human review under [QUALITY_BAR.md](QUALITY_BAR.md). Parser/stream bounds, bounded admission/cancellation, independent native rebuild comparison and signed trusted-main provenance now have specific tested evidence in the [release checklist](RELEASE_CHECKLIST.md); require those gates on the exact final candidate rather than transferring historical results.
 
 The [candidate packaging gate](candidate-packaging.md) tests a local optimized Linux x86_64 artifact after extraction, including the isolated hostile fixtures and official Inspector. Its companion skill ZIP contains only the committed SKILL.md and GPL license. Checksums and provenance identify the tested bytes; cross-host reproducible compilation, signing, dependency attribution, and human release approval remain open.
 
@@ -73,3 +73,5 @@ HTTP total-deadline evidence now uses cancellable async I/O and a stricter late-
 
 
 Modern stateless stdio metadata/discovery and legacy compatibility are now exercised by [revision-specific wire and official-client checks](protocol-conformance.md). Historical modern refusal is not the current behavior. The client matrix and independent conformance/release review remain open; the transport is still stdio only.
+
+[Seeded black-box framing mutation](adversarial-stdio.md#seeded-frame-mutation-and-recovery) adds 626 cases per era, recovery after each, empty audit and sampled resource bounds. It is finite property evidence; coverage-guided fuzzing and full protocol/client attack coverage remain open.
