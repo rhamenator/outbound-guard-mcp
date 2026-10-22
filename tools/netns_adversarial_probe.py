@@ -39,6 +39,7 @@ MIME_CASES = [
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
+    "fallback-pin.test": ["11.0.0.2", PUBLIC_FIXTURE],
     "allowed.test.search-trap.test": ["127.0.0.1"],
     "second.test": [PUBLIC_FIXTURE],
     "rebind.test": [PUBLIC_FIXTURE],
@@ -72,6 +73,7 @@ V6_RECORDS = {
 class DNS(socketserver.BaseRequestHandler):
     stall_release = threading.Event()
     rebind_a_queries = 0
+    fallback_a_queries = 0
     queries = 0
     names = []
     a_names = []
@@ -106,6 +108,11 @@ class DNS(socketserver.BaseRequestHandler):
         if name == "rebind.test" and qtype == 1:
             type(self).rebind_a_queries += 1
             addresses = [PUBLIC_FIXTURE] if self.rebind_a_queries == 1 else ["127.0.0.1"]
+        if name == "fallback-pin.test" and qtype == 1:
+            type(self).fallback_a_queries += 1
+            # Any retry through DNS would now return a forbidden destination.
+            addresses = (["11.0.0.2", PUBLIC_FIXTURE] if self.fallback_a_queries == 1
+                         else ["127.0.0.1"])
         flags = 0x8180 if name in RECORDS else 0x8183
         header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
         answers = b"".join(
@@ -1235,7 +1242,8 @@ def test_post_dns_syscalls(binary):
         for modern in (False, True):
             trace = Path(folder) / ('modern.trace' if modern else 'legacy.trace')
             env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
-            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = ','.join(('allowed.test', *cases))
+            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = ','.join(('allowed.test', 'fallback-pin.test', *cases))
+            DNS.fallback_a_queries = 0
             child = subprocess.Popen(['strace','-f','-qq','-yy','-e','trace=network','-o',str(trace),binary],
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      text=True, env=env, start_new_session=True)
@@ -1282,21 +1290,34 @@ def test_post_dns_syscalls(binary):
                 assert DNS.names.count('private.test') == private_queries, 'redirect destination resolved'
                 assert streams() == 2
                 assert HTTP.hits[before_hits:] == ['/plain', '/redirect']
+                # First approved address refuses TCP; fallback must use the
+                # already validated second address, without resolving again.
+                assert fetch('fallback', 'fallback-pin.test')['rule'] == 'EGRESS_ALLOWED'
+                assert DNS.fallback_a_queries == 1, 'fallback re-resolved the hostname'
+                assert streams() == 4, 'expected refused TCP then pinned fallback'
+                assert HTTP.hits[before_hits:] == ['/plain', '/redirect', '/plain']
+                # A new tool call must resolve again and reject the changed answer.
+                assert fetch('changed-answer', 'fallback-pin.test')['rule'] == 'EGRESS_FORBIDDEN_ADDRESS'
+                assert DNS.fallback_a_queries == 2
+                assert streams() == 4, 'changed private answer reached TCP'
+                assert HTTP.hits[before_hits:] == ['/plain', '/redirect', '/plain']
                 send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
                 events = json.loads(receive('audit')['contents'][0]['text'])['events']
-                assert [e['rule'] for e in events] == ['EGRESS_ALLOWED'] + ['EGRESS_FORBIDDEN_ADDRESS']*len(cases) + ['EGRESS_REDIRECT_DENIED']
+                assert [e['rule'] for e in events] == ['EGRESS_ALLOWED'] + ['EGRESS_FORBIDDEN_ADDRESS']*len(cases) + ['EGRESS_REDIRECT_DENIED', 'EGRESS_ALLOWED', 'EGRESS_FORBIDDEN_ADDRESS']
                 child.stdin.close()
                 assert child.wait(timeout=3) == 0
                 assert not child.stdout.read() and not child.stderr.read()
                 # -yy distinguishes libc UDP address-ordering probes from TCP.
                 tcp_connects = [line for line in trace.read_text().splitlines()
                                 if 'connect(' in line and '<TCP:' in line]
-                assert len(tcp_connects) == 2, 'unexpected TCP connect count'
-                assert all('sin_port=htons(80)' in line and f'inet_addr("{PUBLIC_FIXTURE}")' in line
-                           for line in tcp_connects), 'TCP connected outside approved fixture'
+                assert len(tcp_connects) == 4, 'unexpected TCP connect count'
+                for line, address in zip(tcp_connects, [PUBLIC_FIXTURE, PUBLIC_FIXTURE, '11.0.0.2', PUBLIC_FIXTURE]):
+                    assert 'sin_port=htons(80)' in line and f'inet_addr("{address}")' in line, 'unexpected pinned destination'
+                assert 'ECONNREFUSED' in trace.read_text(), 'first fallback address did not refuse TCP'
                 print(f'post-DNS syscall {"modern" if modern else "legacy"}: {len(cases)} real-DNS '
                       'forbidden-answer denials, zero extra Internet stream sockets; '
-                      'two positive TCP controls only to approved fixture; redirect not followed')
+                      'approved TCP controls; refused address followed by pinned fallback without DNS retry; '
+                      'next-call private rebinding denied; redirect not followed')
             finally:
                 if child.poll() is None:
                     os.killpg(child.pid, signal.SIGKILL)
@@ -1306,7 +1327,7 @@ def test_post_dns_syscalls(binary):
                         handle.close()
                     except BrokenPipeError:
                         pass
-    return 2 * (len(cases) + 2)
+    return 2 * (len(cases) + 4)
 
 
 def test_dns_worker_exhaustion(binary):
