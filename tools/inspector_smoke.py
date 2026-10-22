@@ -10,7 +10,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-INSPECTOR = "@modelcontextprotocol/inspector@2.11.0"
+INSPECTOR_VERSION = "2.11.0"
+INSPECTOR_DIR = Path(__file__).resolve().parent / "mcp-inspector-probe"
 
 
 def call(binary, method, *options, allowed_host=None, expected_exit=0, protocol_era="legacy"):
@@ -21,14 +22,15 @@ def call(binary, method, *options, allowed_host=None, expected_exit=0, protocol_
         config.write_text(json.dumps({"mcpServers":{"guard":{
             "command":binary, "protocolEra":protocol_era,
             "env":{"OUTBOUND_GUARD_ALLOWED_HOSTS":allowed_host or ""}}}}))
-        command = ["npx", "--yes", INSPECTOR, "--cli", "--config", str(config),
+        installed = INSPECTOR_DIR / "node_modules/@modelcontextprotocol/inspector/package.json"
+        if not installed.is_file():
+            raise RuntimeError("Install the locked development CLI: npm ci --prefix tools/mcp-inspector-probe --ignore-scripts --no-audit --no-fund")
+        assert json.loads(installed.read_text())["version"] == INSPECTOR_VERSION, "unexpected Inspector version"
+        command = [str(INSPECTOR_DIR / "node_modules/.bin/mcp-inspector"), "--cli", "--config", str(config),
                    "--server", "guard", "--method", method, "--format", "json", *options]
         env = {key:value for key,value in os.environ.items() if not key.startswith("OUTBOUND_GUARD_")}
         env["npm_config_ignore_scripts"] = "true"
-        # Fail registry fetches with an actionable npm error before the probe's
-        # process deadline, rather than hiding resolution stalls in a timeout.
-        env["npm_config_fetch_timeout"] = "15000"
-        env["npm_config_fetch_retries"] = "1"
+        # Invoke only the already installed locked CLI: never npx/fetch on use.
         result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=90)
     if result.returncode != expected_exit:
         raise AssertionError(

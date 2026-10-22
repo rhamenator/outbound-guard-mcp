@@ -10,7 +10,13 @@ permissions:
 
 jobs:
   sdk-audit:
-    name: Locked SDK npm audit
+    name: Locked ${{ matrix.probe.name }} npm audit
+    strategy:
+      fail-fast: false
+      matrix:
+        probe:
+          - {name: SDK, id: sdk, path: tools/mcp-sdk-probe}
+          - {name: Inspector, id: inspector, path: tools/mcp-inspector-probe}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -19,15 +25,15 @@ jobs:
         run: |
           node --version > sdk-audit-tools.txt
           npm --version >> sdk-audit-tools.txt
-          sha256sum tools/mcp-sdk-probe/package-lock.json > sdk-audit-lockfile.sha256
-      - name: Audit all locked SDK dependency classes without installing code
-        run: npm audit --prefix tools/mcp-sdk-probe --package-lock-only --include=dev --include=optional --include=peer --ignore-scripts --audit-level=low --json > sdk-npm-audit.json
+          sha256sum "${{ matrix.probe.path }}/package-lock.json" > sdk-audit-lockfile.sha256
+      - name: Audit all locked probe dependency classes without installing code
+        run: npm audit --prefix "${{ matrix.probe.path }}" --package-lock-only --include=dev --include=optional --include=peer --ignore-scripts --audit-level=low --json > sdk-npm-audit.json
       - name: Require complete zero-finding audit response
         run: python3 -c 'import json; r=json.load(open("sdk-npm-audit.json")); assert "error" not in r; assert r["auditReportVersion"] == 2; assert r["metadata"]["vulnerabilities"]["total"] == 0'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
-          name: locked-sdk-advisory-report
+          name: locked-${{ matrix.probe.id }}-advisory-report
           path: |
             sdk-npm-audit.json
             sdk-audit-tools.txt
@@ -100,6 +106,7 @@ jobs:
       - run: python3 -m py_compile tools/client_cancellation_probe.py tools/client_cancellation_fixture.py tools/client_wire_bridge.py
       - run: python3 tools/stdio_resource_probe.py target/debug/outbound-guard-mcp
       - run: npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix tools/mcp-inspector-probe --ignore-scripts --no-audit --no-fund
       - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"
       - run: bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
       - run: python3 tools/inspector_smoke.py target/debug/outbound-guard-mcp
@@ -162,6 +169,7 @@ jobs:
             sudo apt-get install -y nftables
           fi
       - run: npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix tools/mcp-inspector-probe --ignore-scripts --no-audit --no-fund
       - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"
       - name: Independently build and adversarially test installed candidate
         run: python3 tools/package_candidate.py --container-build --output dist/rebuild

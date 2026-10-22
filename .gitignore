@@ -8,3 +8,5 @@ build/
 *.sqlite3
 
 /tools/mcp-sdk-probe/node_modules/
+
+/tools/mcp-inspector-probe/node_modules/
