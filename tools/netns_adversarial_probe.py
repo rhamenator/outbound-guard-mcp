@@ -946,69 +946,117 @@ def test_stdio_cancellation(binary):
           "notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered")
 
 
-def test_silent_http_cancellation(binary):
-    for modern in (False, True):
-        for phase in ("headers", "body"):
-            HTTP.cancel_started.clear()
-            HTTP.cancel_closed.clear()
-            before_hits = len(HTTP.hits)
-            env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
-            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test'
-            child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE, text=True, env=env)
-            def send(method, id_=None, params=None):
-                params = dict(params or {})
-                if modern:
-                    params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
-                                       'io.modelcontextprotocol/clientCapabilities':{}}
-                message = {'jsonrpc':'2.0', 'method':method, 'params':params}
-                if id_ is not None:
-                    message['id'] = id_
-                child.stdin.write(json.dumps(message) + '\n')
-                child.stdin.flush()
-            def receive(id_):
-                assert select.select([child.stdout], [], [], 3)[0], 'silent HTTP cancellation stalled'
-                reply = json.loads(child.stdout.readline())
-                assert reply['id'] == id_, reply
-                return reply['result']
-            try:
-                if not modern:
-                    send('initialize', 'init', {'protocolVersion':'2025-06-18', 'capabilities':{},
-                         'clientInfo':{'name':'silent-cancel-probe', 'version':'1'}})
-                    receive('init')
-                    send('notifications/initialized')
-                send('tools/call', 'cancel', {'name':'guarded_fetch',
-                     'arguments':{'url':f'http://allowed.test/cancel-silent-{phase}'}})
-                assert HTTP.cancel_started.wait(3), 'fixture did not receive HTTP'
-                started = time.monotonic()
-                send('notifications/cancelled', params={'requestId':'cancel'})
-                send('ping', 'barrier')
-                receive('barrier')
-                assert HTTP.cancel_closed.wait(1), 'pending socket retained after cancellation'
-                elapsed = time.monotonic() - started
-                assert elapsed < 1, elapsed
-                send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
-                events = json.loads(receive('audit')['contents'][0]['text'])['events']
-                assert [e['rule'] for e in events] == ['EGRESS_CANCELLED']
-                send('tools/call', 'cancel', {'name':'guarded_fetch',
-                     'arguments':{'url':'http://allowed.test/plain'}})
-                assert receive('cancel')['structuredContent']['rule'] == 'EGRESS_ALLOWED'
-                assert HTTP.hits[before_hits:] == [f'/cancel-silent-{phase}', '/plain']
-                child.stdin.close()
-                assert child.wait(timeout=3) == 0
-                assert not child.stdout.read() and not child.stderr.read()
-                print(f'silent HTTP cancellation {"modern" if modern else "legacy"}/{phase}: '
-                      f'{elapsed:.2f}s, socket closed, cancelled reply suppressed, audit and ID recovery passed')
-            finally:
-                if child.poll() is None:
-                    child.kill()
-                    child.wait()
-                for stream in (child.stdin, child.stdout, child.stderr):
+class SilentTLS(socketserver.BaseRequestHandler):
+    def handle(self):
+        self.request.settimeout(4)
+        def exact(count):
+            data = b""
+            while len(data) < count:
+                chunk = self.request.recv(count - len(data))
+                if not chunk:
+                    raise ConnectionError("incomplete ClientHello")
+                data += chunk
+            return data
+        try:
+            header = exact(5)
+            length = int.from_bytes(header[3:5], 'big')
+            assert header[0] == 22 and header[1] == 3 and 0 < length <= 16384
+            hello = exact(length)
+            assert hello[0] == 1, 'expected ClientHello handshake record'
+            HTTP.cancel_started.set()
+            # Never send ServerHello or a certificate. Drain bounded remaining
+            # client records until cancellation closes the pending handshake.
+            remaining = 65536
+            while remaining:
+                data = self.request.recv(min(4096, remaining))
+                if not data:
+                    HTTP.cancel_closed.set()
+                    return
+                remaining -= len(data)
+        except (ConnectionResetError, BrokenPipeError):
+            HTTP.cancel_closed.set()
+        except (socket.timeout, ConnectionError):
+            pass
+
+
+class SilentTLSServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+def test_silent_transport_cancellation(binary):
+    with SilentTLSServer((PUBLIC_FIXTURE, 443), SilentTLS) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            for modern in (False, True):
+                for phase in ("headers", "body", "tls"):
+                    HTTP.cancel_started.clear()
+                    HTTP.cancel_closed.clear()
+                    before_hits = len(HTTP.hits)
+                    env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+                    env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test'
+                    child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE, text=True, env=env)
+                    def send(method, id_=None, params=None):
+                        params = dict(params or {})
+                        if modern:
+                            params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+                                               'io.modelcontextprotocol/clientCapabilities':{}}
+                        message = {'jsonrpc':'2.0', 'method':method, 'params':params}
+                        if id_ is not None:
+                            message['id'] = id_
+                        child.stdin.write(json.dumps(message) + '\n')
+                        child.stdin.flush()
+                    def receive(id_):
+                        assert select.select([child.stdout], [], [], 3)[0], 'silent transport cancellation stalled'
+                        reply = json.loads(child.stdout.readline())
+                        assert reply['id'] == id_, reply
+                        return reply['result']
                     try:
-                        stream.close()
-                    except BrokenPipeError:
-                        pass
-    return 8
+                        if not modern:
+                            send('initialize', 'init', {'protocolVersion':'2025-06-18', 'capabilities':{},
+                                 'clientInfo':{'name':'silent-cancel-probe', 'version':'1'}})
+                            receive('init')
+                            send('notifications/initialized')
+                        scheme = 'https' if phase == 'tls' else 'http'
+                        send('tools/call', 'cancel', {'name':'guarded_fetch',
+                             'arguments':{'url':f'{scheme}://allowed.test/cancel-silent-{phase}'}})
+                        assert HTTP.cancel_started.wait(3), 'fixture did not receive HTTP or complete ClientHello'
+                        started = time.monotonic()
+                        send('notifications/cancelled', params={'requestId':'cancel'})
+                        send('ping', 'barrier')
+                        receive('barrier')
+                        assert HTTP.cancel_closed.wait(1), 'pending socket retained after cancellation'
+                        elapsed = time.monotonic() - started
+                        assert elapsed < 1, elapsed
+                        send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
+                        events = json.loads(receive('audit')['contents'][0]['text'])['events']
+                        assert [e['rule'] for e in events] == ['EGRESS_CANCELLED']
+                        send('tools/call', 'cancel', {'name':'guarded_fetch',
+                             'arguments':{'url':'http://allowed.test/plain'}})
+                        assert receive('cancel')['structuredContent']['rule'] == 'EGRESS_ALLOWED'
+                        expected_hits = ['/plain'] if phase == 'tls' else [f'/cancel-silent-{phase}', '/plain']
+                        assert HTTP.hits[before_hits:] == expected_hits
+                        child.stdin.close()
+                        assert child.wait(timeout=3) == 0
+                        assert not child.stdout.read() and not child.stderr.read()
+                        print(f'silent transport cancellation {"modern" if modern else "legacy"}/{phase}: '
+                              f'{elapsed:.2f}s, socket closed, cancelled reply suppressed, audit and ID recovery passed')
+                    finally:
+                        if child.poll() is None:
+                            child.kill()
+                            child.wait()
+                        for stream in (child.stdin, child.stdout, child.stderr):
+                            try:
+                                stream.close()
+                            except BrokenPipeError:
+                                pass
+
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+    return 12
 
 
 def test_saturated_cancellation(binary):
@@ -1463,7 +1511,7 @@ def main(binary, cancellation_probe):
         test_saturated_cancellation(binary)
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
-        silent_cases = test_silent_http_cancellation(binary)
+        silent_cases = test_silent_transport_cancellation(binary)
         dns_worker_cases = test_dns_worker_exhaustion(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
