@@ -29,6 +29,13 @@ jobs:
       - run: cargo build --locked --bins --examples
       - run: python3 tools/cli_smoke.py target/debug/outbound-guard-mcp "$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
       - run: python3 tools/adversarial_stdio_probe.py target/debug/outbound-guard-mcp
+      - name: Ensure syscall probe tool
+        run: |
+          if ! command -v strace; then
+            sudo apt-get update
+            sudo apt-get install -y strace
+          fi
+      - run: python3 tools/syscall_denial_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/modern_stdio_probe.py target/debug/outbound-guard-mcp
       - run: python3 tools/protocol_id_probe.py target/debug/outbound-guard-mcp
       - run: python3 -W error::ResourceWarning tools/stdio_mutation_probe.py target/debug/outbound-guard-mcp
@@ -86,6 +93,12 @@ jobs:
       # No compiler/target cache restore: this job independently rebuilds in its own container/cache.
       - name: Fetch locked sources for the host-side notice inventory
         run: cargo fetch --locked
+      - name: Ensure syscall probe tool
+        run: |
+          if ! command -v strace; then
+            sudo apt-get update
+            sudo apt-get install -y strace
+          fi
       - run: npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund
       - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"
       - name: Independently build and adversarially test installed candidate

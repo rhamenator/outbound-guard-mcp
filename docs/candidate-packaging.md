@@ -115,3 +115,5 @@ gh attestation verify ./candidate.tar.gz --repo rhamenator/outbound-guard-mcp --
 ```
 
 Repeat for the skill ZIP and `SHA256SUMS`, then check `sha256sum -c SHA256SUMS` in the downloaded directory. Keep the exact source, workflow run, archive hashes, comparison and verification results in release-review evidence. A valid signature proves the named workflow signed those bytes under the verifier's trust policy; it does not prove absence of vulnerabilities, independence of physical builders, a trustworthy pinned image/kernel, account security, supported-client cancellation or authorization to publish a stable release. Local and PR candidates remain unsigned by this workflow. Human review and all other quality gates remain required.
+
+Candidate verification also requires Linux `strace` with permission to trace owned children for the [pre-DNS syscall observation gate](adversarial-stdio.md#independent-syscall-observation-of-pre-dns-denials). CI installs the development package if absent and runs the gate on debug and both installed candidates. Ordinary server users do not need strace or elevated permissions.

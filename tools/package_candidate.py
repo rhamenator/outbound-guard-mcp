@@ -59,6 +59,8 @@ def installed_smoke(binary, version, cancellation_probe):
     assert audit["events"] == [{key: decision[key] for key in ("correlation_id", "status", "rule")}]
     subprocess.run([sys.executable, str(REPO / "tools/adversarial_stdio_probe.py"), str(binary)],
                    cwd=REPO, env=env, check=True, timeout=30)
+    subprocess.run([sys.executable, str(REPO / "tools/syscall_denial_probe.py"), str(binary)],
+                   cwd=REPO, env=env, check=True, timeout=30)
     subprocess.run([sys.executable, str(REPO / "tools/stdio_resource_probe.py"), str(binary)],
                    cwd=REPO, env=env, check=True, timeout=50)
     subprocess.run([sys.executable, str(REPO / "tools/modern_stdio_probe.py"), str(binary)],
