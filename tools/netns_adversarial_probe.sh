@@ -19,6 +19,16 @@ sudo -n ip -n "$ns" link set lo up
 sudo -n ip -n "$ns" address add 11.0.0.1/32 dev lo
 # Approved but unserved address: deterministic TCP refusal for fallback tests.
 sudo -n ip -n "$ns" address add 11.0.0.2/32 dev lo
+sudo -n ip -n "$ns" address add 11.0.0.3/32 dev lo
+# Only this freshly created namespace: never alter the host firewall.
+sudo -n ip netns exec "$ns" nft -f - <<'NFT'
+table inet outbound_probe {
+  chain output {
+    type filter hook output priority 0; policy accept;
+    ip daddr 11.0.0.3 tcp dport 80 counter drop
+  }
+}
+NFT
 sudo -n install -d -m 755 "/etc/netns/$ns"
 printf 'nameserver 127.0.0.1\nsearch search-trap.test\noptions ndots:5 timeout:1 attempts:1\n' | sudo -n tee "/etc/netns/$ns/resolv.conf" >/dev/null
 sudo -n ip netns exec "$ns" env "OUTBOUND_GUARD_TEST_NETNS=$ns" "OUTBOUND_GUARD_TEST_NODE=$sdk_node" "OUTBOUND_GUARD_TEST_SDK_DIR=${OUTBOUND_GUARD_TEST_SDK_DIR:-}" python3 "$repo_dir/tools/netns_adversarial_probe.py" "$(realpath "$binary")" "$(realpath "$cancel_probe")"

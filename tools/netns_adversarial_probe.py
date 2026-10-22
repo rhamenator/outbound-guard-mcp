@@ -39,6 +39,7 @@ MIME_CASES = [
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
+    "syn-stall.test": ["11.0.0.3", PUBLIC_FIXTURE],
     "fallback-pin.test": ["11.0.0.2", PUBLIC_FIXTURE],
     "allowed.test.search-trap.test": ["127.0.0.1"],
     "second.test": [PUBLIC_FIXTURE],
@@ -1233,6 +1234,91 @@ def test_sdk_cancellation(binary, modern=False):
             process.wait()
 
 
+def test_connect_blackhole(binary):
+    name = os.environ.get('OUTBOUND_GUARD_TEST_NETNS', '')
+    assert name.startswith('outbound-guard-probe-') and name.removeprefix('outbound-guard-probe-').isdigit()
+    assert (Path('/etc/netns') / name / 'resolv.conf').samefile('/etc/resolv.conf')
+    def drops():
+        rules = json.loads(subprocess.check_output(
+            ['nft','--json','list','chain','inet','outbound_probe','output'], text=True, timeout=2))
+        return sum(expr['counter']['packets'] for item in rules['nftables'] if 'rule' in item
+                   for expr in item['rule']['expr'] if 'counter' in expr)
+    def pending():
+        return any(line.split()[2] == '0300000B:0050' and line.split()[3] == '02'
+                   for line in Path('/proc/net/tcp').read_text().splitlines()[1:])
+    for modern in (False, True):
+        env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+        env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test,syn-stall.test'
+        child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, env=env)
+        def send(method, id_=None, params=None):
+            params = dict(params or {})
+            if modern:
+                params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+                                   'io.modelcontextprotocol/clientCapabilities':{}}
+            message = {'jsonrpc':'2.0','method':method,'params':params}
+            if id_ is not None:
+                message['id'] = id_
+            child.stdin.write(json.dumps(message) + '\n')
+            child.stdin.flush()
+        def receive(id_):
+            assert select.select([child.stdout], [], [], 5)[0], 'connect probe response deadline'
+            reply = json.loads(child.stdout.readline())
+            assert reply['id'] == id_, reply
+            return reply['result']
+        def fetch(id_, host):
+            send('tools/call', id_, {'name':'guarded_fetch', 'arguments':{'url':f'http://{host}/plain'}})
+        before_hits = len(HTTP.hits)
+        try:
+            if not modern:
+                send('initialize', 'init', {'protocolVersion':'2025-06-18','capabilities':{},
+                     'clientInfo':{'name':'connect-blackhole-probe','version':'1'}})
+                receive('init')
+                send('notifications/initialized')
+            before_drop = drops()
+            started = time.monotonic()
+            fetch('timeout', 'syn-stall.test')
+            decision = receive('timeout')['structuredContent']
+            elapsed = time.monotonic() - started
+            assert decision['rule'] == 'EGRESS_NETWORK_FAILURE' and 'body_text' not in decision
+            assert 2.5 <= elapsed < 4.5, elapsed
+            assert drops() > before_drop and not pending(), 'connect timeout did not release SYN socket'
+            assert len(HTTP.hits) == before_hits, 'connect timer incorrectly renewed for fallback'
+            before_drop = drops()
+            fetch('cancel', 'syn-stall.test')
+            deadline = time.monotonic() + 2
+            while not (drops() > before_drop and pending()) and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert drops() > before_drop and pending(), 'did not exercise a pending SYN connection'
+            started = time.monotonic()
+            send('notifications/cancelled', params={'requestId':'cancel'})
+            send('ping', 'barrier')
+            receive('barrier')
+            cancelled_after = time.monotonic() - started
+            assert cancelled_after < 1 and not pending(), 'cancelled connect socket retained'
+            assert len(HTTP.hits) == before_hits
+            fetch('recovery', 'allowed.test')
+            assert receive('recovery')['structuredContent']['rule'] == 'EGRESS_ALLOWED'
+            send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
+            events = json.loads(receive('audit')['contents'][0]['text'])['events']
+            assert [e['rule'] for e in events] == ['EGRESS_NETWORK_FAILURE','EGRESS_CANCELLED','EGRESS_ALLOWED']
+            assert HTTP.hits[before_hits:] == ['/plain']
+            child.stdin.close()
+            assert child.wait(timeout=3) == 0 and not child.stdout.read() and not child.stderr.read()
+            print(f'connect blackhole {"modern" if modern else "legacy"}: {elapsed:.2f}s shared connect deadline, '
+                  f'{cancelled_after:.2f}s cancellation; SYN sockets removed, no fallback renewal, recovery passed')
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.wait()
+            for handle in (child.stdin, child.stdout, child.stderr):
+                try:
+                    handle.close()
+                except BrokenPipeError:
+                    pass
+    return 6
+
+
 def test_post_dns_syscalls(binary):
     """DNS may use UDP/Unix sockets; denied answers must never create Internet TCP."""
     cases = ('private.test', 'mixed.test', 'metadata.test', 'carrier.test',
@@ -1618,6 +1704,7 @@ def main(binary, cancellation_probe):
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         silent_cases = test_silent_transport_cancellation(binary)
+        connect_cases = test_connect_blackhole(binary)
         post_dns_cases = test_post_dns_syscalls(binary)
         dns_worker_cases = test_dns_worker_exhaustion(binary)
         test_budgets(binary)
@@ -1625,7 +1712,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
