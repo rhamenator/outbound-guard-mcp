@@ -1234,6 +1234,80 @@ def test_sdk_cancellation(binary, modern=False):
             process.wait()
 
 
+def test_descriptor_exhaustion(binary):
+    # Set limits in a separate exec wrapper, never preexec_fn in this threaded parent.
+    wrapper = ('import os,resource,sys; n=int(sys.argv[1]); '
+               'resource.setrlimit(resource.RLIMIT_NOFILE,(n,n)); '
+               'os.execv(sys.argv[2],[sys.argv[2]])')
+    failures = {'EGRESS_DNS_FAILURE', 'EGRESS_CLIENT_FAILURE', 'EGRESS_NETWORK_FAILURE'}
+    for modern in (False, True):
+        for limit in (4,):
+            env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test'
+            child = subprocess.Popen([sys.executable,'-c',wrapper,str(limit),binary],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     text=True, env=env)
+            def send(method, id_, params=None):
+                params = dict(params or {})
+                if modern:
+                    params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+                                       'io.modelcontextprotocol/clientCapabilities':{}}
+                message = {'jsonrpc':'2.0','method':method,'params':params}
+                if id_ is not None:
+                    message['id'] = id_
+                child.stdin.write(json.dumps(message)+'\n')
+                child.stdin.flush()
+            def receive(id_):
+                assert select.select([child.stdout], [], [], 5)[0], 'low-FD process stalled'
+                line = child.stdout.readline()
+                assert line, 'low-FD server exited without a decision'
+                reply = json.loads(line)
+                assert reply['id'] == id_, reply
+                return reply['result']
+            before_hits = len(HTTP.hits)
+            rules = []
+            try:
+                if not modern:
+                    send('initialize','init',{'protocolVersion':'2025-06-18','capabilities':{},
+                         'clientInfo':{'name':'low-fd-probe','version':'1'}})
+                    receive('init')
+                    send('notifications/initialized',None)
+                for index in range(3):
+                    send('tools/call',index,{'name':'guarded_fetch','arguments':{'url':'http://allowed.test/plain'}})
+                    result = receive(index)
+                    decision = result['structuredContent']
+                    assert result['isError'] is True and decision['rule'] in failures, result
+                    assert 'body_text' not in decision and 'url' not in decision
+                    rules.append(decision['rule'])
+                    assert len(list(Path(f'/proc/{child.pid}/fd').iterdir())) <= limit
+                send('ping','barrier')
+                receive('barrier')
+                send('resources/read','audit',{'uri':'outbound-guard://logs/audit.json'})
+                events = json.loads(receive('audit')['contents'][0]['text'])['events']
+                assert [e['rule'] for e in events] == rules
+                assert len(HTTP.hits) == before_hits, 'low-FD failure dispatched HTTP'
+                child.stdin.close()
+                assert child.wait(timeout=3) == 0 and not child.stdout.read() and not child.stderr.read()
+                print(f'descriptor exhaustion {"modern" if modern else "legacy"}/NOFILE={limit}: '
+                      f'3 structured denials {rules}, no HTTP/body, ping/audit live and clean exit')
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait()
+                for handle in (child.stdin, child.stdout, child.stderr):
+                    try:
+                        handle.close()
+                    except BrokenPipeError:
+                        pass
+    # With no spare descriptor even the dynamic loader cannot start. This is
+    # a startup failure, not a structured MCP decision or a caught runtime error.
+    startup = subprocess.run([sys.executable,'-c',wrapper,'3',binary],
+                             input='', capture_output=True, text=True, env=env, timeout=3)
+    assert startup.returncode != 0 and not startup.stdout and startup.stderr
+    print('descriptor exhaustion NOFILE=3: loader/startup failure, no MCP output (not a structured denial)')
+    return 6
+
+
 def test_connect_blackhole(binary):
     name = os.environ.get('OUTBOUND_GUARD_TEST_NETNS', '')
     assert name.startswith('outbound-guard-probe-') and name.removeprefix('outbound-guard-probe-').isdigit()
@@ -1704,6 +1778,7 @@ def main(binary, cancellation_probe):
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         silent_cases = test_silent_transport_cancellation(binary)
+        descriptor_cases = test_descriptor_exhaustion(binary)
         connect_cases = test_connect_blackhole(binary)
         post_dns_cases = test_post_dns_syscalls(binary)
         dns_worker_cases = test_dns_worker_exhaustion(binary)
@@ -1712,7 +1787,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
