@@ -46,3 +46,15 @@ A separate Request Guard chat reviewed the new saturation test without edits/bui
 - [Claude Agent SDK interrupt example](https://github.com/anthropics/claude-agent-sdk-python/blob/main/examples/streaming_mode.py)
 
 The [current priority admission implementation](cancellation-priority.md) replaces the historical saturation behavior above. The dated client-control observations and JSON records remain historical evidence; they do not automatically certify a later release candidate or its client UI behavior.
+
+## Fresh CI archive replay — 2026-10-22
+
+All three authenticated control probes were rerun sequentially against a fresh extraction of the signed CI archive for source `5c937811120a865564240b693f8bf558fd909ab3`. The archive and skill ZIP passed their checksum manifest; executable SHA-256 was `6549e77a5b450c630a3909f43d9bdf2521f820ec599ad9528c5df8e74d9e8388`. See the [redacted replay record](evidence/client-cancellation-2026-10-22.json) for archive/skill hashes and CI/provenance links.
+
+| Client/version | Wire cancellation | Sample socket closure after interrupt | Recovery |
+| --- | --- | --- | --- |
+| Claude Code 2.1.301 stream-JSON interrupt | Matching notification; cancelled reply suppressed | 0.061s | Guarded GET HTTP200 |
+| Codex CLI0.151.0 app-server turn/interrupt | No notification; tool returned its own slow-response denial | 3.019s | Guarded GET HTTP200 |
+| Cursor CLI2026.10.19-6bbf2c4 ACP session/cancel | No notification; tool returned its own slow-response denial | 3.015s | Guarded GET HTTP200; loopback denied; HEAD HTTP200 |
+
+Each client acknowledged its control interrupt and remained live. These are single fixture-specific timing samples. The server's new cancellation handling does not make Codex or Cursor deliver notifications in those tested paths; their prompt-cancellation acceptance remains unmet. The fresh extraction and temporary MCP configuration exercise an installed archive, while normal existing account authentication is reused. Desktop/terminal controls, saturated client queues and all network phases remain untested by this client replay. Historical records above remain dated evidence; no later artifact or production-readiness approval is implied.
