@@ -798,18 +798,28 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
         }
     };
     runtime.block_on(async {
-        match tokio::time::timeout(
+        // Keep one total-deadline future alive across cancellation observations.
+        // Recreating it per slice would extend the HTTP deadline indefinitely.
+        let pending = tokio::time::timeout(
             HTTP_TOTAL_TIMEOUT,
             guarded_http_fetch(&target, extra_ca, cancel),
-        )
-        .await
-        {
-            Ok(result) => result,
-            Err(_) => Denial::new(
-                "EGRESS_RESPONSE_TIMEOUT",
-                "The response exceeded the total time limit.",
-            )
-            .value(),
+        );
+        let mut pending = std::pin::pin!(pending);
+        loop {
+            if let Some(denial) = cancelled(cancel) {
+                return denial;
+            }
+            match tokio::time::timeout(Duration::from_millis(25), pending.as_mut()).await {
+                Ok(Ok(result)) => return result,
+                Ok(Err(_)) => {
+                    return Denial::new(
+                        "EGRESS_RESPONSE_TIMEOUT",
+                        "The response exceeded the total time limit.",
+                    )
+                    .value()
+                }
+                Err(_) => continue,
+            }
         }
     })
 }

@@ -160,6 +160,23 @@ class HTTP(http.server.BaseHTTPRequestHandler):
         self.methods.append("GET")
         self.hits.append(self.path)
         self.record_sensitive_headers()
+        if self.path in ("/cancel-silent-headers", "/cancel-silent-body"):
+            if self.path == "/cancel-silent-body":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", "1024")
+                self.end_headers()
+                self.wfile.flush()
+            type(self).cancel_started.set()
+            self.connection.settimeout(4)
+            try:
+                if self.connection.recv(1) == b"":
+                    type(self).cancel_closed.set()
+            except (ConnectionResetError, BrokenPipeError):
+                type(self).cancel_closed.set()
+            except socket.timeout:
+                pass
+            return
         if self.path == "/delayed":
             time.sleep(11)
             try:
@@ -929,6 +946,71 @@ def test_stdio_cancellation(binary):
           "notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered")
 
 
+def test_silent_http_cancellation(binary):
+    for modern in (False, True):
+        for phase in ("headers", "body"):
+            HTTP.cancel_started.clear()
+            HTTP.cancel_closed.clear()
+            before_hits = len(HTTP.hits)
+            env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test'
+            child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, text=True, env=env)
+            def send(method, id_=None, params=None):
+                params = dict(params or {})
+                if modern:
+                    params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+                                       'io.modelcontextprotocol/clientCapabilities':{}}
+                message = {'jsonrpc':'2.0', 'method':method, 'params':params}
+                if id_ is not None:
+                    message['id'] = id_
+                child.stdin.write(json.dumps(message) + '\n')
+                child.stdin.flush()
+            def receive(id_):
+                assert select.select([child.stdout], [], [], 3)[0], 'silent HTTP cancellation stalled'
+                reply = json.loads(child.stdout.readline())
+                assert reply['id'] == id_, reply
+                return reply['result']
+            try:
+                if not modern:
+                    send('initialize', 'init', {'protocolVersion':'2025-06-18', 'capabilities':{},
+                         'clientInfo':{'name':'silent-cancel-probe', 'version':'1'}})
+                    receive('init')
+                    send('notifications/initialized')
+                send('tools/call', 'cancel', {'name':'guarded_fetch',
+                     'arguments':{'url':f'http://allowed.test/cancel-silent-{phase}'}})
+                assert HTTP.cancel_started.wait(3), 'fixture did not receive HTTP'
+                started = time.monotonic()
+                send('notifications/cancelled', params={'requestId':'cancel'})
+                send('ping', 'barrier')
+                receive('barrier')
+                assert HTTP.cancel_closed.wait(1), 'pending socket retained after cancellation'
+                elapsed = time.monotonic() - started
+                assert elapsed < 1, elapsed
+                send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
+                events = json.loads(receive('audit')['contents'][0]['text'])['events']
+                assert [e['rule'] for e in events] == ['EGRESS_CANCELLED']
+                send('tools/call', 'cancel', {'name':'guarded_fetch',
+                     'arguments':{'url':'http://allowed.test/plain'}})
+                assert receive('cancel')['structuredContent']['rule'] == 'EGRESS_ALLOWED'
+                assert HTTP.hits[before_hits:] == [f'/cancel-silent-{phase}', '/plain']
+                child.stdin.close()
+                assert child.wait(timeout=3) == 0
+                assert not child.stdout.read() and not child.stderr.read()
+                print(f'silent HTTP cancellation {"modern" if modern else "legacy"}/{phase}: '
+                      f'{elapsed:.2f}s, socket closed, cancelled reply suppressed, audit and ID recovery passed')
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait()
+                for stream in (child.stdin, child.stdout, child.stderr):
+                    try:
+                        stream.close()
+                    except BrokenPipeError:
+                        pass
+    return 8
+
+
 def test_saturated_cancellation(binary):
     """Saturated ordinary admission cannot hide cancellation; busy work is not executed."""
     for modern in (False, True):
@@ -1381,13 +1463,14 @@ def main(binary, cancellation_probe):
         test_saturated_cancellation(binary)
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
+        silent_cases = test_silent_http_cancellation(binary)
         dns_worker_cases = test_dns_worker_exhaustion(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

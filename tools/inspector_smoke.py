@@ -25,6 +25,10 @@ def call(binary, method, *options, allowed_host=None, expected_exit=0, protocol_
                    "--server", "guard", "--method", method, "--format", "json", *options]
         env = {key:value for key,value in os.environ.items() if not key.startswith("OUTBOUND_GUARD_")}
         env["npm_config_ignore_scripts"] = "true"
+        # Fail registry fetches with an actionable npm error before the probe's
+        # process deadline, rather than hiding resolution stalls in a timeout.
+        env["npm_config_fetch_timeout"] = "15000"
+        env["npm_config_fetch_retries"] = "1"
         result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=90)
     if result.returncode != expected_exit:
         raise AssertionError(
