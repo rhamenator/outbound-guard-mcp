@@ -43,7 +43,12 @@ def main(binary):
         ip = (ipaddress.IPv4Address if version == 4 else ipaddress.IPv6Address)(value)
         matches = [(n, flag) for n, flag in ranges if n.version == version and ip in n]
         if matches and max(matches, key=lambda entry: entry[0].prefixlen)[1] == 'False':
-            denied.append(str(ip))
+            # Avoid Python-version changes to mapped-IPv6 presentation.
+            if version == 6:
+                digits = f'{value:032x}'
+                denied.append(':'.join(digits[i:i + 4] for i in range(0, 32, 4)))
+            else:
+                denied.append(str(ip))
         else:
             skipped += 1  # No requirement to allow globally reachable exceptions.
     assert len(denied) > 3000, len(denied)
