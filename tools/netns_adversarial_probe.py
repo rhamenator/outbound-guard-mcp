@@ -8,6 +8,8 @@ import json
 from stdio_exchange import run as paced_run, exchange
 import os
 import random
+import re
+import signal
 import select
 import queue
 import socket
@@ -1224,6 +1226,89 @@ def test_sdk_cancellation(binary, modern=False):
             process.wait()
 
 
+def test_post_dns_syscalls(binary):
+    """DNS may use UDP/Unix sockets; denied answers must never create Internet TCP."""
+    cases = ('private.test', 'mixed.test', 'metadata.test', 'carrier.test',
+             'documentation.test', 'v6-loopback.test', 'v6-private.test', 'mixed-v6.test')
+    stream = re.compile(r'socket\(AF_INET6?, SOCK_STREAM\b')
+    with tempfile.TemporaryDirectory(prefix='outbound-dns-syscall-') as folder:
+        for modern in (False, True):
+            trace = Path(folder) / ('modern.trace' if modern else 'legacy.trace')
+            env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+            env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = ','.join(('allowed.test', *cases))
+            child = subprocess.Popen(['strace','-f','-qq','-yy','-e','trace=network','-o',str(trace),binary],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     text=True, env=env, start_new_session=True)
+            def send(method, id_, params=None):
+                params = dict(params or {})
+                if modern:
+                    params['_meta'] = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+                                       'io.modelcontextprotocol/clientCapabilities':{}}
+                message = {'jsonrpc':'2.0', 'method':method, 'params':params}
+                if id_ is not None:
+                    message['id'] = id_
+                child.stdin.write(json.dumps(message) + '\n')
+                child.stdin.flush()
+            def receive(id_):
+                assert select.select([child.stdout], [], [], 6)[0], 'traced DNS response deadline'
+                reply = json.loads(child.stdout.readline())
+                assert reply['id'] == id_, reply
+                return reply['result']
+            def fetch(id_, host, path='plain'):
+                send('tools/call', id_, {'name':'guarded_fetch',
+                     'arguments':{'url':f'http://{host}/{path}'}})
+                return receive(id_)['structuredContent']
+            def streams():
+                assert trace.stat().st_size < 2*1024*1024
+                return len(stream.findall(trace.read_text()))
+            before_hits = len(HTTP.hits)
+            try:
+                if not modern:
+                    send('initialize', 'init', {'protocolVersion':'2025-06-18', 'capabilities':{},
+                         'clientInfo':{'name':'post-dns-syscall-probe', 'version':'1'}})
+                    receive('init')
+                    send('notifications/initialized', None)
+                # Actual allowed TCP traffic proves the same trace sees transport sockets.
+                assert fetch('control', 'allowed.test')['rule'] == 'EGRESS_ALLOWED'
+                assert streams() == 1, 'positive TCP tracer control failed'
+                for index, host in enumerate(cases):
+                    before_dns = len(DNS.names)
+                    assert fetch(index, host)['rule'] == 'EGRESS_FORBIDDEN_ADDRESS'
+                    assert host in DNS.names[before_dns:], 'denial did not exercise DNS'
+                    assert streams() == 1, 'forbidden DNS answer reached Internet stream socket creation'
+                    assert HTTP.hits[before_hits:] == ['/plain']
+                private_queries = DNS.names.count('private.test')
+                assert fetch('redirect', 'allowed.test', 'redirect')['rule'] == 'EGRESS_REDIRECT_DENIED'
+                assert DNS.names.count('private.test') == private_queries, 'redirect destination resolved'
+                assert streams() == 2
+                assert HTTP.hits[before_hits:] == ['/plain', '/redirect']
+                send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
+                events = json.loads(receive('audit')['contents'][0]['text'])['events']
+                assert [e['rule'] for e in events] == ['EGRESS_ALLOWED'] + ['EGRESS_FORBIDDEN_ADDRESS']*len(cases) + ['EGRESS_REDIRECT_DENIED']
+                child.stdin.close()
+                assert child.wait(timeout=3) == 0
+                assert not child.stdout.read() and not child.stderr.read()
+                # -yy distinguishes libc UDP address-ordering probes from TCP.
+                tcp_connects = [line for line in trace.read_text().splitlines()
+                                if 'connect(' in line and '<TCP:' in line]
+                assert len(tcp_connects) == 2, 'unexpected TCP connect count'
+                assert all('sin_port=htons(80)' in line and f'inet_addr("{PUBLIC_FIXTURE}")' in line
+                           for line in tcp_connects), 'TCP connected outside approved fixture'
+                print(f'post-DNS syscall {"modern" if modern else "legacy"}: {len(cases)} real-DNS '
+                      'forbidden-answer denials, zero extra Internet stream sockets; '
+                      'two positive TCP controls only to approved fixture; redirect not followed')
+            finally:
+                if child.poll() is None:
+                    os.killpg(child.pid, signal.SIGKILL)
+                    child.wait()
+                for handle in (child.stdin, child.stdout, child.stderr):
+                    try:
+                        handle.close()
+                    except BrokenPipeError:
+                        pass
+    return 2 * (len(cases) + 2)
+
+
 def test_dns_worker_exhaustion(binary):
     """Real libc lookup outlives its caller; busy requests cannot create more workers."""
     name = os.environ.get('OUTBOUND_GUARD_TEST_NETNS', '')
@@ -1512,13 +1597,14 @@ def main(binary, cancellation_probe):
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
         silent_cases = test_silent_transport_cancellation(binary)
+        post_dns_cases = test_post_dns_syscalls(binary)
         dns_worker_cases = test_dns_worker_exhaustion(binary)
         test_budgets(binary)
         generated = test_schema_mutations(binary)
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
