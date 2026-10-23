@@ -1,0 +1,27 @@
+{
+  "result": "passed",
+  "limits": {
+    "memory.max": "67108864",
+    "memory.swap.max": "0",
+    "pids.max": "16",
+    "cpu.max": "50000 100000"
+  },
+  "pressure_pings": 10,
+  "pressure_pre_network_denials": 10,
+  "max_reply_seconds": 0.00042,
+  "throttled_periods_delta": 11,
+  "throttled_usec_delta": 557612,
+  "usage_usec_delta": 524711,
+  "post_pressure_ping": true,
+  "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+  "limitations": "one finite helper-induced CPU saturation case; no active network/DNS timeout or automatic recovery guarantee",
+  "date_utc": "2026-10-23",
+  "kernel": "Linux 7.0.0-38-generic",
+  "systemd": "259.5",
+  "python": "3.14",
+  "source_revision": "2221cdfab15347542d872c9a5d3f945ae02316ab",
+  "artifact_source_sha": "23b9cdc6c350b8ad241e2d83df3a54a2b4b68e3f",
+  "artifact_archive_sha256": "d3d47b1a5820ef7a2e5e6e463dde9fc149c2a4585bb1b63dbef8a435ccfac881",
+  "scope": "one local user-systemd deployment probe; no hosted-CI user-manager result or latency SLA",
+  "probe_refinement": "initial controls finished within one throttled period; paced final controls across quota periods and required at least five events"
+}
