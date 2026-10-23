@@ -1,0 +1,221 @@
+{
+  "date_utc": "2026-10-23",
+  "artifact_source_sha": "96ef82ca08f162ac91cf3b370cbdcb5c53b34654",
+  "artifact_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39901322736",
+  "provenance_url": "https://github.com/rhamenator/outbound-guard-mcp/attestations/58934152",
+  "archive_sha256": "bb7bab1aaba356f9894878b77534ecf398e78c3970e9a8bebe8ce9744a704203",
+  "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+  "verification": "downloaded manifest/archive/ZIP/extracted binary hashes matched exact CI-verified signed candidate; no separate local attestation verifier claimed",
+  "clients": {
+    "claude": {
+      "skill": {
+        "client": "claude",
+        "native_skill_loaded": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "native_skill_invoked": true,
+        "skill_tool_result_success": true,
+        "native_project_read_completed": null,
+        "skill_zip_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+        "installed_skill_sha256": "9d55ad0d551a7cf6de86b33b4280a9e153f48ee160f142b0e0421e5e8774dddf",
+        "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "native_project_source_observed": true,
+        "setting_sources": [
+          "project"
+        ],
+        "builtin_tools": [
+          "Skill"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "cancel": {
+        "client": "claude",
+        "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+        "control_path": "stream-json interrupt",
+        "socket_closed": true,
+        "live_client": true,
+        "client_control_acknowledged": true,
+        "matching_wire_cancellation": true,
+        "cancelled_fetch_replied": false,
+        "cancel_notifications": 1,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fetches": 4,
+        "socket_closed_after_seconds": 0.061,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue"
+      },
+      "version": "2.1.301"
+    },
+    "codex": {
+      "skill": {
+        "client": "codex",
+        "native_skill_loaded": true,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "native_skill_invoked": null,
+        "skill_tool_result_success": null,
+        "native_project_read_completed": null,
+        "skill_zip_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+        "installed_skill_sha256": "9d55ad0d551a7cf6de86b33b4280a9e153f48ee160f142b0e0421e5e8774dddf",
+        "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "native_project_source_observed": true,
+        "setting_sources": null,
+        "builtin_tools": null,
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "cancel": {
+        "client": "codex",
+        "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+        "control_path": "app-server turn/interrupt",
+        "socket_closed": true,
+        "live_client": true,
+        "client_control_acknowledged": true,
+        "matching_wire_cancellation": false,
+        "cancelled_fetch_replied": true,
+        "cancel_notifications": 0,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fetches": 4,
+        "socket_closed_after_seconds": 3.017,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_RESPONSE_TOO_SLOW",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue"
+      },
+      "version": "0.151.0"
+    },
+    "cursor": {
+      "skill": {
+        "client": "cursor",
+        "native_skill_loaded": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "native_skill_invoked": null,
+        "skill_tool_result_success": null,
+        "native_project_read_completed": true,
+        "skill_zip_sha256": "60e6e72bc9e5dd183cd985e0a7d6809cc5723d6a0f03224b217069ca77d21235",
+        "installed_skill_sha256": "9d55ad0d551a7cf6de86b33b4280a9e153f48ee160f142b0e0421e5e8774dddf",
+        "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+        "installation_scope": "temporary project .cursor/skills/outbound-guard",
+        "native_project_source_observed": true,
+        "setting_sources": null,
+        "builtin_tools": [
+          "observed native read"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "cancel": {
+        "client": "cursor",
+        "binary_sha256": "c757f02f36efdc50f052a1f29066766e6a7cba400b9d1ca044d53b7389e0cd12",
+        "control_path": "ACP session/cancel",
+        "socket_closed": true,
+        "live_client": true,
+        "client_control_acknowledged": true,
+        "matching_wire_cancellation": false,
+        "cancelled_fetch_replied": true,
+        "cancel_notifications": 0,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fetches": 4,
+        "socket_closed_after_seconds": 3.016,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_RESPONSE_TOO_SLOW",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue"
+      },
+      "version": "2026.10.19-6bbf2c4"
+    }
+  },
+  "limitations": [
+    "one explicit skill workflow and client-control replay per client, not automatic triggering or model adherence",
+    "Claude Skill tool, Codex discovered explicit input and Cursor completed read are distinct native observations",
+    "Codex/Cursor sent no MCP cancellation in tested API controls; deadline closure is not prompt cancellation",
+    "no desktop/terminal UI or saturated native-client queue proof",
+    "no enforcement over traffic sent by other tools or release approval"
+  ]
+}
