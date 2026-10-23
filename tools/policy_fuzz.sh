@@ -4,7 +4,7 @@ set -euo pipefail
 : "${LIBFUZZER_RUNTIME:?Set LIBFUZZER_RUNTIME to libclang_rt.fuzzer_no_main-x86_64.a}"
 : "${POLICY_FUZZ_OUTPUT:?Set POLICY_FUZZ_OUTPUT to a dedicated evidence directory}"
 target="${POLICY_FUZZ_TARGET:-policy}"
-case "$target" in policy|frame) ;; *) exit 2 ;; esac
+case "$target" in policy|frame|rpc) ;; *) exit 2 ;; esac
 mkdir "$POLICY_FUZZ_OUTPUT"
 mkdir "$POLICY_FUZZ_OUTPUT/corpus" "$POLICY_FUZZ_OUTPUT/artifacts"
 rustc -vV > "$POLICY_FUZZ_OUTPUT/rustc.txt"
@@ -20,7 +20,7 @@ if [ "$target" = policy ]; then
   printf '%s' '{"url":"https://allowed.test/plain","method":"HEAD"}' > "$POLICY_FUZZ_OUTPUT/corpus/json"
   printf '%s' 'http://127.0.0.1/' > "$POLICY_FUZZ_OUTPUT/corpus/loopback"
   max_len=4096
-else
+elif [ "$target" = frame ]; then
   python3 - "$POLICY_FUZZ_OUTPUT/corpus" <<'SEEDS'
 from pathlib import Path
 import sys
@@ -30,6 +30,17 @@ p=Path(sys.argv[1])
 (p/'oversize').write_bytes(b'x'*65537+b'\nping\n')
 SEEDS
   max_len=131072
+else
+  python3 - "$POLICY_FUZZ_OUTPUT/corpus" <<'SEEDS'
+from pathlib import Path
+import json, sys
+p=Path(sys.argv[1])
+meta={'io.modelcontextprotocol/protocolVersion':'2026-07-28','io.modelcontextprotocol/clientCapabilities':{}}
+(p/'modern').write_text(json.dumps({'jsonrpc':'2.0','id':1,'method':'tools/list','params':{'_meta':meta}}))
+(p/'legacy').write_text(json.dumps([{'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'fuzz','version':'1'}}},{'jsonrpc':'2.0','method':'notifications/initialized'},{'jsonrpc':'2.0','id':2,'method':'ping'}]))
+(p/'arguments').write_text('{"url":"http://allowed.test/plain","method":"GET"}')
+SEEDS
+  max_len=8192
 fi
 (
 ulimit -v 1048576
