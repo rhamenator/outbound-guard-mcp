@@ -40,3 +40,5 @@ python3 tools/client_cancellation_probe.py cursor /absolute/path/to/outbound-gua
 This optional authenticated probe requires the disposable-namespace sudo setup documented in the cancellation guide; ordinary MCP/skill use requires no sudo. Model inference can incur normal account usage. Only two expected ZIP files are installed, and private config/transcript/skill state is removed afterward. One initial harness setup failed before inference because the skill directory already created `.cursor/`; directory creation is now idempotent within the owned workspace.
 
 This check covers an explicit named request and completed native file read. Automatic trigger reliability, IDE UI/menu behavior, Codex loading and cancellation delivery remain separate gaps. Skill guidance does not intercept traffic sent through other tools.
+
+The [2026-10-23 exact-candidate replay](client-cancellation.md#rpc-fuzz-candidate-replay-2026-10-23) repeats the explicit installed-skill workflow, denial/GET/HEAD and client-control cancellation observations against the changed RPC-fuzz candidate. It preserves the client-specific cancellation limitations.

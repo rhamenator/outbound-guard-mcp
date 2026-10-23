@@ -46,3 +46,5 @@ python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-gua
 ```
 
 This optional authenticated probe needs the existing disposable-namespace sudo permissions described in the cancellation guide. Ordinary stdio/skill use requires no sudo. The check establishes one explicit invocation in Claude 2.1.301; automatic trigger reliability and native skill activation in Codex/Cursor remain open. A skill is guidance, and the server only guards calls actually sent through its tool.
+
+The [2026-10-23 exact-candidate replay](client-cancellation.md#rpc-fuzz-candidate-replay-2026-10-23) repeats the explicit installed-skill workflow, denial/GET/HEAD and client-control cancellation observations against the changed RPC-fuzz candidate. It preserves the client-specific cancellation limitations.
