@@ -141,4 +141,4 @@ The [silent TLS cancellation fixture](docs/adversarial-netns.md#cancellation-dur
 
 ### Optional Linux deployment quotas
 
-See [process limits and recovery](docs/linux-deployment-limits.md) for tested user-systemd/cgroup-v2 deployment, bounded OOM and task-exhaustion probes and a stdio wrapper. OS limits can disconnect a client before structured errors; audit and rate state reset on restart. This optional deployment recipe does not change the experimental release status.
+See [process limits and recovery](docs/linux-deployment-limits.md) for tested user-systemd/cgroup-v2 deployment, bounded OOM, task-exhaustion and CPU-saturation probes and a stdio wrapper. OS limits can disconnect a client before structured errors; audit and rate state reset on restart. This optional deployment recipe does not change the experimental release status.
