@@ -1,0 +1,28 @@
+{
+  "result": "passed",
+  "limits": {
+    "memory.max": "67108864",
+    "memory.swap.max": "0",
+    "pids.max": "16",
+    "cpu.max": "50000 100000"
+  },
+  "pids_at_ceiling": 16,
+  "pids_after_release": 4,
+  "sleeping_helper_threads": 12,
+  "pids_events_max_delta": 2,
+  "process_creation_errno": "EAGAIN",
+  "mcp_ping_at_ceiling": true,
+  "pre_network_denial_at_ceiling": "EGRESS_INVALID_HOST",
+  "manual_replacement_after_release": true,
+  "binary_sha256": "9c12b359928f78f2f855e8c3cd4ae5137c40060e03155af34d30e6e28f73e8d1",
+  "limitations": "helper-induced task exhaustion; no active fetch, CPU saturation, automatic recovery or new-worker success claimed",
+  "date_utc": "2026-10-23",
+  "kernel": "Linux 7.0.0-38-generic",
+  "systemd": "259.5",
+  "python": "3.14",
+  "source_revision": "d41b2a074d75d00fe1815116c7ff0e9761eb9dc0",
+  "artifact_source_sha": "23b9cdc6c350b8ad241e2d83df3a54a2b4b68e3f",
+  "artifact_archive_sha256": "d3d47b1a5820ef7a2e5e6e463dde9fc149c2a4585bb1b63dbef8a435ccfac881",
+  "scope": "one local optional Linux user-systemd test; no hosted CI user-manager result",
+  "initial_probe_correction": "first run reached the denial check but used rule_id instead of the actual rule field; corrected harness and reran successfully"
+}
