@@ -21,6 +21,7 @@ report = {'seed': 306373022, 'executions': int(match[1]), 'coverage_counters': i
           'features': int(match[3]), 'new_units_added': int(added[1]), 'corpus': corpus,
           'limits': '60s target; 2s/input; hard 1GiB address space/64 FDs/90s CPU; no ASan',
           'scope': ('validate only, stub DNS; no sockets, HTTP parser or MCP transport' if target == 'policy'
-                    else 'actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets')}
+                    else ('actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets' if target == 'frame'
+                          else 'actual MCP dispatch/session transitions and tool validation; empty allowlist; no DNS, sockets, queues or cancellation timing'))}
 (root / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps({k: v for k, v in report.items() if k != 'corpus'}))

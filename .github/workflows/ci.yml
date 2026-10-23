@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [policy, frame]
+        target: [policy, frame, rpc]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

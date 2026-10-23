@@ -124,6 +124,50 @@ pub fn fuzz_frame_stream(input: &[u8]) {
     ));
 }
 
+// No host can pass the allowlist; this harness must never reach system DNS/I/O.
+#[cfg(feature = "policy-fuzz")]
+pub fn fuzz_rpc_dispatch(input: &[u8]) {
+    let Ok(value) = serde_json::from_slice::<Value>(input) else {
+        return;
+    };
+    let mut session = Session::New;
+    let cancel = AtomicBool::new(false);
+    let mut dispatch = |message: Value| {
+        let original_id = message.get("id").cloned();
+        if let Some(reply) = handle_cancellable(message, &[], &mut session, &cancel) {
+            assert_eq!(reply["jsonrpc"], "2.0");
+            assert_ne!(reply.get("result").is_some(), reply.get("error").is_some());
+            if let Some(error) = reply.get("error") {
+                assert!(error["code"].is_i64() && error["message"].is_string());
+            } else {
+                assert_eq!(reply.get("id"), original_id.as_ref());
+                assert!(reply["result"].is_object());
+            }
+            assert_ne!(
+                reply.pointer("/result/structuredContent/status"),
+                Some(&json!("ALLOWED"))
+            );
+            let bytes = serde_json::to_vec(&reply).unwrap();
+            assert!(bytes.len() <= 262144);
+            assert_eq!(serde_json::from_slice::<Value>(&bytes).unwrap(), reply);
+        }
+    };
+    // Arrays are bounded sequences for transition exploration, not MCP batches.
+    if let Some(sequence) = value.as_array() {
+        for message in sequence.iter().take(16) {
+            dispatch(message.clone());
+        }
+    } else {
+        dispatch(value.clone());
+    }
+    // Mutations also reach actual tool argument validation via a valid modern opener.
+    dispatch(
+        json!({"jsonrpc":"2.0","id":"fuzz-tool","method":"tools/call",
+        "params":{"_meta":{"io.modelcontextprotocol/protocolVersion":MODERN_VERSION,"io.modelcontextprotocol/clientCapabilities":{}},
+        "name":"guarded_fetch","arguments":value}}),
+    );
+}
+
 fn rpc_error(id: Value, code: i32, message: &str) -> Value {
     json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
 }
