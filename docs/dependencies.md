@@ -34,6 +34,12 @@ The command deliberately uses `--no-yanked`: registry yank status is not checked
 
 ## Locked development SDK advisory gate
 
+### Tokio and SDK probe corrections — 2026-10-27
+
+Fresh CI advisory data blocked the 2026-10-27 candidate: [RUSTSEC-2026-0386](https://rustsec.org/advisories/RUSTSEC-2026-0386.html) flagged locked Tokio 1.53.1 as an informational I/O-safety unsoundness warning, and [GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828) flagged `body-parser` 2.3.0 in the SDK probe's development-only npm lockfile. These are dependency-advisory matches; this project has not reproduced either exploit. Tokio is now locked and directly constrained to at least 1.53.3; the SDK probe lockfile now resolves `body-parser` 2.4.0. No package, runtime feature, or audit exemption was added.
+
+A local full-lock `cargo audit --no-fetch --no-yanked --deny warnings` against RustSec database commit `3279c99911354c400e1d41e47c7d60e39258b147` reports zero vulnerabilities and warnings. The complete SDK probe `npm audit --package-lock-only --include=dev --include=optional --include=peer --ignore-scripts --audit-level=low` reports zero findings. Local locked offline Rust tests, binary/example builds, and Python tests pass. CI must repeat both audits with fresh advisory data and complete the remaining gates. The previously signed candidate contains different Tokio bytes; its native-client replay, archive hashes, independent build, and signature do not certify this corrected executable. Select and replay the corrected candidate before release review.
+
 CI now also queries npm advisories for `tools/mcp-sdk-probe/package-lock.json` before trusted-main signing. The separate job uses `--package-lock-only`, explicitly includes development/optional/peer classes, disables scripts and performs no dependency installation. Findings at low severity or higher fail npm; the following response check additionally requires the supported complete report shape and zero total findings. Network/service/report errors fail the job rather than being interpreted as a clean audit. Signing requires this job as well as the full-lock RustSec scan and independent rebuild.
 
 The report, Node/npm versions and SDK lockfile SHA-256 are retained as a seven-day artifact. Local verification on2026-10-22 used Node22.20.0/npm11.19.1 and reported zero findings; this observation expires as advisory data changes. No ignore or automatic fix is applied, and no runtime crate or JavaScript dependency is added.
