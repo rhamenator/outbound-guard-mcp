@@ -10,7 +10,7 @@ repository = "https://github.com/rhamenator/outbound-guard-mcp"
 [dependencies]
 serde_json = { version = "1", features = ["arbitrary_precision"] }
 url = "2"
-tokio = { version = "1", features = ["rt", "time", "net", "io-util"] }
+tokio = { version = "1.53.3", features = ["rt", "time", "net", "io-util"] }
 bytes = "1"
 hyper = { version = "1", default-features = false, features = ["client", "http1"] }
 hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
