@@ -11,6 +11,7 @@ Set OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 for private, mixed-answer and metadata
 DNS denials.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
+Set OUTBOUND_GUARD_CLIENT_MALFORMED=1 for malformed HTTP chunk framing.
 Only one opt-in mode may be selected.
 """
 import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit
@@ -20,8 +21,9 @@ attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
 dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
-assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or exfil_mode or rebind_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
+assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 synthetic_marker='ghp_'+'A'*20 if exfil_mode else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
 script_dir=pathlib.Path(__file__).resolve().parent
@@ -147,6 +149,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://rebind.test/plain ; GET http://rebind.test/plain . The operator approved both exact DNS hosts for this negative security test. The rebind.test answer changes between calls. Make every call once, including the second rebind.test call even if the first succeeds. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_FORBIDDEN_ADDRESS']
    expected_methods=['GET','GET','GET']
+  if malformed_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/chunked-bad-size ; GET http://allowed.test/chunked-truncated . The last two responses have deliberately malformed HTTP chunk framing. The operator approved allowed.test. Make every call once even when an earlier call fails. Do not retry or use any other tool. Report the actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_READ_FAILURE','EGRESS_READ_FAILURE']
+   expected_methods=['GET','HEAD','GET','GET']
   if name=='claude':send({'type':'user','message':{'role':'user','content':skill_prompt}})
   elif name=='codex':
    send({'id':1,'method':'initialize','params':{'clientInfo':{'name':'outbound_skill_probe','version':'1'}}});response(1)
@@ -171,7 +177,15 @@ if skill_zip:
    if [e.get('rule') for e in events if 'rule' in e]==expected_rules:break
    assert p.poll() is None,'client exited before skill workflow completed'
    time.sleep(.05)
-  else:raise AssertionError('skill workflow did not complete expected tool calls')
+  else:
+   client_messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()] if (root/'client.jsonl').exists() else []
+   print(json.dumps({'incomplete_workflow':{'rules':[e.get('rule') for e in events if 'rule' in e],
+    'methods':[e.get('http_method') for e in events if e.get('method')=='tools/call'],
+    'fixture_hits':json.loads((root/'hits.json').read_text()) if (root/'hits.json').exists() else [],
+    'client_methods':sorted(set(m.get('method','') for m in client_messages)),
+    'client_error_count':sum('error' in m for m in client_messages),
+    'stderr_size':(root/'client.stderr').stat().st_size if (root/'client.stderr').exists() else 0}}),flush=True)
+   raise AssertionError('skill workflow did not complete expected tool calls')
   messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
   if name=='claude':
    blocks=[b for m in messages for b in m.get('message',{}).get('content',[]) if isinstance(b,dict)]
@@ -209,16 +223,16 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or exfil_mode or rebind_mode) and name=='claude':
+  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or exfil_mode or rebind_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or exfil_mode or rebind_mode:
+  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call']
   if [e['http_method'] for e in fetches]!=expected_methods:
@@ -259,6 +273,12 @@ if skill_zip:
    assert rebind_a_queries==2, rebind_a_queries
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/plain'], hits
+  if malformed_mode:
+   for _ in range(100):
+    hits=json.loads((root/'hits.json').read_text())
+    if len(hits)==4:break
+    time.sleep(.01)
+   assert hits==['/plain','/head-ok','/chunked-bad-size','/chunked-truncated'], hits
   print(json.dumps({'client':name,'native_skill_loaded':True,'native_skill_discovered':True if name=='codex' else None,'explicit_skill_input_accepted':True if name=='codex' else None,'native_turn_completed':True if name=='codex' else None,'native_skill_invoked':True if name=='claude' else None,
    'skill_tool_result_success':True if name=='claude' else None,'native_project_read_completed':True if name=='cursor' else None,
    'skill_zip_sha256':hashlib.sha256(skill_zip.read_bytes()).hexdigest(),
@@ -267,8 +287,8 @@ if skill_zip:
    'installation_scope':'temporary project '+str(skill_dir.relative_to(root)),
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[200,200], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode) else None,
+   'status_codes':[200,200], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode) else None,
    'forbidden_dns_names':sorted(set(dns_names)) if dns_mode else None,
    'exfil_dns_queried':'exfil.test' in dns_names if exfil_mode else None,
    'synthetic_marker_echo':False if exfil_mode else None,
