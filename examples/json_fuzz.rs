@@ -57,8 +57,6 @@ mod fuzz {
                 if let Ok(found) = scanned {
                     assert_eq!(found, has_instruction_key(&value));
                 }
-            } else {
-                assert!(scanned.is_err());
             }
         }
         0

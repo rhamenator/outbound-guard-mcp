@@ -1315,6 +1315,7 @@ mod tests {
         for text in [
             r#"{"instructional":"a legitimate field"}"#,
             r#"{"items":[{"value":"an instruction-like sentence"}]}"#,
+            r#"{"$serde_json::private::Number":0}"#,
         ] {
             let parsed: JsonInstructionScan = serde_json::from_str(text).unwrap();
             assert!(!parsed.0, "{text}");

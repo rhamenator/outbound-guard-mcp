@@ -44,6 +44,7 @@ p=Path(sys.argv[1])
 (p/'duplicate').write_text('{"payload":{"instruction":"attack"},"payload":{"safe":true}}')
 (p/'safe').write_text('{"items":[{"value":"ordinary data"}]}')
 (p/'invalid').write_text('{"items": [1, 2] trailing')
+(p/'value-collision').write_text('{"$serde_json::private::Number":0}')
 SEEDS
   max_len=262144
 else

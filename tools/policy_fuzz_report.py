@@ -25,7 +25,7 @@ report = {'seed': 306373022, 'executions': int(match[1]), 'coverage_counters': i
           'limits': f'{seconds}s target; 2s/input; hard 1GiB address space/64 FDs/{seconds + 30}s CPU; no ASan',
           'scope': ('validate only, stub DNS; no sockets, HTTP parser or MCP transport' if target == 'policy'
                     else ('actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets' if target == 'frame'
-                          else ('actual JSON response scanner versus canonical-value recursive key oracle; duplicate-key and invalid-JSON seeds; no HTTP transport or MCP client'
+                          else ('actual JSON response scanner versus canonical-value recursive key oracle; duplicate-key, invalid-JSON and Value-private-number collision seeds; oracle cannot classify Value parse errors; no HTTP transport or MCP client'
                                 if target == 'json' else 'actual MCP dispatch/session transitions and tool validation; empty allowlist; no DNS, sockets, queues or cancellation timing')))}
 (root / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps({k: v for k, v in report.items() if k != 'corpus'}))

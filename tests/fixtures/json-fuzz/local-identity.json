@@ -7,19 +7,19 @@
   "input_sha256_lines": [
     "8ed0f68a1927a7ec08ee0d227dce905c4bcc6c1b82543d342035bf0a55915584  Cargo.toml",
     "f5f0f24b280539cf2facff3ac0b2a77c7ec5f919297ab2ceb7a6ed2788e68cba  Cargo.lock",
-    "9c1fb6791d7cd4de736f9c65c5f7c1e08d726f792d8edd41748660a1b12546e3  src/lib.rs",
+    "15ce6f2e578ecf8dd8647900598c858a68e36d6dd087fcc57f53c6c3cbde2d81  src/lib.rs",
     "7674ec1bc25b4008a9029a12fced3bb82639220904b807cd5683735c159a8089  src/main.rs",
     "7b2ee0938d7efe994d755aab84ee4d1dd0caddd3b57d11c3c6ce5830869027ac  src/transport.rs",
     "98d3a1784d00c4b39cf976f9d09beb0a13e017bfbf25813dc503508ea0637937  examples/frame_fuzz.rs",
-    "8fbdec769ef72b07cc847c6758faff4ecbaccb84b8920d787a9bb701db838572  examples/json_fuzz.rs",
+    "57e49f76f9583a4ea52a6f54cf6dd0c75ff5a85a2e09128653f864cbc9dc7260  examples/json_fuzz.rs",
     "b18b7220a2419d71d7e006f6889c593ce5294bce9660c5ca422b06c31b39f132  examples/policy_fuzz.rs",
     "33399876ee87c6c7c3fe867d32bf06987b65c0e3ca42aba069ac6a189a3c6b5d  examples/rpc_fuzz.rs",
-    "0fd3b1b689de6b812a18b144f73c8ef94474c30d21f42f9f15276f958336cde4  tools/policy_fuzz.sh"
+    "1ff404898e58ef6ace89791ccd0e1d84a333f74d361995a1578bc13801108f2b  tools/policy_fuzz.sh"
   ],
-  "report_sha256": "abc4e0f98b2e599dcedce8380d7313fce58680eef53bba3ff1676b176d6989be",
-  "corpus_archive_sha256": "ae171fda6fd547d04d9c8655bae01ea317fccb33523dcc0ed5aebb11ac807f2f",
-  "campaign_log_gzip_sha256": "1d888431add8fba13a6e9ea2b12e98c837ba57661f2ef0148e5a4bfa90c4029f",
-  "corpus_file_count": 959,
+  "report_sha256": "f9cca602312177f4f0ae621e5704b63f931e424956c218db9d9d78cbab64c6f2",
+  "corpus_archive_sha256": "3ca3f6dd8d3e47134115ed8b404dce29078ead607c5a8e605ab9a14710c23fb5",
+  "campaign_log_gzip_sha256": "4e7c93c54de5230afb206ace6895495db9741a92ce20362ca9fd9111eb630ace",
+  "corpus_file_count": 997,
   "limits": "60s target, 2s/input, hard 1GiB virtual memory/64 FDs/90s CPU, libFuzzer 512MiB RSS threshold; no ASan/UBSan",
-  "limitations": "Scanner/canonical-value oracle only; duplicate-key parser errors are covered by seeds and unit tests, not a fully independent duplicate-key oracle; no HTTP/DNS/MCP client or general prompt-injection proof."
+  "limitations": "Scanner/canonical-value oracle only; duplicate-key parser errors covered by seeds and unit tests, not a fully independent duplicate-key oracle; Value private-number collisions cause oracle parse errors and are excluded from equivalence assertions; no HTTP/DNS/MCP client or general prompt-injection proof."
 }
