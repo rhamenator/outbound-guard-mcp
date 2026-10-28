@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Private helper: transparently forward MCP; log only method/ID/rule metadata."""
 import sys,subprocess,threading,json,time
-ns,binary,log=sys.argv[1:]
-p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i','PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test',binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
+assert len(sys.argv) in (4,5)
+ns,binary,log=sys.argv[1:4]
+hosts=sys.argv[4] if len(sys.argv)==5 else 'allowed.test'
+assert hosts in ('allowed.test','allowed.test,private.test,mixed.test,metadata.test')
+p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i','PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts,binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
 lock=threading.Lock()
 def record(direction,line):
  try:

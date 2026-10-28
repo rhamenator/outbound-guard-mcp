@@ -1,0 +1,28 @@
+{
+  "date_utc": "2026-10-28",
+  "candidate_source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "candidate_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "harness": "OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY ATTESTED_SKILL_ZIP",
+  "fixture": {
+    "namespace": "disposable route-free Linux network namespace for the MCP child",
+    "operator_allowed_hosts": ["allowed.test", "private.test", "mixed.test", "metadata.test"],
+    "dns_answers": {"private.test": ["127.0.0.1"], "mixed.test": ["11.0.0.1", "127.0.0.1"], "metadata.test": ["169.254.169.254"]},
+    "public_policy_address": "11.0.0.1 is locally assigned only in the namespace",
+    "expected_http_hits": ["/plain", "/head-ok"]
+  },
+  "clients": {
+    "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET", "HEAD", "GET", "GET", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_FORBIDDEN_ADDRESS"], "forbidden_dns_names": ["metadata.test", "mixed.test", "private.test"], "fixture_hits": ["/plain", "/head-ok"]},
+    "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET", "HEAD", "GET", "GET", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_FORBIDDEN_ADDRESS"], "forbidden_dns_names": ["metadata.test", "mixed.test", "private.test"], "fixture_hits": ["/plain", "/head-ok"]},
+    "cursor": {"version": "2026.10.19-6bbf2c4", "native_project_skill_read": true, "method_sequence": ["GET", "GET", "HEAD", "GET", "GET", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_FORBIDDEN_ADDRESS"], "forbidden_dns_names": ["metadata.test", "mixed.test", "private.test"], "fixture_hits": ["/plain", "/head-ok"]}
+  },
+  "checks": ["each client's native skill path completed", "exact six guarded calls and rule sequence", "all three forbidden names queried through controlled resolver", "two approved HTTP controls and no HTTP hit for forbidden names", "prior redirect/compression Codex mode still passed", "owned namespaces removed"],
+  "limits": [
+    "The HTTP fixture-hit oracle does not prove no forbidden socket syscall; separate strace probes cover that narrower property outside these native-client runs.",
+    "These finite DNS answers test direct private, mixed and metadata address denial. They do not test rebinding after a first connection, every resolver behavior or all address ranges through native clients.",
+    "Only explicit skill invocation and this ordered call sequence are covered. Exfiltration, malformed protocol, resource exhaustion, native UI controls and traffic sent through other tools remain separate gates.",
+    "The client authentication ran on the host with existing accounts. No credentials or raw transcripts are retained. The Debian installer is unsigned, with signed build provenance."
+  ]
+}
