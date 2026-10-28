@@ -2,6 +2,28 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client pinned-address fallback under a DNS flip, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1` skill replay asks a real
+client for an approved control GET and one GET to a controlled DNS name.
+The first A answer lists a public-policy address with no HTTP listener,
+then the public-policy fixture address. A hypothetical second A query
+would return loopback. Claude Code and Codex CLI each completed both GETs
+with HTTP 200, while the resolver saw exactly one A query for the fallback
+name. The [redacted exact-candidate record](evidence/native-client-pinned-fallback-2026-10-28.json)
+binds source, binary and skill hashes to these observations.
+
+```bash
+OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate. Model usage may incur cost.
+This native-client fixture does not trace connect syscalls or packets; the
+separate route-free TCP-refusal probe does, for its own run. Cursor was not
+rerun under its plan gate. TLS/HTTP reconnects, other resolver behavior and
+traffic sent through other tools remain outside this observation.
+
 ## Native-client session with one injected malformed MCP frame, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1` replay asks a real

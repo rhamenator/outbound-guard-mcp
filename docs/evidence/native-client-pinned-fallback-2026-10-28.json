@@ -1,0 +1,29 @@
+{
+  "date_utc": "2026-10-28",
+  "candidate_source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "candidate_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "harness": "OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY ATTESTED_SKILL_ZIP",
+  "fixture": {
+    "namespace": "disposable route-free Linux network namespace for the MCP child",
+    "operator_allowed_hosts": ["allowed.test", "fallback-pin.test"],
+    "first_fallback_a_answer": ["11.0.0.2", "11.0.0.1"],
+    "second_fallback_a_answer_if_queried": ["127.0.0.1"],
+    "public_http_fixture": "11.0.0.1:80 only; 11.0.0.2 has no listener",
+    "requests": ["GET http://allowed.test/plain", "GET http://fallback-pin.test/plain"]
+  },
+  "clients": {
+    "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED"], "status_codes": [200, 200], "fallback_a_queries": 1, "fixture_hits": ["/plain", "/plain"]},
+    "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED"], "status_codes": [200, 200], "fallback_a_queries": 1, "fixture_hits": ["/plain", "/plain"]},
+    "cursor": {"version": "2026.10.19-6bbf2c4", "result": "not run", "reason": "native Cursor plan-upgrade gate was observed in a separate 2026-10-28 replay; do not claim coverage until client access is restored"}
+  },
+  "checks": ["Claude and Codex completed explicit skill turns against the exact candidate binary", "fallback hostname was resolved once per run", "both valid calls reached only the approved HTTP fixture and returned 200", "owned namespaces removed"],
+  "limits": [
+    "This native-client fixture does not trace connect syscalls or packets. The independent route-free TCP-refusal probe contains the narrower syscall observation for the fallback path, but is a separate run.",
+    "The resolver flips only on a hypothetical second A query during one guarded call. One observed A query shows no application-visible DNS retry; it does not prove every OS resolver behavior, TLS/HTTP reconnect path or all A/AAAA combinations.",
+    "Cursor was not exercised under its native plan gate. Only explicit skill invocation and this ordered call sequence are covered. Traffic sent through other tools remains outside Outbound Guard's boundary.",
+    "The client authentication ran on the host with existing accounts. No credentials or raw transcripts are retained. The Debian installer is unsigned, with signed build provenance."
+  ]
+}
