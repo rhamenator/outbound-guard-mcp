@@ -29,6 +29,8 @@ CASES = (
     ({'url':'http://allowed.test/ghp_' + 'A'*20}, 'EGRESS_SECRET_DETECTED'),
     ({'url':'http://allowed.test/', 'method':'POST'}, 'EGRESS_METHOD_DENIED'),
     ({'url':'http://allowed.test/', 'headers':{'X-Key':MARKER}}, 'EGRESS_INVALID_INPUT'),
+    ({'url':'http://allowed.test/', 'headers':{'Authorization':'Bearer '+MARKER}}, 'EGRESS_INVALID_INPUT'),
+    ({'url':'http://allowed.test/', 'body':MARKER}, 'EGRESS_INVALID_INPUT'),
     ({'url':'http://allowed.test/', 'max_return_bytes':0}, 'EGRESS_RESPONSE_LIMIT'),
 )
 
