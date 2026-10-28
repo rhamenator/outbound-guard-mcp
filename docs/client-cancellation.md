@@ -26,7 +26,7 @@ broader hostile DNS/HTTP and release gates remain open.
 
 ## Scope and results, 2026-10-21
 
-The optimized Linux x86_64 GNU archive candidate `ec96881e4ca9` has binary SHA-256 `93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19`. The production Rust implementation has not changed since that candidate. A transparent stdio bridge recorded only MCP method/ID/rule metadata. The real clients used their existing authenticated model services on the host; only the MCP child ran in a disposable route-free network namespace with controlled DNS/HTTP. No VM, public attack target, or runtime dependency was added.
+The optimized Linux x86_64 GNU archive candidate `ec96881e4ca9` has binary SHA-256 `93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19`. A transparent stdio bridge recorded only MCP method/ID/rule metadata. The real clients used their existing authenticated model services on the host; only the MCP child ran in a disposable route-free network namespace with controlled DNS/HTTP. No VM, public attack target, or runtime dependency was added. Later source changes and candidate replays are recorded below and above this historical section.
 
 | Client/version | Control tested | Matching MCP cancellation | Observed outcome |
 | --- | --- | --- | --- |
