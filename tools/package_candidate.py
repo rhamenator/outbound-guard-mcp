@@ -29,6 +29,86 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def debian_candidate(binary, version, revision, epoch, output, source, dependencies, provenance):
+    """Build an unsigned, deterministic Debian 12 amd64 test package."""
+    package_version = f"{version}~candidate+g{revision[:12]}"
+    package = output / f"outbound-guard-mcp_{package_version}_amd64.deb"
+    with tempfile.TemporaryDirectory(prefix="outbound-guard-deb-") as folder:
+        root = Path(folder)
+        paths = {
+            "usr/bin/outbound-guard-mcp": binary,
+            "usr/share/doc/outbound-guard-mcp/README.md": git("show", f"{revision}:README.md"),
+            "usr/share/doc/outbound-guard-mcp/copyright": git("show", f"{revision}:LICENSE"),
+            "usr/share/doc/outbound-guard-mcp/source.tar.gz": source,
+            "usr/share/doc/outbound-guard-mcp/provenance.json": provenance,
+        }
+        paths.update({f"usr/share/doc/outbound-guard-mcp/{name}": data
+                      for name, data in dependencies.items()})
+        for name, data in paths.items():
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            target.chmod(0o755 if name.startswith("usr/bin/") else 0o644)
+        control = root / "DEBIAN/control"
+        control.parent.mkdir(parents=True)
+        control.write_text(
+            f"Package: outbound-guard-mcp\nVersion: {package_version}\nArchitecture: amd64\n"
+            "Maintainer: Rich <rich@yourfoxprodeveloper.com>\n"
+            "Depends: libc6 (>= 2.36), libgcc-s1\n"
+            "Section: net\nPriority: optional\n"
+            "Description: Experimental guarded HTTP egress MCP server\n"
+            " Unsigned pre-release candidate for Debian 12 amd64.\n"
+        )
+        control.chmod(0o644)
+        for path in sorted(root.rglob("*"), reverse=True):
+            os.utime(path, (epoch, epoch), follow_symlinks=False)
+        os.utime(root, (epoch, epoch))
+        env = os.environ.copy()
+        env["SOURCE_DATE_EPOCH"] = str(epoch)
+        subprocess.run(["dpkg-deb", "--build", "--root-owner-group", "--uniform-compression",
+                        "--compression=gzip", "--compression-level=9", str(root), str(package)],
+                       env=env, check=True, timeout=30)
+    listing = subprocess.check_output(["dpkg-deb", "--contents", str(package)], text=True)
+    assert "./usr/bin/outbound-guard-mcp" in listing
+    assert "./usr/share/doc/outbound-guard-mcp/copyright" in listing
+    assert "./usr/share/doc/outbound-guard-mcp/source.tar.gz" in listing
+    payload = subprocess.check_output(["dpkg-deb", "--fsys-tarfile", str(package)])
+    with tarfile.open(fileobj=io.BytesIO(payload)) as tar:
+        member = tar.getmember("./usr/bin/outbound-guard-mcp")
+        assert member.isfile() and member.mode == 0o755
+        assert digest(tar.extractfile(member).read()) == digest(binary)
+    return package
+
+
+def debian_install_smoke(package, version):
+    """Exercise dpkg install, MCP launch, removal and residue in fresh Bookworm."""
+    image = BUILDER_IMAGE
+    script = r'''set -eu
+grep -q '^VERSION_ID="12"$' /etc/os-release
+dpkg -i /candidate.deb
+test -x /usr/bin/outbound-guard-mcp
+test "$(/usr/bin/outbound-guard-mcp --version)" = "outbound-guard-mcp ${VERSION}"
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"deb-install","version":"1"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}}' | /usr/bin/outbound-guard-mcp > /tmp/replies
+grep -q '"EGRESS_INVALID_HOST"' /tmp/replies
+grep -q '"guarded_fetch"' /tmp/replies
+grep -q '"isError":true' /tmp/replies
+dpkg -r outbound-guard-mcp
+test ! -e /usr/bin/outbound-guard-mcp
+test ! -e /usr/share/doc/outbound-guard-mcp/README.md
+test ! -e /usr/share/doc/outbound-guard-mcp/copyright
+test ! -e /usr/share/doc/outbound-guard-mcp/source.tar.gz
+test ! -d /usr/share/doc/outbound-guard-mcp
+if dpkg-query -W outbound-guard-mcp >/dev/null 2>&1; then exit 1; fi
+test ! -e /etc/outbound-guard-mcp
+'''
+    subprocess.run(["docker", "run", "--rm", "--pull", "never", "--network", "none", "--cap-drop", "ALL",
+                    "--security-opt", "no-new-privileges", "--memory", "256m", "--memory-swap", "256m",
+                    "--cpus", "1", "--pids-limit", "64",
+                    "--mount", f"type=bind,src={package},dst=/candidate.deb,readonly",
+                    "--env", f"VERSION={version}", image, "sh", "-ec", script],
+                   check=True, timeout=90)
+
+
 def installed_smoke(binary, version, cancellation_probe):
     subprocess.run([sys.executable, str(REPO / "tools/cli_smoke.py"), str(binary), version],
                    cwd=binary.parent, check=True, timeout=60)
@@ -300,7 +380,8 @@ def main():
             entry.compress_type = zipfile.ZIP_DEFLATED
             entry.external_attr = 0o100644 << 16
             zipped.writestr(entry, data)
-    checksums = {path.name: digest(path.read_bytes()) for path in (archive, skill_zip)}
+    deb = debian_candidate(binary, version, revision, epoch, output, source, dependencies, files["provenance.json"])
+    checksums = {path.name: digest(path.read_bytes()) for path in (archive, skill_zip, deb)}
     (output / "SHA256SUMS").write_text("".join(f"{sha}  {name}\n" for name, sha in checksums.items()))
     with zipfile.ZipFile(skill_zip) as zipped:
         assert zipped.namelist() == ["outbound-guard/SKILL.md", "outbound-guard/LICENSE"]
@@ -319,9 +400,11 @@ def main():
         assert digest(installed.read_bytes()) == digest(binary)
         installed.chmod(0o755)
         installed_smoke(installed, version, cancellation_probe)
+    if args.container_build:
+        debian_install_smoke(deb, version)
     for name, sha in checksums.items():
         assert digest((output / name).read_bytes()) == sha
-    print(f"candidate verified: {archive.name}; skill ZIP has SKILL.md and GPL license; checksums, installed MCP/Inspector, and hostile fixtures passed")
+    print(f"candidate verified: {archive.name}; Debian 12 amd64 package install/launch/remove passed when container-built; skill ZIP and installed MCP/Inspector/hostile fixtures passed")
 
 
 if __name__ == "__main__":

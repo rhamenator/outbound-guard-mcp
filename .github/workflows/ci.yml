@@ -220,6 +220,8 @@ jobs:
           (cd dist/rebuild && sha256sum -c SHA256SUMS)
       - name: Require matching independent source, settings and executable bytes
         run: python3 tools/compare_candidates.py dist/primary/*.tar.gz dist/rebuild/*.tar.gz > dist/rebuild-comparison.json
+      - name: Require identical Debian package bytes
+        run: cmp dist/primary/*.deb dist/rebuild/*.deb
       - name: Retain comparison evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -260,6 +262,7 @@ jobs:
           assert report['left']['archive_sha256'] == hashlib.sha256(archives[0].read_bytes()).hexdigest()
           assert report['left']['revision'] == report['right']['revision'] == os.environ['GITHUB_SHA']
           assert report['left']['binary_sha256'] == report['right']['binary_sha256']
+          assert len(list(Path('dist/candidate').glob('*.deb'))) == 1
           PYCODE
       - name: Attest experimental archives and checksum manifest
         id: attest
