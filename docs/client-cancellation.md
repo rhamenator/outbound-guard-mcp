@@ -2,6 +2,34 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client DNS SSRF denials, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_DNS_SSRF=1` skill replay grants the MCP
+server four exact fixture hosts, then asks each real client to call
+`guarded_fetch` for an approved control and three hostile DNS names.
+`private.test` resolves to loopback, `mixed.test` returns a public-policy
+address plus loopback, and `metadata.test` resolves to link-local metadata
+space. Claude Code, Codex CLI and Cursor CLI each completed six ordered tool
+calls: loopback URL denial, approved GET and HEAD, then three
+`EGRESS_FORBIDDEN_ADDRESS` decisions. The controlled resolver observed all
+three hostile names; the HTTP fixture saw only the approved control paths.
+The [redacted exact-candidate record](evidence/native-client-dns-ssrf-2026-10-28.json)
+contains source, artifact and binary hashes, client versions and results.
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate:
+
+```bash
+OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Replace `codex` with `claude` or `cursor` for the other clients. Model usage
+may incur cost. The fixture-hit oracle is not a syscall trace proving no
+forbidden socket opened; separate network tracing probes cover that narrower
+claim. These finite answers do not establish rebinding or every resolver
+behavior through native clients. Exfiltration, malformed protocol, resource
+exhaustion, native UI controls and traffic sent by other tools remain open.
+
 ## Native-client redirect and compression traps, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_TRAPS=1` mode of
