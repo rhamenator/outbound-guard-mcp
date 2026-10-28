@@ -2,6 +2,32 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client DNS rebinding between calls, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_REBIND=1` skill replay asks a real client
+for an approved control GET followed by two GETs to the same exact
+operator-approved fixture hostname. The controlled resolver returns the
+locally served public-policy address for its first A query and loopback for
+its second. Claude Code, Codex CLI and Cursor CLI each completed three
+ordered calls: two HTTP 200 allows followed by `EGRESS_FORBIDDEN_ADDRESS`.
+Each run recorded exactly two A queries for the rebinding name and only two
+HTTP fixture hits. The [redacted exact-candidate record](evidence/native-client-rebind-2026-10-28.json)
+binds source/artifact identity, client versions and results.
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate:
+
+```bash
+OUTBOUND_GUARD_CLIENT_REBIND=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Replace `codex` with `claude` or `cursor` for the other clients. Model usage
+may incur cost. This tests a changed A answer between separate calls, not an
+intra-call resolver race, every A/AAAA combination or all reconnect paths.
+The HTTP fixture-hit oracle is not a syscall trace proving no forbidden
+socket opened; separate network trace probes cover that narrower claim.
+Traffic sent through other tools remains outside Outbound Guard's boundary.
+
 ## Native-client synthetic exfiltration attempt, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_EXFIL=1` skill replay asks each real client

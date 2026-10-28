@@ -1,0 +1,29 @@
+{
+  "date_utc": "2026-10-28",
+  "candidate_source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "candidate_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "harness": "OUTBOUND_GUARD_CLIENT_REBIND=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY ATTESTED_SKILL_ZIP",
+  "fixture": {
+    "namespace": "disposable route-free Linux network namespace for the MCP child",
+    "operator_allowed_hosts": ["allowed.test", "rebind.test"],
+    "first_rebind_a_answer": ["11.0.0.1"],
+    "second_rebind_a_answer": ["127.0.0.1"],
+    "public_policy_address": "11.0.0.1 is locally assigned only in the namespace",
+    "expected_http_hits": ["/plain", "/plain"]
+  },
+  "clients": {
+    "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS"], "status_codes": [200, 200], "rebind_a_queries": 2, "fixture_hits": ["/plain", "/plain"]},
+    "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS"], "status_codes": [200, 200], "rebind_a_queries": 2, "fixture_hits": ["/plain", "/plain"]},
+    "cursor": {"version": "2026.10.19-6bbf2c4", "native_project_skill_read": true, "method_sequence": ["GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS"], "status_codes": [200, 200], "rebind_a_queries": 2, "fixture_hits": ["/plain", "/plain"]}
+  },
+  "checks": ["each native skill turn completed", "first rebind.test GET succeeded through the public-policy fixture address", "second rebind.test GET resolved again and denied the loopback answer", "exactly two A queries for rebind.test", "HTTP saw only approved control and first rebinding request", "owned namespaces removed"],
+  "limits": [
+    "The fixture-hit oracle does not prove no forbidden socket syscall or packet was emitted; separate network trace probes cover that narrower property outside these native-client runs.",
+    "This tests one host changing its A answer between separate guarded calls. It does not test intra-call resolver changes, DNS cache implementations, all A/AAAA combinations or every reconnect path through native clients.",
+    "Only explicit skill invocation and this ordered call sequence are covered. Malformed protocol, resource exhaustion, native UI controls and traffic sent through other tools remain separate gates.",
+    "The client authentication ran on the host with existing accounts. No credentials or raw transcripts are retained. The Debian installer is unsigned, with signed build provenance."
+  ]
+}
