@@ -29,9 +29,9 @@ tools remains outside Outbound Guard.
 This pass-through occurred on the earlier `8b76b439ca53` candidate binary.
 The subsequent source change denies explicit instruction-like JSON keys;
 local debug-client and route-free fixture replays passed for that narrow
-case. The signed trusted-main binary needs its own replay before the
-correction is counted as exact-candidate evidence. Other prompt-injection
-forms remain unquarantined.
+case. A later [signed trusted-main candidate replay](evidence/native-client-json-signed-main-2026-10-28.json)
+also passed with Claude Code and Codex CLI. Other prompt-injection forms
+remain unquarantined.
 
 A follow-up parser check rejects duplicate JSON object keys as
 `EGRESS_INVALID_JSON`. Without that check, a later duplicate could overwrite
@@ -41,7 +41,8 @@ raw body was still returned. The route-free fixture confirms denial without
 with Claude Code and Codex CLI returned `EGRESS_INVALID_JSON` then
 `EGRESS_ALLOWED` on the two requested guarded GETs. Neither transcript
 contained the controlled instruction string. This is finite evidence for
-that PR artifact; a signed trusted-main replay remains outstanding.
+that PR artifact. The same denial and approved recovery GET passed in the
+[signed trusted-main replay](evidence/native-client-json-signed-main-2026-10-28.json).
 
 ```bash
 OUTBOUND_GUARD_CLIENT_JSON_INJECTION=duplicate python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
