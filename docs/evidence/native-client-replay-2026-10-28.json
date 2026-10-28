@@ -1,0 +1,34 @@
+{
+  "date_utc": "2026-10-28",
+  "source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "platform": "Linux x86_64 GNU host; route-free network namespace for the MCP child",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "verification": "Downloaded artifact passed SHA256SUMS; trusted-main CI passed independent rebuild and attestation verification. Extracted binary hash matched prior signed package. No separate local signature verification was available with the installed gh CLI.",
+  "probe": "python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY [SIGNED_SKILL_ZIP]",
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "skill": {"native_skill_invoked": true, "skill_tool_result_success": true, "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED"], "status_codes": [200, 200]},
+      "cancel": {"control_path": "stream-json interrupt", "acknowledged": true, "matching_mcp_cancellation": true, "cancelled_fetch_replied": false, "socket_closed_after_seconds": 0.061, "recovery_allowed": true, "rules": ["EGRESS_ALLOWED", "EGRESS_INVALID_HOST", "EGRESS_ALLOWED"]}
+    },
+    "codex": {
+      "version": "0.151.0",
+      "skill": {"discovered": true, "explicit_skill_input_accepted": true, "native_turn_completed": true, "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED"], "status_codes": [200, 200]},
+      "cancel": {"control_path": "app-server turn/interrupt", "acknowledged": true, "matching_mcp_cancellation": false, "cancelled_fetch_replied": true, "socket_closed_after_seconds": 3.013, "recovery_allowed": true, "rules": ["EGRESS_RESPONSE_TOO_SLOW", "EGRESS_ALLOWED", "EGRESS_INVALID_HOST", "EGRESS_ALLOWED"]}
+    },
+    "cursor": {
+      "version": "2026.10.19-6bbf2c4",
+      "skill": {"native_project_read_completed": true, "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED"], "status_codes": [200, 200]},
+      "cancel": {"control_path": "ACP session/cancel", "acknowledged": true, "matching_mcp_cancellation": false, "cancelled_fetch_replied": true, "socket_closed_after_seconds": 3.014, "recovery_allowed": true, "rules": ["EGRESS_RESPONSE_TOO_SLOW", "EGRESS_ALLOWED", "EGRESS_INVALID_HOST", "EGRESS_ALLOWED"]}
+    }
+  },
+  "limits": [
+    "These are explicit skill and client control API paths, not automatic skill triggering or desktop/terminal Stop/Escape controls.",
+    "Codex and Cursor did not send an MCP cancellation; their sockets closed under the server's response deadline, so prompt cancellation delivery is unproven for these clients.",
+    "No saturated native-client input queue, broader hostile HTTP/DNS corpus, or traffic sent through other tools was exercised by these six runs.",
+    "The three clients used their existing authenticated host services; only the MCP child used controlled route-free DNS/HTTP fixtures. No credentials or raw transcripts are retained here."
+  ]
+}
