@@ -1,0 +1,28 @@
+{
+  "date_utc": "2026-10-28",
+  "candidate_source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "candidate_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "harness": "OUTBOUND_GUARD_CLIENT_TRAPS=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY ATTESTED_SKILL_ZIP",
+  "fixture": {
+    "namespace": "disposable route-free Linux network namespace for the MCP child",
+    "dns": "controlled allowed.test public-policy answer; private.test resolves to 127.0.0.1",
+    "redirect": "/redirect returns HTTP 302 Location: http://private.test/plain",
+    "compression": "/gzip-bomb returns under 16 KiB gzip representing 8 MiB plaintext",
+    "expected_http_hits": ["/plain", "/head-ok", "/redirect", "/gzip-bomb"]
+  },
+  "clients": {
+    "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET", "HEAD", "GET", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_REDIRECT_DENIED", "EGRESS_ENCODED_RESPONSE"], "fixture_hits": ["/plain", "/head-ok", "/redirect", "/gzip-bomb"]},
+    "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET", "HEAD", "GET", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_REDIRECT_DENIED", "EGRESS_ENCODED_RESPONSE"], "fixture_hits": ["/plain", "/head-ok", "/redirect", "/gzip-bomb"]},
+    "cursor": {"version": "2026.10.19-6bbf2c4", "native_project_skill_read": true, "method_sequence": ["GET", "GET", "HEAD", "GET", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_REDIRECT_DENIED", "EGRESS_ENCODED_RESPONSE"], "fixture_hits": ["/plain", "/head-ok", "/redirect", "/gzip-bomb"]}
+  },
+  "checks": ["exact five tool calls", "exact rule sequence", "two HTTP 200 statuses for approved controls", "exact four approved-host fixture hits with no redirect target hit", "original three-call Codex skill workflow still passed", "owned namespaces removed"],
+  "limits": [
+    "Fixture hit absence is not a packet-level or syscall assertion that no forbidden socket opened; separate network trace probes cover that narrower property outside these native-client runs.",
+    "The gzip trap checks encoded-response denial. It does not show decompression or quantify peak memory because the server rejects compression.",
+    "Only explicit skill invocation and these five calls are covered. Automatic skill triggering, native UI controls, DNS rebinding, secret exfiltration, malformed protocol, resource exhaustion, and traffic sent through other tools remain separate gates.",
+    "Client authentication ran on the host with existing accounts; only the MCP child used the controlled network namespace. No credentials or raw transcripts are retained."
+  ]
+}
