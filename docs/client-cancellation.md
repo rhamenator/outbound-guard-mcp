@@ -2,6 +2,37 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client redirect and compression traps, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_TRAPS=1` mode of
+`tools/client_cancellation_probe.py` extends its explicit skill workflow with
+two controlled hostile responses. After a loopback denial and approved
+GET/HEAD controls, each client requests an allowed-host redirect to a private
+name and a gzip body that expands from under 16 KiB to 8 MiB. Claude Code,
+Codex CLI and Cursor CLI each made exactly five tool calls and received
+`EGRESS_REDIRECT_DENIED` and `EGRESS_ENCODED_RESPONSE` for those traps. The
+fixture observed the four expected allowed-host paths and no redirect-target
+HTTP hit. The [machine-readable three-client record](evidence/native-client-traps-2026-10-28.json)
+binds the installed executable, skill ZIP, client versions and exact results.
+
+Run one authenticated client at a time with the already installed development
+prerequisites and a checksum-verified candidate:
+
+```bash
+OUTBOUND_GUARD_CLIENT_TRAPS=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Replace `codex` with `claude` or `cursor` for the other clients. This uses the
+client account and may incur model usage.
+
+This tests policy decisions through live clients, with only the MCP child in
+a disposable route-free namespace. The fixture hit list is not a syscall or
+packet trace proving no forbidden socket opened; existing network trace
+probes address that separately. Compression is rejected, so no decompression
+or peak-memory measurement occurs. DNS rebinding, secret exfiltration,
+malformed protocol and resource-exhaustion behavior in real clients remain
+open. The Debian installer is unsigned, with signed build provenance.
+
 ## Trusted-main Debian candidate replay, 2026-10-28
 
 The independently rebuilt main candidate from source `8b76b439ca53`, with
