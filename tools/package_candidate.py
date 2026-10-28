@@ -33,6 +33,12 @@ def debian_package_version(version, revision, revision_count):
     return f"{version}~candidate.{revision_count}+g{revision[:12]}"
 
 
+def candidate_revision_count(revision):
+    if git("rev-parse", "--is-shallow-repository").decode().strip() != "false":
+        raise RuntimeError("Complete Git history is required for ordered Debian candidate versions")
+    return int(git("rev-list", "--count", revision))
+
+
 def debian_candidate(binary, version, revision, revision_count, epoch, output, source, dependencies, provenance):
     """Build an unsigned, deterministic Debian 12 amd64 test package."""
     package_version = debian_package_version(version, revision, revision_count)
@@ -308,7 +314,7 @@ def main():
         parser.error("this candidate gate currently supports Linux x86_64 only")
     subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", *INPUTS], cwd=REPO, check=True)
     revision = git("rev-parse", "HEAD").decode().strip()
-    revision_count = int(git("rev-list", "--count", revision))
+    revision_count = candidate_revision_count(revision)
     epoch = int(git("show", "-s", "--format=%ct", "HEAD"))
     version = tomllib.loads(git("show", f"{revision}:Cargo.toml").decode())["package"]["version"]
     reject_build_overrides(os.environ)

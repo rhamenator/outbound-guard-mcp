@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import unittest
+from unittest.mock import patch
 
 
 spec = importlib.util.spec_from_file_location(
@@ -12,6 +13,13 @@ spec.loader.exec_module(candidate)
 
 
 class DebianPackageVersionTests(unittest.TestCase):
+    def test_revision_count_requires_full_history(self):
+        with patch.object(candidate, "git", return_value=b"true\n"):
+            with self.assertRaisesRegex(RuntimeError, "Complete Git history"):
+                candidate.candidate_revision_count("fixture")
+        with patch.object(candidate, "git", side_effect=[b"false\n", b"120\n"]):
+            self.assertEqual(candidate.candidate_revision_count("fixture"), 120)
+
     def test_candidate_versions_upgrade_in_main_commit_order(self):
         historical = "0.1.0~candidate+g70b03efa49f3"
         first = candidate.debian_package_version("0.1.0", "ffffffffffff0000", 119)
