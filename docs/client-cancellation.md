@@ -33,6 +33,13 @@ case. The signed trusted-main binary needs its own replay before the
 correction is counted as exact-candidate evidence. Other prompt-injection
 forms remain unquarantined.
 
+A follow-up parser check rejects duplicate JSON object keys as
+`EGRESS_INVALID_JSON`. Without that check, a later duplicate could overwrite
+an object containing a blocked nested key during parsing while the original
+raw body was still returned. The route-free fixture confirms denial without
+`body_text`; this follow-up still needs an exact CI artifact and native-client
+replay after the PR head changes.
+
 ## Native-client slow HTTP denial and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1` skill replay asks a real

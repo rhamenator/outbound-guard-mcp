@@ -8,6 +8,7 @@ description = "A guarded HTTP egress MCP server for coding agents"
 repository = "https://github.com/rhamenator/outbound-guard-mcp"
 
 [dependencies]
+serde = "1"
 serde_json = { version = "1", features = ["arbitrary_precision"] }
 url = "2"
 tokio = { version = "1.53.3", features = ["rt", "time", "net", "io-util"] }

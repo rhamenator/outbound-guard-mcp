@@ -113,7 +113,7 @@ The leading-HTML signature check also covers common fragment roots such as div/s
 
 ### Explicit JSON instruction keys
 
-After JSON syntax validation, `guarded_fetch` denies a response containing an object key named `instruction`, `instructions`, `system_prompt`, `system_message` or `developer_message` at any nesting depth, ignoring ASCII case. The result is `EGRESS_UNTRUSTED_INSTRUCTION` with no `body_text`; a later approved request can still proceed. This deliberately rejects some legitimate JSON and is only a narrow structural filter. Other keys, string values and plain text can still carry adversarial instructions. The `untrusted_content` marker on allowed results remains advisory; this is not general prompt-injection sanitization or quarantine.
+While parsing JSON, `guarded_fetch` denies a response containing an object key named `instruction`, `instructions`, `system_prompt`, `system_message` or `developer_message` at any nesting depth, ignoring ASCII case. The result is `EGRESS_UNTRUSTED_INSTRUCTION` with no `body_text`; a later approved request can still proceed. Duplicate JSON object keys are denied as `EGRESS_INVALID_JSON` so an overwritten object cannot hide a blocked key in the returned raw body. This deliberately rejects some legitimate JSON and is only a narrow structural filter. Other keys, string values and plain text can still carry adversarial instructions. The `untrusted_content` marker on allowed results remains advisory; this is not general prompt-injection sanitization or quarantine.
 
 ### Absolute DNS lookups
 
