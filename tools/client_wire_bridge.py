@@ -4,7 +4,7 @@ import sys,subprocess,threading,json,time,pathlib
 assert len(sys.argv) in (4,5,6)
 ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
-assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,private.test,mixed.test,metadata.test','allowed.test,exfil.test','allowed.test,rebind.test')
+assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,fallback-pin.test','allowed.test,private.test,mixed.test,metadata.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutant_enabled=len(sys.argv)==6 and sys.argv[5]=='mutate'
 assert len(sys.argv)!=6 or mutant_enabled
 p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i','PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts,binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
