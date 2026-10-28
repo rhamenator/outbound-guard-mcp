@@ -2,6 +2,30 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client valid JSON instruction pass-through, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_JSON_INJECTION=1` replay asks a real
+client to GET a controlled `application/json` response containing an
+adversarial instruction string, then GET an approved plain response. Claude
+Code 2.1.301 and Codex CLI 0.151.0 each completed exactly those two guarded
+calls in a route-free fixture. Both tool results were `EGRESS_ALLOWED`, and
+the instruction string appeared in each native-client transcript. The
+[redacted candidate record](evidence/native-client-json-injection-2026-10-28.json)
+binds source, binary and skill hashes to the observation.
+
+```bash
+OUTBOUND_GUARD_CLIENT_JSON_INJECTION=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate. Model usage may incur cost.
+The explicit prompt told each client to treat fetched text as data. These
+finite sessions show the server passed a valid JSON instruction through;
+they do not prove general model resistance. The `untrusted_content` flag is
+not a sanitizer or quarantine. Cursor was not rerun under its separate plan
+gate. No real secrets or public targets were used, and traffic through other
+tools remains outside Outbound Guard.
+
 ## Native-client slow HTTP denial and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1` skill replay asks a real
