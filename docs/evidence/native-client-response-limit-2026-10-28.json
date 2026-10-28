@@ -1,0 +1,29 @@
+{
+  "date_utc": "2026-10-28",
+  "candidate_source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "candidate_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "harness": "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY ATTESTED_SKILL_ZIP",
+  "fixture": {
+    "namespace": "disposable route-free Linux network namespace for the MCP child",
+    "operator_allowed_hosts": ["allowed.test"],
+    "requests": ["GET /plain", "GET /large", "GET /chunked-large", "GET /plain"],
+    "large_response_bodies": ["70000 bytes with Content-Length", "70000 bytes with chunked transfer encoding"],
+    "expected_http_hits": ["/plain", "/large", "/chunked-large", "/plain"]
+  },
+  "clients": {
+    "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_RESPONSE_LIMIT", "EGRESS_RESPONSE_LIMIT", "EGRESS_ALLOWED"], "status_codes": [200, 200], "fixture_hits": ["/plain", "/large", "/chunked-large", "/plain"]},
+    "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_RESPONSE_LIMIT", "EGRESS_RESPONSE_LIMIT", "EGRESS_ALLOWED"], "status_codes": [200, 200], "fixture_hits": ["/plain", "/large", "/chunked-large", "/plain"]},
+    "cursor": {"version": "2026.10.19-6bbf2c4", "result": "inconclusive", "attempts": 1, "method_sequence": [], "fixture_hits": [], "reason": "native client produced session updates but did not issue an MCP call within the harness's 80-second deadline"}
+  },
+  "checks": ["Claude and Codex completed explicit skill turns against the exact candidate binary", "both over-limit responses returned EGRESS_RESPONSE_LIMIT rather than an allowed result", "a subsequent approved GET succeeded after each pair of denials", "only approved fixture host was configured", "owned namespaces removed"],
+  "limits": [
+    "Cursor made no guarded call, so this record does not claim Cursor response-limit coverage.",
+    "The fixture-hit oracle records HTTP requests and policy decisions, not peak memory, file descriptors, packets or socket syscalls.",
+    "This tests two 70000-byte HTTP/1.1 responses and recovery. Aggregate process/resource exhaustion, concurrency, alternate transfer codings, and all size boundaries remain separate gates.",
+    "Only explicit skill invocation and this ordered call sequence are covered. Traffic sent through other tools remains outside Outbound Guard's boundary.",
+    "The client authentication ran on the host with existing accounts. No credentials or raw transcripts are retained. The Debian installer is unsigned, with signed build provenance."
+  ]
+}

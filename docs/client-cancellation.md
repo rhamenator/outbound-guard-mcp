@@ -2,6 +2,29 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client response size limit and recovery, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1` skill replay asks a real
+client for an approved GET, two 70,000-byte responses from a controlled
+HTTP fixture (fixed length and chunked), then another approved GET. Claude
+Code and Codex CLI each completed all four ordered calls. Both large
+responses returned `EGRESS_RESPONSE_LIMIT`, and the final GET succeeded.
+Cursor CLI produced session updates but issued no MCP call within the
+80-second deadline, so its result is inconclusive. The [redacted
+exact-candidate record](evidence/native-client-response-limit-2026-10-28.json)
+binds source, binary and skill hashes to these observations.
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate:
+
+```bash
+OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Model usage may incur cost. This covers two response size failures and
+subsequent recovery. It does not measure peak memory, descriptor use,
+aggregate process resource exhaustion, or traffic sent through other tools.
+
 ## Native-client malformed HTTP chunk framing, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_MALFORMED=1` skill replay asks a real
