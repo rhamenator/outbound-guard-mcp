@@ -95,6 +95,28 @@ schema, not a test of sending arbitrary headers or bodies or proof about
 traffic sent through other tools. No packet or syscall trace was taken in
 these native-client sessions; the pre-DNS strace probe is separate.
 
+## Native-client response header limits and recovery, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_HEADER_LIMIT=1` skill replay asks a real
+client for an approved GET, then three controlled HTTP responses with 70
+extra headers, one 24 KiB header and one 1 MiB header, followed by another
+approved GET. Claude Code 2.1.301 and Codex CLI 0.151.0 each completed all
+five calls. The three hostile responses returned `EGRESS_INVALID_FRAMING`;
+the final GET succeeded. The fixture observed the five requested HTTP hits
+in order. The [redacted candidate record](evidence/native-client-header-limits-2026-10-28.json)
+binds source, binary and skill hashes to these observations.
+
+```bash
+OUTBOUND_GUARD_CLIENT_HEADER_LIMIT=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate. Model usage may incur cost.
+Cursor was not rerun under its separate plan gate. These finite header
+parser cases do not establish aggregate memory, file descriptor or CPU
+limits. No packet or syscall trace was taken in these native-client
+sessions, and traffic sent through other tools remains outside this gate.
+
 ## Native-client response size limit and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1` skill replay asks a real
