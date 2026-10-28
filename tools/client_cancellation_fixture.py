@@ -9,6 +9,8 @@ for s in [dns,http]:threading.Thread(target=s.serve_forever,daemon=True).start()
 (root/'ready').touch()
 last_hits=None
 last_dns=None
+last_dns_a=None
+last_dns_all=None
 last_rebind=None
 last_fallback=None
 while True:
@@ -24,6 +26,18 @@ while True:
   dns_tmp.write_text(json.dumps(names))
   os.replace(dns_tmp,root/'dns.json')
   last_dns=names
+ a_names=list(DNS.a_names)
+ if a_names!=last_dns_a:
+  dns_a_tmp=root/'dns-a.json.tmp'
+  dns_a_tmp.write_text(json.dumps(a_names))
+  os.replace(dns_a_tmp,root/'dns-a.json')
+  last_dns_a=a_names
+ all_names=list(DNS.names)
+ if all_names!=last_dns_all:
+  dns_all_tmp=root/'dns-all.json.tmp'
+  dns_all_tmp.write_text(json.dumps(all_names))
+  os.replace(dns_all_tmp,root/'dns-all.json')
+  last_dns_all=all_names
  rebind=DNS.rebind_a_queries
  if rebind!=last_rebind:
   rebind_tmp=root/'rebind.json.tmp'
