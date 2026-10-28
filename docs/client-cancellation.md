@@ -2,6 +2,28 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client slow HTTP denial and recovery, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1` skill replay asks a real
+client for an approved GET, a one-byte-per-second body, an eleven-second
+delay before headers, and another approved GET. Claude Code and Codex CLI
+each completed all four calls in order. The slow body returned
+`EGRESS_RESPONSE_TOO_SLOW`; the delayed headers returned
+`EGRESS_NETWORK_FAILURE`; the final approved GET succeeded. The [redacted
+exact-candidate record](evidence/native-client-slow-http-2026-10-28.json)
+binds source, binary and skill hashes to these observations.
+
+```bash
+OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate. Model usage may incur cost.
+This records decisions and fixture hits, not a native-client packet trace or
+peak resource use. Cursor was not rerun under its plan gate. Alternate
+pacing, concurrent slow requests and traffic sent through other tools
+remain outside this observation.
+
 ## Native-client pinned-address fallback under a DNS flip, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1` skill replay asks a real
