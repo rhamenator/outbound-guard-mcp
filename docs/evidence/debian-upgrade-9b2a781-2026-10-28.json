@@ -1,0 +1,46 @@
+{
+  "attestation_verification": "Official gh 2.103.3 verified both package signatures against rhamenator/outbound-guard-mcp/.github/workflows/ci.yml, refs/heads/main, their exact source commits and GitHub-hosted runners; both packages also matched their run SHA256SUMS.",
+  "checks": [
+    "old_install",
+    "new_upgrade",
+    "mcp_discovery",
+    "loopback_denial",
+    "remove",
+    "residue"
+  ],
+  "date_utc": "2026-10-28",
+  "environment": {
+    "base": "pinned Debian 12 builder image already present locally",
+    "capabilities": "none",
+    "cpu_limit": "1 CPU",
+    "disposable_container": true,
+    "memory_limit": "256 MiB",
+    "network": "none",
+    "no_new_privileges": true,
+    "pid_limit": 64
+  },
+  "limitations": [
+    "This is an experimental unsigned Debian package, not an official candidate or owner acceptance.",
+    "The probe tests package upgrade, version, MCP discovery, pre-network loopback denial, remove and residue; it does not exercise user configuration migration.",
+    "It does not qualify other Debian releases, distributions, architectures or desktop clients.",
+    "Prior and new executable hashes differ, so this replay covers a changed binary."
+  ],
+  "new": {
+    "app_version": "0.1.0",
+    "binary_sha256": "1bca648319b3c139fd049ef158c1db20ae6b9ba6ae5b95dff9c02d058e5249f9",
+    "package_sha256": "edd5e1b439acb61ec38101cd7f1a468cf7a7a548ad63ef07597d2039b9b21f76",
+    "revision": "9b2a781c53facd48c547db05e91cb6ad6ccb15fa",
+    "version": "0.1.0~candidate.136+g9b2a781c53fa"
+  },
+  "new_trusted_main_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40749125725",
+  "old": {
+    "app_version": "0.1.0",
+    "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+    "package_sha256": "49a907df594378fa934d87755cafeea5a8df5e4d239386e42c9b494362d5149b",
+    "revision": "3f117f89542a4d864b8c5df029d64ec4bbbee7a5",
+    "version": "0.1.0~candidate.135+g3f117f89542a"
+  },
+  "old_trusted_main_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40714178615",
+  "platform": "Debian 12 amd64",
+  "result": "passed"
+}
