@@ -1,0 +1,23 @@
+{
+  "date_utc": "2026-10-28",
+  "source_commit": "c95fd1403eaf89847ab2dc34404127acd012231b",
+  "binary_sha256": "c81589d7131fdd25c1ecaff4dd34fa1f6f1135b5d3bfab9e9ee8c7a787e4085b",
+  "host": "Linux 7.0.0-38-generic, systemd 259 (259.9-0ubuntu0.1), user cgroup v2",
+  "command": "python3 tools/systemd_aggregate_frame_probe.py target/debug/outbound-guard-mcp",
+  "result": "passed",
+  "limits": {
+    "memory_max_bytes": 67108864,
+    "memory_swap_max_bytes": 0,
+    "pids_max": 16,
+    "cpu_max": "50000 100000",
+    "nofile_per_process": 64
+  },
+  "concurrent_servers": 2,
+  "oversized_frame_bytes_each": 8388608,
+  "request_too_large_and_following_ping_each": true,
+  "memory_peak_bytes": 11259904,
+  "oom_delta": 0,
+  "oom_kill_delta": 0,
+  "elapsed_seconds": 0.571,
+  "limitations": "Finite stdio framing and process-memory observation; no active HTTP/DNS, native client, sustained load, aggregate CPU/kernel-memory or combined-exhaustion claim. Separate local test, not hosted CI."
+}
