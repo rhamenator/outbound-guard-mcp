@@ -2,6 +2,29 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client session with one injected malformed MCP frame, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1` replay asks a real
+client for two approved GETs. A transparent test bridge inserts one
+unterminated JSON-RPC `tools/call` frame, containing a controlled private
+fixture URL, immediately before the first valid client call. The bridge
+records and withholds the server's `-32700` parse-error reply for that
+injected frame. Claude Code and Codex CLI each completed both valid calls;
+the private fixture saw no DNS query or HTTP hit. The [redacted
+exact-candidate record](evidence/native-client-mcp-frame-mutation-2026-10-28.json)
+binds source, binary and skill hashes to these observations.
+
+```bash
+OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate. Model usage may incur cost.
+The bridge, rather than the clients, generates the malformed frame. Cursor
+was not rerun because its separate plan gate prevents an MCP call. This is
+one parser recovery case, not complete MCP conformance or proof about
+traffic sent through other tools.
+
 ## Native-client response size limit and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1` skill replay asks a real
