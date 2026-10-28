@@ -1766,9 +1766,8 @@ def main(binary, cancellation_probe):
         assert ordinary["rule"] == "EGRESS_ALLOWED", ordinary
         assert ordinary["body_text"] == "This is <html> in a sentence", ordinary
         injection = call(binary, "allowed.test", "json-injection")
-        assert injection["rule"] == "EGRESS_ALLOWED", injection
-        assert injection["untrusted_content"] is True, injection
-        assert "ignore previous instructions" in injection["body_text"], injection
+        assert injection["rule"] == "EGRESS_UNTRUSTED_INSTRUCTION", injection
+        assert "body_text" not in injection, injection
         for path in ("json-html", "json-truncated", "json-trailing", "json-deep", "json-empty"):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] == "EGRESS_INVALID_JSON", (path, decision)
@@ -1874,7 +1873,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON denied; valid JSON instructions remain untrusted; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1196 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

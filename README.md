@@ -111,6 +111,10 @@ The URL scanner also blocks GitLab’s documented token prefixes and the PyPI `p
 
 The leading-HTML signature check also covers common fragment roots such as div/span containers, forms, inputs, images, metadata/link elements, embedded objects, templates, noscript and paragraphs. A plain-text response beginning with these tags is denied as EGRESS_HTML_MISLABELED without returning its body. Matching is case-insensitive and requires a tag boundary. This is a bounded leading-signature heuristic, not DOM rendering, CSS visibility analysis, a complete HTML parser or prompt-injection sanitization. Markup later in plain text and HTML strings inside valid JSON can remain untrusted output.
 
+### Explicit JSON instruction keys
+
+After JSON syntax validation, `guarded_fetch` denies a response containing an object key named `instruction`, `instructions`, `system_prompt`, `system_message` or `developer_message` at any nesting depth, ignoring ASCII case. The result is `EGRESS_UNTRUSTED_INSTRUCTION` with no `body_text`; a later approved request can still proceed. This deliberately rejects some legitimate JSON and is only a narrow structural filter. Other keys, string values and plain text can still carry adversarial instructions. The `untrusted_content` marker on allowed results remains advisory; this is not general prompt-injection sanitization or quarantine.
+
 ### Absolute DNS lookups
 
 The system resolver receives an absolute hostname (a terminal dot is added only to its lookup input), preventing search-domain/ndots expansion from choosing a different name. The approved hostname in the URL, HTTP Host and TLS SNI stays unchanged, and every returned address still passes policy before connection pinning. Controlled Linux tests use a hostile search suffix and ndots:5 and require zero suffixed queries. This does not replace trust in the operating system resolver/hosts configuration, certify every platform resolver, or add DNSSEC validation.

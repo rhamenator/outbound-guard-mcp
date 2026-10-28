@@ -26,6 +26,13 @@ not a sanitizer or quarantine. Cursor was not rerun under its separate plan
 gate. No real secrets or public targets were used, and traffic through other
 tools remains outside Outbound Guard.
 
+This pass-through occurred on the earlier `8b76b439ca53` candidate binary.
+The subsequent source change denies explicit instruction-like JSON keys;
+local debug-client and route-free fixture replays passed for that narrow
+case. The signed trusted-main binary needs its own replay before the
+correction is counted as exact-candidate evidence. Other prompt-injection
+forms remain unquarantined.
+
 ## Native-client slow HTTP denial and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1` skill replay asks a real
