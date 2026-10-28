@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Private helper: transparently forward MCP; log only method/ID/rule metadata."""
-import sys,subprocess,threading,json,time
+import sys,subprocess,threading,json,time,pathlib
 assert len(sys.argv) in (4,5)
 ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)==5 else 'allowed.test'
-assert hosts in ('allowed.test','allowed.test,private.test,mixed.test,metadata.test')
+assert hosts in ('allowed.test','allowed.test,private.test,mixed.test,metadata.test','allowed.test,exfil.test')
 p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i','PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts,binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
 lock=threading.Lock()
+marker_file=pathlib.Path(log).with_name('synthetic-marker')
+synthetic_marker=marker_file.read_bytes() if marker_file.exists() else None
 def record(direction,line):
  try:
   m=json.loads(line);entry={'t':time.monotonic(),'direction':direction,'method':m.get('method'),'id':m.get('id')}
   if m.get('method')=='tools/call':entry['http_method']=m.get('params',{}).get('arguments',{}).get('method','GET')
   if m.get('method')=='notifications/cancelled':entry['requestId']=m.get('params',{}).get('requestId')
+  if direction=='out' and synthetic_marker:
+   entry['synthetic_marker_echo']=synthetic_marker in line
   d=m.get('result',{}).get('structuredContent')
   if d:
    entry['rule']=d.get('rule')

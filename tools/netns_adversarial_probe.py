@@ -39,6 +39,7 @@ MIME_CASES = [
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
+    "exfil.test": [PUBLIC_FIXTURE],
     "syn-stall.test": ["11.0.0.3", PUBLIC_FIXTURE],
     "fallback-pin.test": ["11.0.0.2", PUBLIC_FIXTURE],
     "allowed.test.search-trap.test": ["127.0.0.1"],
