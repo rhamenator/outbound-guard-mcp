@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import resource
 import subprocess
 import sys
 import threading
@@ -19,12 +20,21 @@ def inside(binary):
     assert limits['pids.max'] == '16', limits
     quota, period = map(int, limits['cpu.max'].split())
     assert quota * 2 == period, limits
+    assert resource.getrlimit(resource.RLIMIT_NOFILE) == (64, 64)
     own_group = Path('/proc/self/cgroup').read_text()
     before = {key: int(value) for key, value in
               (line.split() for line in (group / 'memory.events').read_text().splitlines())}
     env = {key: value for key, value in os.environ.items() if not key.startswith('OUTBOUND_GUARD_')}
-    children = [subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, env=env) for _ in range(2)]
+    children = []
+    try:
+        for _ in range(2):
+            children.append(subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE, env=env))
+    except Exception:
+        for child in children:
+            child.kill()
+            child.wait(timeout=3)
+        raise
     errors = []
     gate = threading.Barrier(3)
 

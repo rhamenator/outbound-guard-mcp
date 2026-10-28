@@ -15,9 +15,9 @@
   "concurrent_servers": 2,
   "oversized_frame_bytes_each": 8388608,
   "request_too_large_and_following_ping_each": true,
-  "memory_peak_bytes": 11276288,
+  "memory_peak_bytes": 11259904,
   "oom_delta": 0,
   "oom_kill_delta": 0,
-  "elapsed_seconds": 0.631,
+  "elapsed_seconds": 0.571,
   "limitations": "Finite stdio framing and process-memory observation; no active HTTP/DNS, native client, sustained load, aggregate CPU/kernel-memory or combined-exhaustion claim. Separate local test, not hosted CI."
 }
