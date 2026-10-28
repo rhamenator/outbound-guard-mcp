@@ -37,8 +37,15 @@ A follow-up parser check rejects duplicate JSON object keys as
 `EGRESS_INVALID_JSON`. Without that check, a later duplicate could overwrite
 an object containing a blocked nested key during parsing while the original
 raw body was still returned. The route-free fixture confirms denial without
-`body_text`; this follow-up still needs an exact CI artifact and native-client
-replay after the PR head changes.
+`body_text`. An [unsigned exact-PR-artifact replay](evidence/native-client-json-duplicate-2026-10-28.json)
+with Claude Code and Codex CLI returned `EGRESS_INVALID_JSON` then
+`EGRESS_ALLOWED` on the two requested guarded GETs. Neither transcript
+contained the controlled instruction string. This is finite evidence for
+that PR artifact; a signed trusted-main replay remains outstanding.
+
+```bash
+OUTBOUND_GUARD_CLIENT_JSON_INJECTION=duplicate python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
 
 ## Native-client slow HTTP denial and recovery, 2026-10-28
 
