@@ -1,6 +1,6 @@
 # Exact-candidate release evidence
 
-Status: experimental; no stable release approved. [Tracking issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) is the durable approval record. [QUALITY_BAR.md](QUALITY_BAR.md) remains authoritative; this index does not waive or narrow its criteria.
+Status: experimental; no official pre-1.0 release candidate or stable release approved. [Tracking issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) is the durable owner decision record. [QUALITY_BAR.md](QUALITY_BAR.md) remains authoritative; this index does not waive or narrow its criteria.
 
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
@@ -9,15 +9,16 @@ Status: experimental; no stable release approved. [Tracking issue #65](https://g
 | Clients | Historical [Codex CLI](client-codex-cli.md) and [Claude Code](client-claude-code.md) probes; official SDK fixtures | Fresh archive ec96881e4ca9 passed actual Codex/Claude denial/GET/HEAD calls; see dated machine-readable evidence. Repeat for the final release candidate; authenticated Cursor ACP discovery/deny/GET/HEAD now pass in controlled fixtures; Codex/Cursor control-path wire cancellation gaps and desktop/terminal UI cancellation remain open. See [cancellation evidence](client-cancellation.md). |
 | Adversarial | Controlled hostile fixtures, seeded mutation/property corpora, bounded process probes | Review actual attack coverage and toolset; finite passing corpora alone do not close the adversarial gate. |
 | Product and supply chain | [Candidate gate](candidate-packaging.md), [dependency evidence](dependencies.md), [unreleased changelog](../CHANGELOG.md) | Final metadata/license/dependency and distribution review; retain passing independent rebuild and signed trusted-main provenance for the exact candidate. Inventory/checksums alone are not legal approval or publisher authentication. |
-| Human release decision | This index and issue #65 | Explicit approval of the exact tested artifacts and buyer-facing claims before stable publication. |
+| Platform installers | The present Linux x86_64 artifact is a portable experimental archive, not an installer. | Declare the exact release-supported platform matrix. Produce a native installer or recognized package for each row and test clean install, launch/guarded call, applicable upgrade, uninstall, and residue on a disposable system. Retain hashes, available provenance, and unsigned status. |
+| Owner release decision | This index and issue #65 | Owner self-review and explicit acceptance of the exact pre-1.0 candidate, buyer-facing claims, and residual risks. Disclose when no independent human review occurred. Stable v1/latest publication needs a separate decision. |
 
 The [remaining-gap review](RELEASE_GAPS.md) separates next engineering/verification steps from concrete differences between the current narrow implementation and the quality bar. No difference is silently accepted by passing CI.
 
 ## Record for each candidate
 
-Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, version/platform/toolchain, CI URLs, package/skill checksums, test corpus versions and results, client versions/configuration/permissions, limitations, and reviewer decision. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.
+Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.
 
-A failed check or missing evidence keeps the gate open. Rebuild/retest changed artifacts; a previous SHA's results do not automatically transfer. Scope adjustments require explicit recorded human review. Automation must not publish a stable tag, submit a skill, or mark this checklist complete on its own.
+A failed check or missing evidence keeps the gate open. Rebuild/retest changed artifacts; a previous SHA's results do not automatically transfer. Scope adjustments require explicit recorded owner acceptance. Automation must not publish an official candidate or stable tag, submit a skill, or mark this checklist complete on its own.
 
 ## Independent repositories
 
@@ -27,9 +28,9 @@ The user's adversarial-testing requirement separately applies to `ai-scraping-de
 
 The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. This historical mismatch was followed by a matching pinned-native pair in PR #79 and the continuous independent-rebuild gate in PR #80. Require a matching report for the exact current candidate.
 
-Independent executable reproducibility is now a [continuous CI gate](candidate-packaging.md#continuous-independent-rebuild-gate): a clean second runner rebuilds and adversarially tests the candidate before comparing it with the primary artifact. This is not signing, physical-host attestation or human release approval; retain the report for the exact release candidate.
+Independent executable reproducibility is now a [continuous CI gate](candidate-packaging.md#continuous-independent-rebuild-gate): a clean second runner rebuilds and adversarially tests the candidate before comparing it with the primary artifact. This is not signing, physical-host attestation or owner release acceptance; retain the report for the exact release candidate.
 
-[Signed experimental provenance](candidate-packaging.md#signed-experimental-candidate-workflow-provenance) is generated only after trusted main builds and independent comparison succeed. Require an actual passing main signing/verifier job, matching reviewed source and artifact hashes; PR checks alone cannot close this gate. Human stable-release approval remains separate.
+[Signed experimental provenance](candidate-packaging.md#signed-experimental-candidate-workflow-provenance) is generated only after trusted main builds and independent comparison succeed. Require an actual passing main signing/verifier job, matching reviewed source and artifact hashes; PR checks alone cannot close this gate. Owner candidate acceptance remains separate.
 
 The [PR #81 trusted main run](https://github.com/rhamenator/outbound-guard-mcp/actions/runs/39697968581) passed actual signature/identity verification and rejected modified bytes/wrong source identity; a skipped PR signing job is not equivalent evidence. [Seeded frame mutation/recovery](adversarial-stdio.md#seeded-frame-mutation-and-recovery) now runs before candidate comparison/signing; finite seeded cases do not close the broader fuzz/client/adversarial gates.
 
@@ -43,4 +44,4 @@ The [locked SDK advisory gate](dependencies.md#locked-development-sdk-advisory-g
 
 [Locked Inspector installation](dependencies.md#locked-inspector-installation-and-advisory-coverage) replaces on-demand npx resolution. A separate Inspector advisory report now complements the SDK report and both are signing prerequisites. This supersedes the earlier Inspector-transitive exclusion while leaving native-client and broader source-review limits explicit.
 
-[Checksum-verified dependency source archives](candidate-packaging.md#checksum-verified-dependency-source-archives) are now packaged for the selected Linux normal/build graph and included in independent comparison. This strengthens distribution evidence while leaving exact license/corresponding-source obligations, offline/all-platform builds and human approval explicitly open.
+[Checksum-verified dependency source archives](candidate-packaging.md#checksum-verified-dependency-source-archives) are now packaged for the selected Linux normal/build graph and included in independent comparison. This strengthens distribution evidence while leaving exact license/corresponding-source obligations, offline/all-platform builds and owner acceptance explicitly open.

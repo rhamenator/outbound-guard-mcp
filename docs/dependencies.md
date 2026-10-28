@@ -14,7 +14,7 @@ For every included crate, packaging hashes the cached `.crate` archive against `
 
 The initial target inventory contains 107 crates and 181 notices. Standard-library Python tests (`python3 -m unittest discover -s tests -p 'test_*.py'`) cover path-free output, notice preservation, modified-notice rejection and modified-archive rejection. CI runs these tests before packaging. Future dependency changes may change counts; CI must regenerate and verify the inventory.
 
-The project remains GPL-3.0-or-later; dependency license expressions are reported separately. This inventory is evidence for dependency/notice review, not a license-compatibility decision, vulnerability scan, signature verification, or all-platform/toolchain source distribution. The human release review must still evaluate distribution obligations and the remaining supply-chain gates before a stable release.
+The project remains GPL-3.0-or-later; dependency license expressions are reported separately. This inventory is evidence for dependency/notice review, not a license-compatibility decision, vulnerability scan, signature verification, or all-platform/toolchain source distribution. The owner must evaluate distribution obligations and the remaining supply-chain gates for the exact official candidate.
 
 After the bounded HTTP/1 transport migration, the Linux target inventory contains 71 crates, down from the initial 107. The all-platform lockfile contains 86 packages including the root, down from 133. No package/version was added. Counts describe different scopes and are not interchangeable.
 

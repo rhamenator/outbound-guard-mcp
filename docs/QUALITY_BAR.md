@@ -1,6 +1,6 @@
 # Outbound Guard release quality bar
 
-Status: acceptance criteria, not a claim of completion. A stable release requires each gate to have a passing test or durable review record linked from a release issue. No gate may be waived silently.
+Status: acceptance criteria, not a claim of completion. An official pre-1.0 release candidate must satisfy the same technical, security, compatibility, adversarial, documentation, and artifact gates as a production release. Each gate needs a passing test or durable review record linked from a release issue; no gate may be waived silently. A stable v1/latest release is outside this candidate policy.
 
 The [release evidence index](RELEASE_CHECKLIST.md) maps available evidence to open work; [issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) records exact-candidate reviews. Neither is a release approval.
 
@@ -29,7 +29,8 @@ The [current threat model](threat-model.md) maps the implemented narrow boundary
 ## 4. Product finish
 
 - Minimal justified dependencies, pinned CI actions, dependency review, CodeQL, reproducible package installation, checksums, GPL-3.0-or-later license/notice, changelog, versioning, security disclosure, support and contribution guides, and machine-readable registry metadata.
+- Declare the exact supported OS, architecture, and distribution matrix for each candidate. Supply a native installer or recognized package artifact for every declared platform; a portable archive alone does not satisfy this gate. On disposable supported systems, verify clean install, launch and guarded-call smoke, upgrade from the preceding candidate where one exists, uninstall, and residue. Record installer/package hashes and provenance attestations where available. Clearly label unsigned installers; commercial Windows/macOS signing and notarization may be deferred while this qualification remains required.
 - Structured decisions have stable rule codes, remediation, correlation IDs, redacted audit events, and examples for both allow and deny cases. Configuration has schema validation and safe defaults; startup rejects invalid settings with useful errors.
-- A release candidate passes the repository's human release-readiness review. Only then may documentation call the server production-ready or publish a stable tag.
+- The owner reviews the exact candidate, buyer-facing claims, residual risks, and evidence in the release issue before an official pre-1.0 release candidate is published. Use a prerelease version below 1.0 (for example `0.9.0-rc.1`) and mark its GitHub release as a prerelease. Independent human review is encouraged but optional for this project; disclose its absence. Passing CI or an automated attestation is not owner acceptance. No stable v1/latest tag or production-ready claim is authorized by this candidate gate.
 
 Runtime Guard is a separate advisory server. It may share conventions and tests, but Outbound Guard must install and operate without it or Request Guard.
