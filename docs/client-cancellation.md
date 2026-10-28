@@ -26,6 +26,27 @@ not a sanitizer or quarantine. Cursor was not rerun under its separate plan
 gate. No real secrets or public targets were used, and traffic through other
 tools remains outside Outbound Guard.
 
+This pass-through occurred on the earlier `8b76b439ca53` candidate binary.
+The subsequent source change denies explicit instruction-like JSON keys;
+local debug-client and route-free fixture replays passed for that narrow
+case. The signed trusted-main binary needs its own replay before the
+correction is counted as exact-candidate evidence. Other prompt-injection
+forms remain unquarantined.
+
+A follow-up parser check rejects duplicate JSON object keys as
+`EGRESS_INVALID_JSON`. Without that check, a later duplicate could overwrite
+an object containing a blocked nested key during parsing while the original
+raw body was still returned. The route-free fixture confirms denial without
+`body_text`. An [unsigned exact-PR-artifact replay](evidence/native-client-json-duplicate-2026-10-28.json)
+with Claude Code and Codex CLI returned `EGRESS_INVALID_JSON` then
+`EGRESS_ALLOWED` on the two requested guarded GETs. Neither transcript
+contained the controlled instruction string. This is finite evidence for
+that PR artifact; a signed trusted-main replay remains outstanding.
+
+```bash
+OUTBOUND_GUARD_CLIENT_JSON_INJECTION=duplicate python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
 ## Native-client slow HTTP denial and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1` skill replay asks a real
