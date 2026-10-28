@@ -69,6 +69,32 @@ was not rerun because its separate plan gate prevents an MCP call. This is
 one parser recovery case, not complete MCP conformance or proof about
 traffic sent through other tools.
 
+## Native-client session with injected header and body arguments, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION=1` replay asks a real
+client for two approved GETs. A test bridge first sends separate MCP calls
+with a synthetic secret marker in an unsupported `Authorization` header and
+an unsupported `body` field, copying the native call's protocol metadata.
+The bridge records and withholds only the injected replies. In Claude Code
+2.1.301 and Codex CLI 0.151.0 sessions, both injected calls returned
+`EGRESS_INVALID_INPUT` without echoing the marker; the clients then completed
+their two GETs. Each run had exactly two approved HTTP hits and two A plus
+two AAAA queries for `allowed.test`. The [redacted candidate record](evidence/native-client-argument-injection-2026-10-28.json)
+binds these observations to the binary and skill hashes.
+
+```bash
+OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate. Model usage may incur cost.
+The bridge generated the header/body frames and hid their replies; neither
+client generated unsupported arguments. Cursor was not rerun under its
+separate plan gate. This is rejection of fields outside the advertised tool
+schema, not a test of sending arbitrary headers or bodies or proof about
+traffic sent through other tools. No packet or syscall trace was taken in
+these native-client sessions; the pre-DNS strace probe is separate.
+
 ## Native-client response size limit and recovery, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1` skill replay asks a real

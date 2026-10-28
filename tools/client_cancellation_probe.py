@@ -15,6 +15,8 @@ Set OUTBOUND_GUARD_CLIENT_MALFORMED=1 for malformed HTTP chunk framing.
 Set OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 for fixed-length and chunked body caps.
 Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
 before an otherwise valid native-client tool call and observe recovery.
+Set OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION=1 to inject synthetic secret-bearing
+unsupported header/body arguments during a valid native-client session.
 Set OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1 for a refused first validated
 address followed by a pinned public fallback while DNS flips to loopback.
 Set OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 for delayed-first-byte and slow-drip
@@ -31,15 +33,16 @@ rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
+argument_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION')=='1'
 fallback_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK')=='1'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
-assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,response_limit_mode,frame_mode,fallback_mode,slow_http_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or fallback_mode or slow_http_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
-synthetic_marker='ghp_'+'A'*20 if exfil_mode else None
+assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,response_limit_mode,frame_mode,argument_mode,fallback_mode,slow_http_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or fallback_mode or slow_http_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
 script_dir=pathlib.Path(__file__).resolve().parent
 root=pathlib.Path(tempfile.mkdtemp(prefix='outbound-cancel-'));root.chmod(0o700)
-if exfil_mode:
+if exfil_mode or argument_mode:
  marker_file=root/'synthetic-marker'
  marker_file.write_text(synthetic_marker)
  marker_file.chmod(0o600)
@@ -96,6 +99,7 @@ if dns_mode:bridge.append('allowed.test,private.test,mixed.test,metadata.test')
 if exfil_mode:bridge.append('allowed.test,exfil.test')
 if rebind_mode:bridge.append('allowed.test,rebind.test')
 if frame_mode:bridge.extend(['allowed.test,private.test','mutate'])
+if argument_mode:bridge.extend(['allowed.test','inject-arguments'])
 if fallback_mode:bridge.append('allowed.test,fallback-pin.test')
 config=root/'mcp.json';config.write_text(json.dumps({'mcpServers':{'outbound_guard':{'command':'python3','args':bridge}}}))
 (root/'.cursor').mkdir(exist_ok=True)
@@ -174,6 +178,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled MCP/HTTP fixture, use ONLY guarded_fetch to GET http://allowed.test/plain twice in order. The operator approved allowed.test and private.test for a negative parser test. A transparent test bridge will inject one invalid MCP JSON frame before your first valid tool call. Make both calls once, without retrying or using any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED']
    expected_methods=['GET','GET']
+  if argument_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled MCP/HTTP fixture, use ONLY guarded_fetch to GET http://allowed.test/plain twice in order. The operator approved allowed.test. A test bridge will issue separate synthetic secret-bearing header and body calls before your first valid call and hide their replies from you. Make both of your calls once without retrying or using any other tool. Report the actual results.'
+   expected_rules=['EGRESS_INVALID_INPUT','EGRESS_INVALID_INPUT','EGRESS_ALLOWED','EGRESS_ALLOWED']
+   expected_methods=['GET']*4
   if fallback_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these two calls in order: GET http://allowed.test/plain ; GET http://fallback-pin.test/plain . The operator approved both exact hosts. The first A answer for fallback-pin.test contains one refused public address followed by the locally served public-policy address; any second A query would return loopback. Make each call once. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED']
@@ -261,16 +269,16 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or fallback_mode or slow_http_mode) and name=='claude':
+  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or fallback_mode or slow_http_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or fallback_mode or slow_http_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or fallback_mode or slow_http_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or fallback_mode or slow_http_mode:
+  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or fallback_mode or slow_http_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call']
   if [e['http_method'] for e in fetches]!=expected_methods:
@@ -329,6 +337,20 @@ if skill_zip:
    assert 'private.test' not in dns_names, dns_names
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/plain'], hits
+  if argument_mode:
+   assert [e['event'] for e in events if 'event' in e]==['arguments_injected'], events
+   injected=[e for e in events if e.get('direction')=='out' and e.get('id') in ('injected-header','injected-body')]
+   assert [e['id'] for e in injected]==['injected-header','injected-body'], injected
+   assert [e.get('rule') for e in injected]==['EGRESS_INVALID_INPUT']*2, injected
+   assert all(e.get('synthetic_marker_echo') is False for e in injected), 'marker reflected in injected replies'
+   assert not any(e.get('synthetic_marker_echo') for e in events if e.get('direction')=='out'), 'marker reflected in MCP output'
+   dns_names=json.loads((root/'dns-a.json').read_text())
+   assert dns_names==['allowed.test','allowed.test'], dns_names
+   all_dns_names=json.loads((root/'dns-all.json').read_text())
+   assert all_dns_names.count('allowed.test')==4, all_dns_names
+   assert set(all_dns_names)<=set(('allowed.test','1.0.0.11.in-addr.arpa')), all_dns_names
+   hits=json.loads((root/'hits.json').read_text())
+   assert hits==['/plain','/plain'], hits
   if fallback_mode:
    for _ in range(100):
     fallback_a_queries=json.loads((root/'fallback.json').read_text())
@@ -351,13 +373,17 @@ if skill_zip:
    'installation_scope':'temporary project '+str(skill_dir.relative_to(root)),
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[200,200], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'fallback_mode':fallback_mode, 'slow_http_mode':slow_http_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or fallback_mode or slow_http_mode) else None,
+   'status_codes':[200,200], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'fallback_mode':fallback_mode, 'slow_http_mode':slow_http_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or fallback_mode or slow_http_mode) else None,
    'mutant_parse_error_seen':True if frame_mode else None,
+   'injected_argument_denials':2 if argument_mode else None,
+   'injected_argument_marker_echo':False if argument_mode else None,
+   'argument_probe_dns_queries':len(dns_names) if argument_mode else None,
+   'argument_probe_allowed_dns_queries':all_dns_names.count('allowed.test') if argument_mode else None,
    'fallback_a_queries':fallback_a_queries if fallback_mode else None,
    'forbidden_dns_names':sorted(set(dns_names)) if dns_mode else None,
    'exfil_dns_queried':'exfil.test' in dns_names if exfil_mode else None,
-   'synthetic_marker_echo':False if exfil_mode else None,
+   'synthetic_marker_echo':False if (exfil_mode or argument_mode) else None,
    'rebind_a_queries':rebind_a_queries if rebind_mode else None,
    'scope':'explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence'}),flush=True)
  finally:cleanup()
