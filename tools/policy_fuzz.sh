@@ -5,8 +5,12 @@ set -euo pipefail
 : "${POLICY_FUZZ_OUTPUT:?Set POLICY_FUZZ_OUTPUT to a dedicated evidence directory}"
 target="${POLICY_FUZZ_TARGET:-policy}"
 case "$target" in policy|frame|rpc) ;; *) exit 2 ;; esac
+seconds="${POLICY_FUZZ_SECONDS:-60}"
+case "$seconds" in 60|300|600) ;; *) exit 2 ;; esac
+cpu_seconds=$((seconds + 30))
 mkdir "$POLICY_FUZZ_OUTPUT"
 mkdir "$POLICY_FUZZ_OUTPUT/corpus" "$POLICY_FUZZ_OUTPUT/artifacts"
+printf '%s\n' "$seconds" > "$POLICY_FUZZ_OUTPUT/campaign-seconds.txt"
 rustc -vV > "$POLICY_FUZZ_OUTPUT/rustc.txt"
 "${POLICY_FUZZ_CLANG:-clang}" --version > "$POLICY_FUZZ_OUTPUT/clang.txt"
 sha256sum "$LIBFUZZER_RUNTIME" > "$POLICY_FUZZ_OUTPUT/runtime.sha256"
@@ -45,9 +49,9 @@ fi
 (
 ulimit -v 1048576
 ulimit -n 64
-ulimit -t 90
+ulimit -t "$cpu_seconds"
 nice -n10 "$CARGO_TARGET_DIR/debug/examples/${target}_fuzz" \
-    "$POLICY_FUZZ_OUTPUT/corpus" -seed=306373022 -max_total_time=60 \
+    "$POLICY_FUZZ_OUTPUT/corpus" -seed=306373022 -max_total_time="$seconds" \
     -timeout=2 -rss_limit_mb=512 -max_len="$max_len" \
     "-artifact_prefix=$POLICY_FUZZ_OUTPUT/artifacts/" -print_final_stats=1 \
     > "$POLICY_FUZZ_OUTPUT/campaign.log" 2>&1

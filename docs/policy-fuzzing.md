@@ -44,3 +44,15 @@ RPC campaigns use an8192-byte input maximum and three fixed seeds: a modern tool
 This target does not establish HTTP parser behavior, DNS rebinding, admission/backpressure, cancellation races or deadlines, native client behavior, instruction sanitization or production readiness. Longer independent campaigns and review remain required. Normal builds exclude the feature-gated entry point; no tool or transport capability is added.
 
 The first completed CI RPC campaign is preserved in `tests/fixtures/rpc-fuzz/ci-corpus.tar.gz` with source/tool identities, archive checksum and coverage totals in `ci-report.json`. It completed1271840 executions with6427 coverage counters and6770 new units. The archive contains generated test data under `corpus/`, never trusted instructions or URLs to fetch. Extract only into a new disposable directory for offline replay. CI continues to start from the three fixed seeds.
+
+## Extended manual CI campaigns
+
+The separate **Extended offline fuzz** workflow accepts one target (`policy`, `frame` or `rpc`) and exactly60,300 or600seconds. It runs only when explicitly dispatched, with read-only repository permissions and one serialized job per ref. Routine release-gate CI retains its60-second default. Dispatch, for example:
+
+```sh
+gh workflow run extended-fuzz.yml --ref main -f target=rpc -f seconds=600
+```
+
+This uses the existing pinned compiler/actions, locked crates and distribution LLVM18 runtime. Wrapper validation rejects unsupported targets/durations before creating its output directory or compiling. Evidence records `target_seconds` and the same per-input/memory/descriptor ceilings; the hard CPU ceiling is the selected duration plus30seconds. Workflow timeout is25minutes including setup/build. Compilation and dependency download are outside the fuzz subprocess limits. A concurrency group prevents overlapping extended campaigns on the same ref; it does not reserve host resources or serialize unrelated CI workflows.
+
+No local host or VM campaign is implied. Download the `extended-offline-fuzz-evidence` artifact within its seven-day retention window; preserve results, source/tool/runtime/input hashes, corpus identity and limitations in the release issue. Longer campaigns increase observations without establishing independent review, exhaustive coverage or production approval. These targets remain network-free with their original distinct scopes and no ASan/UBSan guarantee.
