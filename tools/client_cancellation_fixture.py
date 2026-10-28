@@ -9,6 +9,7 @@ for s in [dns,http]:threading.Thread(target=s.serve_forever,daemon=True).start()
 (root/'ready').touch()
 last_hits=None
 last_dns=None
+last_rebind=None
 while True:
  hits=list(HTTP.hits)
  if hits!=last_hits:
@@ -22,6 +23,12 @@ while True:
   dns_tmp.write_text(json.dumps(names))
   os.replace(dns_tmp,root/'dns.json')
   last_dns=names
+ rebind=DNS.rebind_a_queries
+ if rebind!=last_rebind:
+  rebind_tmp=root/'rebind.json.tmp'
+  rebind_tmp.write_text(json.dumps(rebind))
+  os.replace(rebind_tmp,root/'rebind.json')
+  last_rebind=rebind
  if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
  if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
  time.sleep(.01)

