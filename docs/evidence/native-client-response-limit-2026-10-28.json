@@ -16,7 +16,7 @@
   "clients": {
     "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_RESPONSE_LIMIT", "EGRESS_RESPONSE_LIMIT", "EGRESS_ALLOWED"], "status_codes": [200, 200], "fixture_hits": ["/plain", "/large", "/chunked-large", "/plain"]},
     "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET", "GET", "GET"], "rules": ["EGRESS_ALLOWED", "EGRESS_RESPONSE_LIMIT", "EGRESS_RESPONSE_LIMIT", "EGRESS_ALLOWED"], "status_codes": [200, 200], "fixture_hits": ["/plain", "/large", "/chunked-large", "/plain"]},
-    "cursor": {"version": "2026.10.19-6bbf2c4", "result": "inconclusive", "attempts": 1, "method_sequence": [], "fixture_hits": [], "reason": "native client produced session updates but did not issue an MCP call within the harness's 80-second deadline"}
+    "cursor": {"version": "2026.10.19-6bbf2c4", "result": "inconclusive", "attempts": 1, "method_sequence": [], "fixture_hits": [], "reason": "native client produced session updates but did not issue an MCP call within the harness's 80-second deadline", "follow_up": "A second attempt returned a native Cursor plan-upgrade notice with end_turn and zero MCP calls. The harness now reports this condition within ten seconds; no guarded_fetch decision was observed."}
   },
   "checks": ["Claude and Codex completed explicit skill turns against the exact candidate binary", "both over-limit responses returned EGRESS_RESPONSE_LIMIT rather than an allowed result", "a subsequent approved GET succeeded after each pair of denials", "only approved fixture host was configured", "owned namespaces removed"],
   "limits": [

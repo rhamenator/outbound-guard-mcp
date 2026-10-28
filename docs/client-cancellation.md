@@ -13,6 +13,9 @@ Cursor CLI produced session updates but issued no MCP call within the
 80-second deadline, so its result is inconclusive. The [redacted
 exact-candidate record](evidence/native-client-response-limit-2026-10-28.json)
 binds source, binary and skill hashes to these observations.
+In a follow-up, Cursor returned a native plan-upgrade notice and ended its
+turn before any MCP call. The harness now reports that condition promptly;
+Cursor coverage remains open until an authenticated turn can run.
 
 Run one authenticated client at a time with the existing development
 prerequisites and a checksum-verified candidate:
@@ -35,6 +38,9 @@ returned `EGRESS_READ_FAILURE`; only the two control calls returned 200.
 Cursor CLI issued no MCP call within the 80-second deadline in two attempts,
 so its result is inconclusive. The [redacted exact-candidate record](evidence/native-client-malformed-http-2026-10-28.json)
 binds source, binary and skill hashes to these observations.
+A later response-limit replay found a Cursor plan gate, but the original
+malformed-response attempts did not retain a plan notice; their cause is
+therefore still unconfirmed.
 
 Run one authenticated client at a time with the existing development
 prerequisites and a checksum-verified candidate:

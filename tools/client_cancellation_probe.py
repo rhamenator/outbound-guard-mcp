@@ -181,6 +181,15 @@ if skill_zip:
   while time.monotonic()<deadline:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()] if (root/'wire.jsonl').exists() else []
    if [e.get('rule') for e in events if 'rule' in e]==expected_rules:break
+   if name=='cursor' and (root/'client.jsonl').exists():
+    client_messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()]
+    plan_notice=any(m.get('params',{}).get('update',{}).get('sessionUpdate')=='agent_message_chunk' and
+                    'upgrade your plan to continue' in str(m.get('params',{}).get('update',{}).get('content',{}).get('text','')).lower()
+                    for m in client_messages)
+    if plan_notice and any(m.get('id')==3 and m.get('result',{}).get('stopReason')=='end_turn' for m in client_messages):
+     print(json.dumps({'client_unavailable':{'client':'cursor','reason':'plan upgrade required by native client',
+      'mcp_calls':sum(e.get('method')=='tools/call' for e in events)}}),flush=True)
+     raise AssertionError('Cursor client plan gate prevented the skill replay')
    assert p.poll() is None,'client exited before skill workflow completed'
    time.sleep(.05)
   else:
