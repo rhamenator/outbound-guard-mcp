@@ -27,7 +27,7 @@ The first completed local campaign's evolved inputs are preserved in `tests/fixt
 
 Set `POLICY_FUZZ_TARGET=frame` to fuzz the actual `read_frame_tracked` implementation through the development-only `fuzz_frame_stream` adapter. The example compiles the server module but never calls its main function or RPC dispatcher. An independent complete-buffer oracle splits at LF, compares exact bytes for frames of at most 64 KiB, requires oversized frames to be drained, and checks EOF synchronization. The first byte also selects one of six reader capacities from 1 byte to 65,537 bytes, exercising fragmented buffering without a real input stream.
 
-Frame campaigns use a 131,072-byte maximum and three fixed seeds: arbitrary multi-line bytes, exactly 65,536 bytes at EOF and an oversized line followed by a valid line. Other timing/process limits match the policy target. This is slower than URL mutation because small buffers intentionally exercise the whole large frame. The report's minimum 1,000 executions still applies. CI runs policy, frame and RPC targets as a matrix and signing requires all three. Evidence names are `llvm-policy-fuzz-evidence` and `llvm-frame-fuzz-evidence`.
+Frame campaigns use a 131,072-byte maximum and three fixed seeds: arbitrary multi-line bytes, exactly 65,536 bytes at EOF and an oversized line followed by a valid line. Other timing/process limits match the policy target. This is slower than URL mutation because small buffers intentionally exercise the whole large frame. The report's minimum 1,000 executions still applies. CI runs policy, frame, RPC and JSON targets as a matrix and signing requires all four. Evidence names are `llvm-policy-fuzz-evidence` and `llvm-frame-fuzz-evidence`.
 
 This proves only the exercised in-memory framing/oracle checks. Input deadlines, blocking I/O, RPC validation/dispatch, admission queues, cancellation and output backpressure require separate tests. It does not fuzz HTTP framing. The feature-gated adapter is absent from normal server builds; no tool or wire capability is added.
 
@@ -45,9 +45,15 @@ This target does not establish HTTP parser behavior, DNS rebinding, admission/ba
 
 The first completed CI RPC campaign is preserved in `tests/fixtures/rpc-fuzz/ci-corpus.tar.gz` with source/tool identities, archive checksum and coverage totals in `ci-report.json`. It completed1271840 executions with6427 coverage counters and6770 new units. The archive contains generated test data under `corpus/`, never trusted instructions or URLs to fetch. Extract only into a new disposable directory for offline replay. CI continues to start from the three fixed seeds.
 
+## JSON response scanner target
+
+Set `POLICY_FUZZ_TARGET=json` to exercise the production JSON response scanner through a feature-gated development adapter. For every valid JSON input, an independent recursive walk of a canonical `serde_json::Value` checks whether an instruction-like key occurs at any depth. The scanner must agree for accepted inputs, and it must accept and agree on every canonicalized value. Malformed and duplicate-key seeds are included; fixed unit tests separately assert duplicate-key rejection. Five seeds cover nested mixed-case keys, Unicode-escaped keys, a duplicate-key shadow, ordinary data and invalid trailing text. The target makes no HTTP request or MCP client call, and the oracle does not independently identify every duplicate-key parse error.
+
+The bounded campaign uses at most 262,144 input bytes and the same 60-second, two-second per-input, hard virtual-memory/descriptor/CPU limits as the other targets. The [local evidence](../tests/fixtures/json-fuzz/local-identity.json) records 2,071,583 executions, 1,620 coverage counters, 9,737 features and 4,584 new units with no crash/timeout artifact. Its [full report](../tests/fixtures/json-fuzz/local-report.json), [corpus archive](../tests/fixtures/json-fuzz/local-corpus.tar.gz) and compressed campaign log are retained; all 959 corpus hashes were checked against the archive. The campaign used Rust 1.99.1 and clang 18.1.8; CI uses the pinned project compiler and clang 18. This is finite syntax/key scanning evidence, not general prompt-injection quarantine, response transport, native-client or HTTP/DNS evidence.
+
 ## Extended manual CI campaigns
 
-The separate **Extended offline fuzz** workflow accepts one target (`policy`, `frame` or `rpc`) and exactly60,300 or600seconds. It runs only when explicitly dispatched, with read-only repository permissions and one serialized job per ref. Routine release-gate CI retains its60-second default. Dispatch, for example:
+The separate **Extended offline fuzz** workflow accepts one target (`policy`, `frame`, `rpc` or `json`) and exactly60,300 or600seconds. It runs only when explicitly dispatched, with read-only repository permissions and one serialized job per ref. Routine release-gate CI retains its60-second default. Dispatch, for example:
 
 ```sh
 gh workflow run extended-fuzz.yml --ref main -f target=rpc -f seconds=600
