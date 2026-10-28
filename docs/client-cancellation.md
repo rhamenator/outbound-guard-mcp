@@ -4,8 +4,9 @@ Status: experimental candidate observations, not release approval or universal c
 
 ## Trusted-main Debian candidate replay, 2026-10-28
 
-The signed, independently rebuilt main candidate from source `8b76b439ca53`
-was extracted from the checksum-verified archive and exercised through the
+The independently rebuilt main candidate from source `8b76b439ca53`, with
+signed GitHub build provenance, was extracted from the checksum-verified
+archive and exercised through the
 existing authenticated Claude Code 2.1.301, Codex CLI 0.151.0 and Cursor CLI
 2026.10.19-6bbf2c4 clients. The executable SHA-256 is
 `7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407`.
@@ -22,7 +23,8 @@ the server's roughly three-second response deadline, with a bounded denial
 reply. All three clients remained live. These observations cover explicit
 skill and control API paths, not desktop/terminal Stop controls, native queue
 saturation, automatic skill triggering, or traffic sent by other tools. The
-broader hostile DNS/HTTP and release gates remain open.
+broader hostile DNS/HTTP and release gates remain open. The Debian installer
+itself is unsigned.
 
 ## Scope and results, 2026-10-21
 

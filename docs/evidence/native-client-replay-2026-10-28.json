@@ -6,7 +6,7 @@
   "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
   "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
   "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
-  "verification": "Downloaded artifact passed SHA256SUMS; trusted-main CI passed independent rebuild and attestation verification. Extracted binary hash matched prior signed package. No separate local signature verification was available with the installed gh CLI.",
+  "verification": "Downloaded artifact passed SHA256SUMS; trusted-main CI passed independent rebuild and signed provenance attestation verification. Extracted binary hash matched the prior provenance-attested package. The Debian installer itself is unsigned. No separate local attestation verification was available with the installed gh CLI.",
   "probe": "python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY [SIGNED_SKILL_ZIP]",
   "clients": {
     "claude": {
