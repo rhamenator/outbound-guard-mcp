@@ -2,9 +2,33 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Trusted-main Debian candidate replay, 2026-10-28
+
+The independently rebuilt main candidate from source `8b76b439ca53`, with
+signed GitHub build provenance, was extracted from the checksum-verified
+archive and exercised through the
+existing authenticated Claude Code 2.1.301, Codex CLI 0.151.0 and Cursor CLI
+2026.10.19-6bbf2c4 clients. The executable SHA-256 is
+`7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407`.
+Each client completed an explicit native skill path with a loopback denial and
+controlled GET/HEAD successes. Each then completed a separate live-client
+control-path replay and a successful recovery GET, loopback denial and HEAD.
+The [redacted six-run record](evidence/native-client-replay-2026-10-28.json)
+binds source, artifact, skill ZIP, executable, client versions and outcomes.
+
+Claude delivered one matching MCP cancellation and the peer closed in 0.061s
+without a cancelled tool reply. Codex and Cursor acknowledged their respective
+turn controls but did not send MCP cancellation; their sockets closed after
+the server's roughly three-second response deadline, with a bounded denial
+reply. All three clients remained live. These observations cover explicit
+skill and control API paths, not desktop/terminal Stop controls, native queue
+saturation, automatic skill triggering, or traffic sent by other tools. The
+broader hostile DNS/HTTP and release gates remain open. The Debian installer
+itself is unsigned.
+
 ## Scope and results, 2026-10-21
 
-The optimized Linux x86_64 GNU archive candidate `ec96881e4ca9` has binary SHA-256 `93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19`. The production Rust implementation has not changed since that candidate. A transparent stdio bridge recorded only MCP method/ID/rule metadata. The real clients used their existing authenticated model services on the host; only the MCP child ran in a disposable route-free network namespace with controlled DNS/HTTP. No VM, public attack target, or runtime dependency was added.
+The optimized Linux x86_64 GNU archive candidate `ec96881e4ca9` has binary SHA-256 `93882fb0e55073efda897e7d3f020d6ebe2c4cb62009a70be72e622008ec9b19`. A transparent stdio bridge recorded only MCP method/ID/rule metadata. The real clients used their existing authenticated model services on the host; only the MCP child ran in a disposable route-free network namespace with controlled DNS/HTTP. No VM, public attack target, or runtime dependency was added. Later source changes and candidate replays are recorded below and above this historical section.
 
 | Client/version | Control tested | Matching MCP cancellation | Observed outcome |
 | --- | --- | --- | --- |
