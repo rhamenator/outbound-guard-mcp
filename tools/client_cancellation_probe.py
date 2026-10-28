@@ -180,6 +180,17 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
+  if attack_mode and name=='claude':
+   deadline=time.monotonic()+40
+   while time.monotonic()<deadline:
+    messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
+    if any(m.get('type')=='result' for m in messages):break
+    time.sleep(.05)
+   assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
+  elif attack_mode and name=='cursor':
+   response(3)
+  if attack_mode:
+   events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call']
   assert [e['http_method'] for e in fetches]==expected_methods
   assert [e['status_code'] for e in events if 'status_code' in e]==[200,200]
