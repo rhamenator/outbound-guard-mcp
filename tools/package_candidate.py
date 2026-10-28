@@ -29,9 +29,19 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def debian_candidate(binary, version, revision, epoch, output, source, dependencies, provenance):
+def debian_package_version(version, revision, revision_count):
+    return f"{version}~candidate.{revision_count}+g{revision[:12]}"
+
+
+def candidate_revision_count(revision):
+    if git("rev-parse", "--is-shallow-repository").decode().strip() != "false":
+        raise RuntimeError("Complete Git history is required for ordered Debian candidate versions")
+    return int(git("rev-list", "--count", revision))
+
+
+def debian_candidate(binary, version, revision, revision_count, epoch, output, source, dependencies, provenance):
     """Build an unsigned, deterministic Debian 12 amd64 test package."""
-    package_version = f"{version}~candidate+g{revision[:12]}"
+    package_version = debian_package_version(version, revision, revision_count)
     package = output / f"outbound-guard-mcp_{package_version}_amd64.deb"
     with tempfile.TemporaryDirectory(prefix="outbound-guard-deb-") as folder:
         root = Path(folder)
@@ -304,6 +314,7 @@ def main():
         parser.error("this candidate gate currently supports Linux x86_64 only")
     subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", *INPUTS], cwd=REPO, check=True)
     revision = git("rev-parse", "HEAD").decode().strip()
+    revision_count = candidate_revision_count(revision)
     epoch = int(git("show", "-s", "--format=%ct", "HEAD"))
     version = tomllib.loads(git("show", f"{revision}:Cargo.toml").decode())["package"]["version"]
     reject_build_overrides(os.environ)
@@ -380,7 +391,8 @@ def main():
             entry.compress_type = zipfile.ZIP_DEFLATED
             entry.external_attr = 0o100644 << 16
             zipped.writestr(entry, data)
-    deb = debian_candidate(binary, version, revision, epoch, output, source, dependencies, files["provenance.json"])
+    deb = debian_candidate(binary, version, revision, revision_count, epoch, output, source,
+                           dependencies, files["provenance.json"])
     checksums = {path.name: digest(path.read_bytes()) for path in (archive, skill_zip, deb)}
     (output / "SHA256SUMS").write_text("".join(f"{sha}  {name}\n" for name, sha in checksums.items()))
     with zipfile.ZipFile(skill_zip) as zipped:

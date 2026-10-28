@@ -108,6 +108,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
+        with:
+          fetch-depth: 0 # Candidate Debian versions use the complete Git ancestry count.
       - name: Read pinned build compiler
         id: compiler
         run: python3 -c 'import os, tomllib; channel = tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"]; print("channel=" + channel, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
@@ -185,6 +187,8 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
+        with:
+          fetch-depth: 0 # Match the primary candidate's version ancestry.
       - name: Read pinned build compiler
         id: compiler
         run: python3 -c 'import os, tomllib; channel = tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"]; print("channel=" + channel, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
