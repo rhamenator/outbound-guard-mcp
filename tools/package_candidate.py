@@ -66,7 +66,7 @@ def debian_candidate(binary, version, revision, epoch, output, source, dependenc
         env = os.environ.copy()
         env["SOURCE_DATE_EPOCH"] = str(epoch)
         subprocess.run(["dpkg-deb", "--build", "--root-owner-group", "--uniform-compression",
-                        "--compression=gzip", "--compression-level=9", str(root), str(package)],
+                        "-Zgzip", "-z9", str(root), str(package)],
                        env=env, check=True, timeout=30)
     listing = subprocess.check_output(["dpkg-deb", "--contents", str(package)], text=True)
     assert "./usr/bin/outbound-guard-mcp" in listing
