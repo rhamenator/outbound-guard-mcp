@@ -2,6 +2,28 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client malformed HTTP chunk framing, 2026-10-28
+
+The opt-in `OUTBOUND_GUARD_CLIENT_MALFORMED=1` skill replay asks a real
+client for an approved GET and HEAD, then GETs from a controlled HTTP/1.1
+fixture with an invalid chunk size and a truncated chunk. Claude Code and
+Codex CLI each completed all four ordered calls. Both malformed responses
+returned `EGRESS_READ_FAILURE`; only the two control calls returned 200.
+Cursor CLI issued no MCP call within the 80-second deadline in two attempts,
+so its result is inconclusive. The [redacted exact-candidate record](evidence/native-client-malformed-http-2026-10-28.json)
+binds source, binary and skill hashes to these observations.
+
+Run one authenticated client at a time with the existing development
+prerequisites and a checksum-verified candidate:
+
+```bash
+OUTBOUND_GUARD_CLIENT_MALFORMED=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Model usage may incur cost. This probes two malformed HTTP response bodies
+through explicit skill turns. It does not cover malformed MCP framing, every
+HTTP parser state, or traffic sent through other tools.
+
 ## Native-client DNS rebinding between calls, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_REBIND=1` skill replay asks a real client
