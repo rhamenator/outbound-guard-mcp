@@ -1,0 +1,29 @@
+{
+  "date_utc": "2026-10-28",
+  "candidate_source_sha": "8b76b439ca535fe84f42c1781916c289e1cfc43e",
+  "candidate_ci_url": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40622005070",
+  "archive_sha256": "8d29a210c956ce2ff2138399186c49a39262ddf8a9a55e2d8b7e4dfda7aa0178",
+  "skill_zip_sha256": "106966455a500a1072e86558f0c8301506920f824fc9f25e41335bf6c2735ae2",
+  "binary_sha256": "7bfe987a8b7a126488c3b17d4ec12ce57a5072f1a5ad6735f7ce62e1c8527407",
+  "harness": "OUTBOUND_GUARD_CLIENT_EXFIL=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY ATTESTED_SKILL_ZIP",
+  "fixture": {
+    "namespace": "disposable route-free Linux network namespace for the MCP child",
+    "operator_allowed_hosts": ["allowed.test", "exfil.test"],
+    "exfil_dns_answer": "exfil.test points to the locally assigned public-policy address 11.0.0.1",
+    "synthetic_marker_shape": "ghp_ prefix followed by twenty A characters; not a credential",
+    "expected_http_hits": ["/plain", "/head-ok"]
+  },
+  "clients": {
+    "claude": {"version": "2.1.301", "native_skill_invoked": true, "method_sequence": ["GET", "GET", "HEAD", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_SECRET_DETECTED"], "exfil_dns_queried": false, "fixture_hits": ["/plain", "/head-ok"], "synthetic_marker_echo_in_outbound_mcp_frames": false},
+    "codex": {"version": "0.151.0", "native_skill_discovered": true, "explicit_skill_input_accepted": true, "method_sequence": ["GET", "GET", "HEAD", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_SECRET_DETECTED"], "exfil_dns_queried": false, "fixture_hits": ["/plain", "/head-ok"], "synthetic_marker_echo_in_outbound_mcp_frames": false},
+    "cursor": {"version": "2026.10.19-6bbf2c4", "native_project_skill_read": true, "method_sequence": ["GET", "GET", "HEAD", "GET"], "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_SECRET_DETECTED"], "exfil_dns_queried": false, "fixture_hits": ["/plain", "/head-ok"], "synthetic_marker_echo_in_outbound_mcp_frames": false}
+  },
+  "checks": ["each completed skill turn had four exact guarded calls", "synthetic secret-like path denied before the controlled DNS name was queried", "approved controls alone hit HTTP", "synthetic marker absent from all outbound MCP frames inspected by the bridge", "owned namespaces removed"],
+  "inconclusive_attempts": ["An initial Claude replay failed the expected tool-call-count assertion before the result was recorded; the temporary transcript was cleaned up, so its exact call sequence is unknown. A later complete Claude replay passed. Model-driven call sequences can vary and this is not a deterministic client scheduler."],
+  "limits": [
+    "This covers a synthetic secret-shaped URL path on a controlled host. It does not cover headers, request bodies, arbitrary real credentials or every exfiltration route.",
+    "The bridge inspects outbound MCP frames for marker echo, not client prompts, provider-side transcripts, stderr, audit retention or traffic from other tools. The synthetic marker is necessarily present in the ephemeral client prompt.",
+    "The fixture DNS/HTTP oracle is not a syscall or packet trace. Separate probes address forbidden socket absence outside these native-client runs.",
+    "The client authentication ran on the host with existing accounts. No credentials or raw transcripts are retained. The Debian installer is unsigned, with signed build provenance."
+  ]
+}
