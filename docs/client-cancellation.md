@@ -2,6 +2,31 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native DNS rebinding between calls, 2026-10-29
+
+The [current-binary rebinding record](evidence/native-client-rebind-current-binary-2026-10-29.json)
+replays an approved control GET followed by two GETs to one operator-approved
+fixture hostname through the installed skill and real Claude Code 2.1.301 and
+Codex CLI 0.151.0 clients. The route-free namespace resolver returns the
+locally served public-policy address for the first rebinding A query, then
+loopback for the second. Both clients completed three ordered calls with two
+`EGRESS_ALLOWED` decisions and a final `EGRESS_FORBIDDEN_ADDRESS`. Each run
+recorded exactly two rebinding A queries and only the two approved `/plain`
+HTTP fixture hits. Both used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_REBIND=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Cursor was not rerun after its immediately preceding native plan gate yielded
+zero MCP calls. This checks changed A answers between separate guarded calls,
+not an intra-call resolver race, every A/AAAA combination or every reconnect
+path. Fixture hits are not a packet/syscall proof for every destination.
+Explicit skill invocation does not prove automatic triggering or protect
+traffic sent through other tools.
+
 ## Current-binary native DNS SSRF denials, 2026-10-29
 
 The [exact-binary DNS record](evidence/native-client-dns-current-binary-2026-10-29.json)
