@@ -1,0 +1,112 @@
+{
+  "date_utc": "2026-10-29T17:17:59Z",
+  "source_base": "cd8879061b17047e6855b801b1be8a311870f8a3",
+  "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+  "skill_zip_sha256": "5fcb46943dd9876c4bb6b7e8c252716857c69aaa86514a4eb8b7e255541da2ae",
+  "skill_zip_contents": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "harness": "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "operator_allowed_hosts": [
+      "allowed.test",
+      "private.test"
+    ],
+    "injection": "transparent bridge prepends one unterminated JSON-RPC tools/call object containing http://private.test/plain before first valid client tools/call",
+    "bridge_behavior": "records server -32700 parse error with null ID and withholds injected-frame reply from native client",
+    "expected_client_calls": [
+      "GET http://allowed.test/plain",
+      "GET http://allowed.test/plain"
+    ],
+    "expected_http_hits": [
+      "/plain",
+      "/plain"
+    ]
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_skill_invoked": true,
+        "skill_tool_result_success": true,
+        "native_project_source_observed": true,
+        "setting_sources": [
+          "project"
+        ],
+        "builtin_tools": [
+          "Skill"
+        ],
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/plain"
+        ],
+        "mutant_parse_error_seen": true,
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      }
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_skill_invoked": null,
+        "skill_tool_result_success": null,
+        "native_project_source_observed": true,
+        "setting_sources": null,
+        "builtin_tools": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/plain"
+        ],
+        "mutant_parse_error_seen": true,
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      }
+    }
+  },
+  "cursor": {
+    "version": "2026.10.19-6bbf2c4",
+    "status": "not rerun; native plan gate returned zero MCP calls in preceding control replay"
+  },
+  "cleanup": "Both temporary client workspaces and owned namespaces removed; no raw transcript, credential or model output committed.",
+  "scope": "Two authenticated native client sessions survived one bridge-injected malformed MCP frame. The server returned -32700/null ID, the valid calls succeeded, and controlled private.test saw no DNS or HTTP activity.",
+  "limitations": [
+    "The bridge generated the malformed frame and withheld its parse-error reply; neither native client generated or received that error frame.",
+    "One unterminated JSON-RPC object and recovery sequence, not complete MCP conformance.",
+    "No packet/syscall trace for every destination in these native-client runs.",
+    "Explicit skill invocation does not prove automatic triggering. No native Cursor call in this replay or claim about traffic sent through other tools."
+  ]
+}
