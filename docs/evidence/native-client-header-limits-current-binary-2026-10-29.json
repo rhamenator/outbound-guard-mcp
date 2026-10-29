@@ -1,0 +1,114 @@
+{
+  "date_utc": "2026-10-29T19:32:12Z",
+  "source_base": "73d54c4de3902cf6cfa4f5ab74619d512d0b461b",
+  "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+  "skill_zip_sha256": "5fcb46943dd9876c4bb6b7e8c252716857c69aaa86514a4eb8b7e255541da2ae",
+  "skill_zip_contents": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "harness": "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT=1 python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "operator_allowed_hosts": [
+      "allowed.test"
+    ],
+    "ordered_paths": [
+      "/plain",
+      "/many-headers",
+      "/oversized-header",
+      "/parser-limit",
+      "/plain"
+    ],
+    "traps": "excess header count, oversized header, HTTP parser ceiling"
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "skill_tool_result_success": true,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/many-headers",
+          "/oversized-header",
+          "/parser-limit",
+          "/plain"
+        ]
+      }
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": null,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "skill_tool_result_success": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/many-headers",
+          "/oversized-header",
+          "/parser-limit",
+          "/plain"
+        ]
+      }
+    }
+  },
+  "cursor": {
+    "version": "2026.10.19-6bbf2c4",
+    "status": "not rerun; preceding native plan gate yielded zero MCP calls"
+  },
+  "cleanup": "Both temporary client workspaces and owned namespaces removed; no raw transcript, credential or model output committed.",
+  "scope": "Both native clients received three EGRESS_INVALID_FRAMING denials between successful approved controls.",
+  "limitations": [
+    "Three finite HTTP/1.1 response-header cases; not full parser, HTTP/2, TLS or all resource states.",
+    "Fixture hits do not establish absence of every packet or syscall destination.",
+    "Explicit skill invocation does not prove automatic triggering; Cursor and other-tool traffic not covered."
+  ]
+}
