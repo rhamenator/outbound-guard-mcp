@@ -2,6 +2,32 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native session with injected header and body arguments, 2026-10-29
+
+The [current-binary argument record](evidence/native-client-arguments-current-binary-2026-10-29.json)
+replays two approved GETs through the installed skill in real Claude Code
+2.1.301 and Codex CLI 0.151.0 sessions. A transparent test bridge first
+sends separate MCP calls with a synthetic marker in unsupported
+`Authorization` header and `body` arguments, copying the native call's
+protocol metadata. Both injected calls returned `EGRESS_INVALID_INPUT`
+without echoing the marker. Each client then completed its two approved
+GETs; the fixture recorded only two `/plain` HTTP hits and two A plus two
+AAAA queries for `allowed.test`. Both used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+The bridge generated and hid the injected calls; neither client supplied
+unsupported arguments. Cursor was not rerun after its preceding native plan
+gate yielded zero MCP calls. This checks rejection of fields outside the
+advertised schema, not safe transmission of arbitrary headers or bodies.
+The fixture oracle is not a packet/syscall trace for every destination.
+Explicit skill use does not prove automatic triggering or cover traffic sent
+through other tools.
+
 ## Current-binary native session with an injected malformed MCP frame, 2026-10-29
 
 The [current-binary MCP frame record](evidence/native-client-mcp-frame-current-binary-2026-10-29.json)
