@@ -1,0 +1,41 @@
+{
+  "date_utc": "2026-10-29T07:28:55Z",
+  "source_base": "813d7b545576e274c71a850980bd6e3435fa7b33",
+  "host": {
+    "kernel": "7.0.0-38-generic",
+    "systemd": "259.9-0ubuntu0.1",
+    "cgroup_version": 2
+  },
+  "command": "python3 tools/systemd_active_http_cpu_probe.py target/debug/outbound-guard-mcp",
+  "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+  "extension_probe_runs": 2,
+  "retained_run": {
+    "result": "passed",
+    "limits": {
+      "memory.max": "100663296",
+      "memory.swap.max": "0",
+      "pids.max": "16",
+      "cpu.max": "50000 100000",
+      "LimitNOFILE": 64
+    },
+    "http_paths": ["/drip", "/plain", "/cancel", "/plain"],
+    "dns_queries": [["allowed.test", 1], ["allowed.test", 28], ["allowed.test", 1], ["allowed.test", 28], ["allowed.test", 1], ["allowed.test", 28], ["allowed.test", 1], ["allowed.test", 28]],
+    "throttled_periods_during_first_held_http": 3,
+    "throttled_usec_during_first_held_http": 233282,
+    "throttled_periods_before_cancellation": 3,
+    "socket_open_before_notification": true,
+    "cancellation_socket_closed_seconds": 0.022946,
+    "audit_rules_before_reused_id": ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_CANCELLED"],
+    "cancelled_reply_suppressed": true,
+    "late_stdout_or_stderr": false,
+    "cancelled_id_reused_for_approved_get": true,
+    "memory_peak_bytes": 28790784,
+    "pids_peak": 9,
+    "oom_delta": 0,
+    "oom_kill_delta": 0,
+    "post_pressure_ping": true
+  },
+  "cleanup": "No matching namespace or /etc/netns directory remained after the run; the transient user unit was stopped and reset.",
+  "scope": "One modern MCP stdio cancellation notification sent by a controlled driver after the HTTP fixture wrote its first byte and three subsequent CPU-throttling periods occurred. The fixture observed peer socket closure; the server suppressed the cancelled reply and accepted request-ID reuse.",
+  "limitations": "Finite local route-free namespace/cgroup test; no Codex, Claude Code, Cursor or desktop Stop cancellation delivery, no OOM/PID exhaustion, sustained load or general response-time guarantee. CI does not run this user-systemd/namespace fixture."
+}

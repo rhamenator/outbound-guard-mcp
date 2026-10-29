@@ -73,6 +73,8 @@ The probe sends a modern MCP `guarded_fetch` call and holds the second byte of a
 
 The [2026-10-29 local evidence](evidence/cgroup-active-http-cpu-2026-10-29.json) records two corrected passing runs on Linux 7.0.0-38-generic/systemd 259.9. In the retained run, three throttled periods and 185623 throttled microseconds occurred after the first body byte and before the held body was released; both guarded GETs and ping passed, peak memory was 27,914,240 bytes, peak tasks were nine, and no OOM event occurred. Earlier runs measured from before the fetch and are not counted as active-body evidence.
 
+The same optional probe now also sends a second guarded GET to a controlled HTTP fixture that writes one body byte and waits for socket closure. After that first byte, it starts a new bounded CPU helper and requires three subsequent kernel throttling periods while the socket is still open. It then sends a modern MCP `notifications/cancelled` for the in-flight call. The probe requires a following ping within one second, fixture-observed socket closure, no cancelled tool reply or late stdout/stderr, an `EGRESS_CANCELLED` audit event, and a successful approved GET reusing the cancelled request ID. The [2026-10-29 cancellation extension](evidence/cgroup-active-http-cancel-cpu-2026-10-29.json) records two passing runs; the retained run observed three throttled periods, socket closure in 0.022946 seconds, eight exact A/AAAA DNS queries across four fetches, 28,790,784-byte memory peak, nine-task peak and no OOM. This is synthetic MCP notification delivery through a controlled stdio driver, not proof that Codex, Claude Code, Cursor or a desktop Stop control sends cancellation under CPU pressure.
+
 ## Aggregate oversized-frame control
 
 ```sh
