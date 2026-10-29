@@ -935,6 +935,13 @@ async fn guarded_http_fetch(
         )
         .value();
     }
+    if response.status().is_informational() {
+        return Denial::new(
+            "EGRESS_PROTOCOL_UPGRADE_DENIED",
+            "Use a final HTTP response without a protocol upgrade.",
+        )
+        .value();
+    }
     if response.status().is_redirection() {
         return Denial::new(
             "EGRESS_REDIRECT_DENIED",

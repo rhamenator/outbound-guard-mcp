@@ -255,6 +255,14 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_header("Location", "http://private.test/plain")
             self.end_headers()
             return
+        if self.path == "/switch-protocols":
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(101)
+            self.send_header("Connection", "Upgrade")
+            self.send_header("Upgrade", "websocket")
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            return
         if self.path in ("/redirect-loop", "/redirect-approved"):
             self.send_response(307)
             self.send_header("Location", "http://allowed.test/redirect-loop" if self.path == "/redirect-loop"
@@ -1842,6 +1850,7 @@ def main(binary, cancellation_probe):
             assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
         framing_results = {}
         for path, accepted_rules in (
+            ("switch-protocols", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("stacked-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE", "EGRESS_INVALID_FRAMING"}),
