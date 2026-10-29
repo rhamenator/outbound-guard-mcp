@@ -2,6 +2,31 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native session with an injected malformed MCP frame, 2026-10-29
+
+The [current-binary MCP frame record](evidence/native-client-mcp-frame-current-binary-2026-10-29.json)
+replays two approved GETs through the installed skill in real Claude Code
+2.1.301 and Codex CLI 0.151.0 sessions. A transparent test bridge inserts
+one unterminated JSON-RPC `tools/call` object containing a controlled private
+fixture URL before the first valid client call. The server returned `-32700`
+with a null ID for the injected frame; the bridge recorded and withheld that
+reply. Both native clients then completed their two valid `EGRESS_ALLOWED`
+calls, and the private fixture saw no DNS query or HTTP hit. Both used
+executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+The bridge generated the malformed frame; the clients did not. Cursor was
+not rerun after its preceding native plan gate yielded zero MCP calls. This
+is one parser-recovery case, not complete MCP protocol conformance. The
+fixture oracle is not a packet/syscall trace for every destination. Explicit
+skill use does not prove automatic triggering or cover traffic sent through
+other tools.
+
 ## Current-binary native malformed HTTP chunk framing, 2026-10-29
 
 The [current-binary malformed HTTP record](evidence/native-client-malformed-http-current-binary-2026-10-29.json)
