@@ -1,0 +1,25 @@
+{
+  "source_sha": "bb2a5573dee2f1ddecda985231729b0817d6c699",
+  "workflow_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40808373505",
+  "target": "json",
+  "seconds": 300,
+  "executions": 6086140,
+  "coverage_counters": 1894,
+  "features": 11196,
+  "new_units_added": 7405,
+  "corpus_files": 1154,
+  "report_sha256": "dd2f9e817bc3143125e3da8804aee19f2fea9e0ed8a841ab844383e43a65e6ca",
+  "corpus_archive_sha256": "0ee2c64d0db58371cd9e85260962fdfe0f4c024ceaf99e6f8ddc6290b7ddec59",
+  "campaign_log_gzip_sha256": "97a929656f5c9092d6e77e8e77ecf2fe432c7cb5beeb3e5e334ddecfc20255e2",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin\n",
+  "runtime_sha256": "c52875d3f6708faa8babbee52b65c3df1f1263e8a71fe6aa8ea454a7111bd21a  /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.fuzzer_no_main-x86_64.a\n",
+  "input_hashes": "8ed0f68a1927a7ec08ee0d227dce905c4bcc6c1b82543d342035bf0a55915584  Cargo.toml\nf5f0f24b280539cf2facff3ac0b2a77c7ec5f919297ab2ceb7a6ed2788e68cba  Cargo.lock\n15ce6f2e578ecf8dd8647900598c858a68e36d6dd087fcc57f53c6c3cbde2d81  src/lib.rs\n7674ec1bc25b4008a9029a12fced3bb82639220904b807cd5683735c159a8089  src/main.rs\n7b2ee0938d7efe994d755aab84ee4d1dd0caddd3b57d11c3c6ce5830869027ac  src/transport.rs\n98d3a1784d00c4b39cf976f9d09beb0a13e017bfbf25813dc503508ea0637937  examples/frame_fuzz.rs\n57e49f76f9583a4ea52a6f54cf6dd0c75ff5a85a2e09128653f864cbc9dc7260  examples/json_fuzz.rs\nb18b7220a2419d71d7e006f6889c593ce5294bce9660c5ca422b06c31b39f132  examples/policy_fuzz.rs\n33399876ee87c6c7c3fe867d32bf06987b65c0e3ca42aba069ac6a189a3c6b5d  examples/rpc_fuzz.rs\n1ff404898e58ef6ace89791ccd0e1d84a333f74d361995a1578bc13801108f2b  tools/policy_fuzz.sh\n",
+  "limits": "300s target; 2s/input; hard 1GiB address space/64 FDs/330s CPU; no ASan",
+  "verification": "All 1,154 corpus hashes and ten source input hashes verified; workflow succeeded, report required no crash/timeout artifacts.",
+  "limitations": [
+    "Network-free JSON response scanner and canonical Value recursive-key oracle only.",
+    "Value parser errors, including private-number collision, have no equivalence assertion; duplicate-key errors are not independently classified.",
+    "No ASan/UBSan; finite campaign, no HTTP/DNS, native MCP client, general prompt-injection quarantine or cross-repository coverage."
+  ]
+}
