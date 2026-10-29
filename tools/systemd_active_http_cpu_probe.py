@@ -240,6 +240,34 @@ def inside(binary):
         assert cancel_closed.wait(1), 'task-ceiling cancellation retained HTTP socket'
         task_cancel_seconds = time.monotonic() - started
         assert task_cancel_seconds < 1, task_cancel_seconds
+        # Cancellation may free one worker task. Refill the same owned group
+        # before asking for a new DNS worker; no resolver packet may be sent.
+        for _ in range(16):
+            if int((group / 'pids.current').read_text()) == 16:
+                break
+            thread = threading.Thread(target=release_tasks.wait)
+            try:
+                thread.start()
+            except RuntimeError:
+                assert int((group / 'pids.current').read_text()) == 16
+                break
+            task_threads.append(thread)
+        assert int((group / 'pids.current').read_text()) == 16
+        dns_events_before = task_limit_events()
+        dns_queries_before = len(dns_names)
+        http_paths_before = len(http_paths)
+        rpc('tools/call', 'task-dns-deny', {'name': 'guarded_fetch',
+                                          'arguments': {'url': 'http://allowed.test/plain'}})
+        dns_denied = receive('task-dns-deny')['structuredContent']
+        assert dns_denied['status'] == 'BLOCKED' and dns_denied['rule'] == 'EGRESS_DNS_FAILURE', dns_denied
+        dns_task_events_delta = task_limit_events() - dns_events_before
+        assert dns_task_events_delta > 0, dns_task_events_delta
+        dns_queries_after_denial = len(dns_names)
+        http_paths_after_denial = len(http_paths)
+        assert dns_queries_after_denial == dns_queries_before and http_paths_after_denial == http_paths_before
+        assert int((group / 'pids.current').read_text()) == 16
+        rpc('ping', 'task-dns-barrier')
+        receive('task-dns-barrier')
         release_tasks.set()
         for thread in task_threads:
             thread.join(timeout=2)
@@ -250,7 +278,7 @@ def inside(binary):
         events = json.loads(receive('task-audit')['contents'][0]['text'])['events']
         assert [event['rule'] for event in events] == [
             'EGRESS_ALLOWED', 'EGRESS_ALLOWED', 'EGRESS_CANCELLED',
-            'EGRESS_ALLOWED', 'EGRESS_CANCELLED'], events
+            'EGRESS_ALLOWED', 'EGRESS_CANCELLED', 'EGRESS_DNS_FAILURE'], events
         rpc('tools/call', 'task-cancel', {'name': 'guarded_fetch',
                                         'arguments': {'url': 'http://allowed.test/plain'}})
         task_reuse = receive('task-cancel')['structuredContent']
@@ -280,12 +308,19 @@ def inside(binary):
                           'task_helper_threads': len(task_threads), 'tasks_at_ceiling': tasks_at_ceiling,
                           'task_limit_events_delta': task_events_delta,
                           'task_cancel_socket_closed_seconds': round(task_cancel_seconds, 6),
+                          'dns_worker_failure_at_task_ceiling': dns_denied['rule'],
+                          'dns_worker_task_limit_events_delta': dns_task_events_delta,
+                          'dns_queries_before_worker_failure': dns_queries_before,
+                          'dns_queries_after_worker_failure': dns_queries_after_denial,
+                          'http_paths_before_worker_failure': http_paths_before,
+                          'http_paths_after_worker_failure': http_paths_after_denial,
+                          'ping_after_dns_worker_failure': True,
                           'tasks_after_release': tasks_after_release, 'task_cancelled_id_reused': True,
                           'memory_peak_bytes': memory_peak, 'pids_peak': pids_peak,
                           'oom_delta': memory_after['oom'] - memory_before['oom'],
                           'oom_kill_delta': memory_after['oom_kill'] - memory_before['oom_kill'],
                           'post_pressure_ping': True,
-                          'limitations': 'finite active HTTP cancellation under CPU and PID pressure in a route-free netns; no native client, OOM or sustained load'}),
+                          'limitations': 'finite active HTTP cancellation and DNS worker refusal at a PID ceiling in a route-free netns; no native client, OOM or sustained load'}),
               flush=True)
     finally:
         release_body.set()
