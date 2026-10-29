@@ -2,6 +2,29 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native synthetic URL exfiltration denial, 2026-10-29
+
+The [current-binary exfiltration record](evidence/native-client-exfil-current-binary-2026-10-29.json)
+uses a harness-generated synthetic secret-shaped URL path and an approved
+controlled host. Claude Code 2.1.301 and Codex CLI 0.151.0 each completed an
+explicit four-call skill turn: loopback denial, approved GET and HEAD, then
+`EGRESS_SECRET_DETECTED`. The controlled resolver saw no query for the
+exfiltration host, HTTP saw only `/plain` and `/head-ok`, and the transparent
+bridge observed no synthetic marker in server-to-client MCP results. Both
+used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the same inspected two-file skill ZIP. The marker was not a credential.
+
+```bash
+OUTBOUND_GUARD_CLIENT_EXFIL=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Cursor was not rerun after its preceding native plan gate yielded zero MCP
+calls. This covers one synthetic URL path, not headers, bodies, arbitrary
+secrets, provider-side transcripts, audit retention, or traffic sent through
+other tools. The marker necessarily appears in the temporary client prompt.
+DNS/HTTP fixture observations are not a packet or syscall trace.
+
 ## Current-binary native DNS rebinding between calls, 2026-10-29
 
 The [current-binary rebinding record](evidence/native-client-rebind-current-binary-2026-10-29.json)
