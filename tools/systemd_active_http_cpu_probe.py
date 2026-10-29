@@ -135,14 +135,14 @@ def inside(binary):
         assert Path(f'/proc/{child.pid}/cgroup').read_text() == own_group
         rpc('ping', 'before')
         receive('before')
-        before = cpu_stats()
         memory_before = memory_events()
-        burner = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--burn'],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        assert Path(f'/proc/{burner.pid}/cgroup').read_text() == own_group
         rpc('tools/call', 'active', {'name': 'guarded_fetch',
                                    'arguments': {'url': 'http://allowed.test/drip'}})
         assert first_byte.wait(3), 'approved HTTP request did not reach controlled fixture'
+        before = cpu_stats()
+        burner = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--burn'],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        assert Path(f'/proc/{burner.pid}/cgroup').read_text() == own_group
         active = cpu_stats()
         deadline = time.monotonic() + 1.5
         while active['nr_throttled'] - before['nr_throttled'] < 3:

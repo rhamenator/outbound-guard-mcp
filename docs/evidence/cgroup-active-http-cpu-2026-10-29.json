@@ -8,7 +8,8 @@
   },
   "command": "python3 tools/systemd_active_http_cpu_probe.py target/debug/outbound-guard-mcp",
   "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
-  "final_probe_runs": 2,
+  "review_correction": "The initial two passing runs sampled cpu.stat before the fetch, so throttling could have occurred before the HTTP body was held. PR review identified that false-positive risk. The probe now samples after the first byte and starts the CPU helper only then; the two corrected runs below supersede the earlier measurements.",
+  "corrected_probe_runs": 2,
   "retained_run": {
     "result": "passed",
     "limits": {
@@ -23,8 +24,8 @@
     "held_body_decision": {"rule": "EGRESS_ALLOWED", "body_text": "AB"},
     "recovery_decision": {"rule": "EGRESS_ALLOWED", "body_text": "OK"},
     "throttled_periods_during_active_http": 3,
-    "throttled_usec_during_active_http": 239110,
-    "memory_peak_bytes": 28459008,
+    "throttled_usec_during_active_http": 185623,
+    "memory_peak_bytes": 27914240,
     "pids_peak": 9,
     "oom_delta": 0,
     "oom_kill_delta": 0,
