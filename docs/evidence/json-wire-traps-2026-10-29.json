@@ -1,0 +1,23 @@
+{
+  "date_utc": "2026-10-29",
+  "source_commit": "e1b0d15c1ccc516d7e8fcfcf275bea741e9f416b",
+  "binary_sha256": "e151e2a42e5c9047860282005b0d18437ea00ed25090e95a64edebbf2f348e65",
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "environment": "Linux route-free disposable network namespace with synthetic DNS and HTTP on 11.0.0.1; legacy MCP stdio",
+  "result": "passed",
+  "new_wire_cases": {
+    "json-escaped-instruction": "EGRESS_UNTRUSTED_INSTRUCTION",
+    "json-nested-instruction": "EGRESS_UNTRUSTED_INSTRUCTION",
+    "json-duplicate-escaped-shadow": "EGRESS_INVALID_JSON",
+    "json-private-number-key": "EGRESS_ALLOWED",
+    "plain": "EGRESS_ALLOWED"
+  },
+  "controls": [
+    "first three denials had no body_text and no synthetic marker in MCP result, stderr or audit",
+    "all five requests hit only the approved fixture and the final GET recovered in the same MCP process"
+  ],
+  "full_probe_mcp_decisions": 2233,
+  "log": "docs/evidence/json-wire-traps-2026-10-29.log",
+  "log_sha256": "7e897804bf0c1651ccd88a8e31503cf9e9584763fa55ee54cdc3fc58e4fb51b3",
+  "limitations": "Finite controlled HTTP/DNS wire sample through legacy MCP stdio, not a native client. No general prompt-injection quarantine, independent duplicate-key parser oracle, or coverage of other tools."
+}
