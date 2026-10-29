@@ -1,0 +1,102 @@
+{
+  "date_utc": "2026-10-29T12:09:17Z",
+  "source_base": "3578b654cd5e5e32bf34c3af095b5e75720b2d10",
+  "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+  "harness": "python3 tools/client_cancellation_probe.py CLIENT target/debug/outbound-guard-mcp",
+  "fixture": "Disposable route-free Linux network namespace with controlled DNS and HTTP; only allowed.test configured for approved requests; no public HTTP target.",
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "retained_run": {
+        "client": "claude",
+        "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+        "control_path": "stream-json interrupt",
+        "socket_closed": true,
+        "live_client": true,
+        "client_control_acknowledged": true,
+        "matching_wire_cancellation": true,
+        "cancelled_fetch_replied": false,
+        "cancel_notifications": 1,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fetches": 4,
+        "socket_closed_after_seconds": 0.04,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue"
+      },
+      "attempts": 2,
+      "passed_runs": 2
+    },
+    "codex": {
+      "version": "0.151.0",
+      "retained_completed_run": {
+        "client": "codex",
+        "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+        "control_path": "app-server turn/interrupt",
+        "socket_closed": true,
+        "live_client": true,
+        "client_control_acknowledged": true,
+        "matching_wire_cancellation": false,
+        "cancelled_fetch_replied": true,
+        "cancel_notifications": 0,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fetches": 4,
+        "socket_closed_after_seconds": 2.997,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_RESPONSE_TOO_SLOW",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue"
+      },
+      "attempts": 2,
+      "passed_runs": 1,
+      "inconclusive_repeat": "No MCP call reached the fixture within 80 seconds; private transcript was cleaned and cause was not established."
+    },
+    "cursor": {
+      "version": "2026.10.19-6bbf2c4",
+      "attempts": 2,
+      "passed_runs": 0,
+      "first_attempt": "No MCP call reached the fixture within 80 seconds; cause not established.",
+      "second_attempt": {
+        "client": "cursor",
+        "reason": "plan upgrade required by native client",
+        "mcp_calls": 0
+      },
+      "result": "inconclusive; no guarded_fetch call was observed"
+    }
+  },
+  "cleanup": "All four temporary client workspaces and owned namespaces from the retained runs and inconclusive attempts were removed; no private transcripts or credentials were committed.",
+  "scope": "Actual authenticated Claude Code and Codex CLI control paths against the exact executable, with controlled held HTTP and recovery/denial/HEAD calls. Cursor was blocked before a tool call in the diagnostic repeat.",
+  "limitations": [
+    "Client control APIs, not desktop Stop or terminal Escape.",
+    "No client ran inside a cgroup quota; these results do not transfer the CPU/PID/OOM fixture behavior to native clients.",
+    "Codex omitted MCP cancellation in its completed run; its socket closed under the guard slow-response deadline.",
+    "Cursor had zero observed MCP calls and no cancellation coverage.",
+    "No coverage of traffic sent through other tools or automatic skill triggering."
+  ]
+}

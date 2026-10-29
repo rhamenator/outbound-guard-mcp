@@ -2,6 +2,30 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native control replay, 2026-10-29
+
+The [exact-binary record](evidence/native-client-control-current-binary-2026-10-29.json)
+replays the route-free held-HTTP cancellation control on the executable with
+SHA-256 `1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`.
+Claude Code 2.1.301 sent one matching MCP cancellation after its stream-JSON
+interrupt, suppressed the cancelled tool reply, and the fixture observed
+socket closure in 0.04 seconds in the retained run. Its subsequent approved
+GET, loopback denial, and HEAD control passed. Codex CLI 0.151.0 acknowledged
+an app-server turn interrupt but sent no MCP cancellation in its completed
+run; the guarded fetch instead returned `EGRESS_RESPONSE_TOO_SLOW` and the
+fixture socket closed in 2.997 seconds. Codex then passed the same recovery,
+loopback-denial and HEAD controls. A later Codex repeat issued no MCP call
+within 80 seconds and is inconclusive, not an additional passing run.
+
+Cursor CLI 2026.10.19-6bbf2c4 made no MCP call in an 80-second attempt. A
+second attempt returned its native plan-upgrade notice and ended before any
+MCP call. The harness now recognizes that plan gate on the control path,
+reports zero tool calls, and exits within ten seconds instead of waiting for
+the fixture deadline. Cursor cancellation delivery remains untested on this
+executable. These are authenticated client control APIs, not desktop Stop
+buttons or terminal Escape keys; no native client ran inside the cgroup
+quota probes. Traffic through other tools remains outside Outbound Guard.
+
 ## Native-client valid JSON instruction pass-through, 2026-10-28
 
 The opt-in `OUTBOUND_GUARD_CLIENT_JSON_INJECTION=1` replay asks a real

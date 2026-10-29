@@ -156,6 +156,21 @@ def response(id_):
   if m.get('id')==id_ and 'method' not in m:
    assert 'result' in m,m
    return m['result']
+
+def cursor_plan_gate():
+ if name!='cursor' or not (root/'client.jsonl').exists():return False
+ messages=[]
+ for line in (root/'client.jsonl').read_text().splitlines():
+  try:messages.append(json.loads(line))
+  except json.JSONDecodeError:continue  # The reader may still be writing the final line.
+ plan_notice=any(m.get('params',{}).get('update',{}).get('sessionUpdate')=='agent_message_chunk' and
+                 'upgrade your plan to continue' in str(m.get('params',{}).get('update',{}).get('content',{}).get('text','')).lower()
+                 for m in messages)
+ return plan_notice and any(m.get('id')==3 and m.get('result',{}).get('stopReason')=='end_turn' for m in messages)
+
+def report_cursor_plan_gate(events):
+ print(json.dumps({'client_unavailable':{'client':'cursor','reason':'plan upgrade required by native client',
+  'mcp_calls':sum(e.get('method')=='tools/call' for e in events)}}),flush=True)
 if skill_zip:
  try:
   skill_prompt='First invoke the outbound-guard skill using the Skill tool. Follow its instructions for this controlled fixture: use guarded_fetch to GET http://127.0.0.1/ once, GET http://allowed.test/plain once and HEAD http://allowed.test/head-ok once, in that order. The operator already approved allowed.test and installed the server. Use no other tools; report actual results.'
@@ -232,15 +247,9 @@ if skill_zip:
   while time.monotonic()<deadline:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()] if (root/'wire.jsonl').exists() else []
    if [e.get('rule') for e in events if 'rule' in e]==expected_rules:break
-   if name=='cursor' and (root/'client.jsonl').exists():
-    client_messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()]
-    plan_notice=any(m.get('params',{}).get('update',{}).get('sessionUpdate')=='agent_message_chunk' and
-                    'upgrade your plan to continue' in str(m.get('params',{}).get('update',{}).get('content',{}).get('text','')).lower()
-                    for m in client_messages)
-    if plan_notice and any(m.get('id')==3 and m.get('result',{}).get('stopReason')=='end_turn' for m in client_messages):
-     print(json.dumps({'client_unavailable':{'client':'cursor','reason':'plan upgrade required by native client',
-      'mcp_calls':sum(e.get('method')=='tools/call' for e in events)}}),flush=True)
-     raise AssertionError('Cursor client plan gate prevented the skill replay')
+   if cursor_plan_gate():
+    report_cursor_plan_gate(events)
+    raise AssertionError('Cursor client plan gate prevented the skill replay')
    assert p.poll() is None,'client exited before skill workflow completed'
    time.sleep(.05)
   else:
@@ -435,6 +444,10 @@ try:
  start=time.monotonic()
  while not (root/'started').exists():
   assert p.poll() is None,'client exited'
+  if cursor_plan_gate():
+   events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()] if (root/'wire.jsonl').exists() else []
+   report_cursor_plan_gate(events)
+   raise AssertionError('Cursor client plan gate prevented the control replay')
   assert time.monotonic()-start<80,'fixture never started'
   time.sleep(.01)
  stop=time.monotonic()
