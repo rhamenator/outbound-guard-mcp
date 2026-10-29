@@ -2,6 +2,29 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native malformed HTTP chunk framing, 2026-10-29
+
+The [current-binary malformed HTTP record](evidence/native-client-malformed-http-current-binary-2026-10-29.json)
+replays four ordered calls through the installed skill in real Claude Code
+2.1.301 and Codex CLI 0.151.0 clients. After approved GET and HEAD controls,
+a route-free HTTP/1.1 fixture sends an invalid hexadecimal chunk size and a
+truncated chunk. Both clients received `EGRESS_READ_FAILURE` for each
+malformed response; only the controls returned 200. The HTTP fixture
+recorded exactly `/plain`, `/head-ok`, `/chunked-bad-size`, and
+`/chunked-truncated`. Both used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_MALFORMED=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Cursor was not rerun after its preceding native plan gate yielded zero MCP
+calls. This tests two chunked-body malformations, not malformed MCP frames,
+other HTTP parser states, TLS, or HTTP/2. Fixture hits are not packet or
+syscall evidence for every possible destination. Explicit skill use does not
+prove automatic triggering or cover traffic sent through other tools.
+
 ## Current-binary native slow HTTP denial and recovery, 2026-10-29
 
 The [current-binary slow HTTP record](evidence/native-client-slow-http-current-binary-2026-10-29.json)
