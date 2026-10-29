@@ -1,0 +1,25 @@
+{
+  "base_commit": "f4f09f9a0d32c0a0e53b4b25f8331e917dd86a88",
+  "campaign": "local network-free json scanner LLVM libFuzzer, 60s",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "clang": "Ubuntu clang version 18.1.8 (20ubuntu8)",
+  "runtime_sha256": "28dad32128b676dc5fc89f1638040ae1d6be573f5543a58faef2f5f63679fa9f",
+  "input_sha256_lines": [
+    "8ed0f68a1927a7ec08ee0d227dce905c4bcc6c1b82543d342035bf0a55915584  Cargo.toml",
+    "f5f0f24b280539cf2facff3ac0b2a77c7ec5f919297ab2ceb7a6ed2788e68cba  Cargo.lock",
+    "15ce6f2e578ecf8dd8647900598c858a68e36d6dd087fcc57f53c6c3cbde2d81  src/lib.rs",
+    "7674ec1bc25b4008a9029a12fced3bb82639220904b807cd5683735c159a8089  src/main.rs",
+    "7b2ee0938d7efe994d755aab84ee4d1dd0caddd3b57d11c3c6ce5830869027ac  src/transport.rs",
+    "98d3a1784d00c4b39cf976f9d09beb0a13e017bfbf25813dc503508ea0637937  examples/frame_fuzz.rs",
+    "57e49f76f9583a4ea52a6f54cf6dd0c75ff5a85a2e09128653f864cbc9dc7260  examples/json_fuzz.rs",
+    "b18b7220a2419d71d7e006f6889c593ce5294bce9660c5ca422b06c31b39f132  examples/policy_fuzz.rs",
+    "33399876ee87c6c7c3fe867d32bf06987b65c0e3ca42aba069ac6a189a3c6b5d  examples/rpc_fuzz.rs",
+    "1ff404898e58ef6ace89791ccd0e1d84a333f74d361995a1578bc13801108f2b  tools/policy_fuzz.sh"
+  ],
+  "report_sha256": "f9cca602312177f4f0ae621e5704b63f931e424956c218db9d9d78cbab64c6f2",
+  "corpus_archive_sha256": "3ca3f6dd8d3e47134115ed8b404dce29078ead607c5a8e605ab9a14710c23fb5",
+  "campaign_log_gzip_sha256": "4e7c93c54de5230afb206ace6895495db9741a92ce20362ca9fd9111eb630ace",
+  "corpus_file_count": 997,
+  "limits": "60s target, 2s/input, hard 1GiB virtual memory/64 FDs/90s CPU, libFuzzer 512MiB RSS threshold; no ASan/UBSan",
+  "limitations": "Scanner/canonical-value oracle only; duplicate-key parser errors covered by seeds and unit tests, not a fully independent duplicate-key oracle; Value private-number collisions cause oracle parse errors and are excluded from equivalence assertions; no HTTP/DNS/MCP client or general prompt-injection proof."
+}

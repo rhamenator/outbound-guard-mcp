@@ -712,6 +712,11 @@ impl<'de> Deserialize<'de> for JsonInstructionScan {
     }
 }
 
+#[cfg(feature = "policy-fuzz")]
+pub fn fuzz_json_instruction_scan(text: &str) -> Result<bool, serde_json::Error> {
+    serde_json::from_str::<JsonInstructionScan>(text).map(|scan| scan.0)
+}
+
 pub fn parse_allowed_hosts(value: &str) -> Result<Vec<String>, &'static str> {
     if value.is_empty() {
         return Ok(Vec::new());
@@ -1310,6 +1315,7 @@ mod tests {
         for text in [
             r#"{"instructional":"a legitimate field"}"#,
             r#"{"items":[{"value":"an instruction-like sentence"}]}"#,
+            r#"{"$serde_json::private::Number":0}"#,
         ] {
             let parsed: JsonInstructionScan = serde_json::from_str(text).unwrap();
             assert!(!parsed.0, "{text}");
