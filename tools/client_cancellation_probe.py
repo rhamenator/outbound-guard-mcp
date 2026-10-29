@@ -363,7 +363,8 @@ if skill_zip:
   if upgrade_mode:
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/switch-protocols','/plain'], hits
-   assert 'body_text' not in [e for e in events if e.get('rule')=='EGRESS_PROTOCOL_UPGRADE_DENIED'][0], events
+   denied=[e for e in events if e.get('rule')=='EGRESS_PROTOCOL_UPGRADE_DENIED']
+   assert len(denied)==1 and denied[0].get('body_text_present') is False, denied
   if json_injection_mode:
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/json-duplicate-shadow' if json_duplicate_mode else '/json-injection','/plain'], hits

@@ -51,7 +51,8 @@
           "/switch-protocols",
           "/plain"
         ],
-        "upgrade_mode": true
+        "upgrade_mode": true,
+        "http_101_body_text_present": false
       }
     },
     "codex": {
@@ -84,7 +85,8 @@
           "/switch-protocols",
           "/plain"
         ],
-        "upgrade_mode": true
+        "upgrade_mode": true,
+        "http_101_body_text_present": false
       }
     }
   },
@@ -98,5 +100,6 @@
     "One HTTP/1.1 101 response; not general upgraded-protocol, HTTP/2 or parser conformance.",
     "Fixture hit list does not prove packet or syscall absence for every destination.",
     "Explicit skill invocation does not prove automatic triggering; Cursor and other-tool traffic not covered."
-  ]
+  ],
+  "body_presence_assertion": "The bridge records only a boolean for body_text key presence in structuredContent; each native replay asserted the single HTTP 101 denial had body_text_present=false. Replayed after review feedback with both clients; no response body was persisted."
 }
