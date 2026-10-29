@@ -2,6 +2,30 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native redirect and encoded-response traps, 2026-10-29
+
+The [current-binary trap record](evidence/native-client-traps-current-binary-2026-10-29.json)
+replays five ordered calls through the installed skill in real Claude Code
+2.1.301 and Codex CLI 0.151.0 clients. After a loopback denial and approved
+GET/HEAD controls, the controlled host returns a redirect to a private name
+and a gzip body that would expand from under 16 KiB to 8 MiB. Both clients
+received `EGRESS_REDIRECT_DENIED` and `EGRESS_ENCODED_RESPONSE` for those
+traps. The route-free HTTP fixture observed only `/plain`, `/head-ok`,
+`/redirect`, and `/gzip-bomb`, with no private redirect-target hit. Both
+used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_TRAPS=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Cursor was not rerun after its preceding native plan gate yielded zero MCP
+calls. These are exact policy decisions and fixture hits, not a packet or
+syscall proof for every destination. The encoded response was rejected, so
+this run did not measure decompression or peak memory. Explicit skill use
+does not prove automatic triggering or cover traffic sent through other tools.
+
 ## Current-binary native synthetic URL exfiltration denial, 2026-10-29
 
 The [current-binary exfiltration record](evidence/native-client-exfil-current-binary-2026-10-29.json)
@@ -419,9 +443,10 @@ This tests policy decisions through live clients, with only the MCP child in
 a disposable route-free namespace. The fixture hit list is not a syscall or
 packet trace proving no forbidden socket opened; existing network trace
 probes address that separately. Compression is rejected, so no decompression
-or peak-memory measurement occurs. DNS rebinding, secret exfiltration,
-malformed protocol and resource-exhaustion behavior in real clients remain
-open. The Debian installer is unsigned, with signed build provenance.
+or peak-memory measurement occurs. Separate sections record later native-client
+DNS rebinding, synthetic URL exfiltration, malformed protocol, and bounded
+resource probes; those finite cases do not close their broader release gates.
+The Debian installer is unsigned, with signed build provenance.
 
 ## Trusted-main Debian candidate replay, 2026-10-28
 
