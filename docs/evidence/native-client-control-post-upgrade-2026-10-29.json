@@ -1,0 +1,88 @@
+{
+  "date_utc": "2026-10-29T22:32:24Z",
+  "source_base": "243cb4d3e96354b24f156fa5ec295cdbf6935071",
+  "binary_sha256": "5bc6e89ef3faf05bb754f1ae51c8ea50a1a1368558aba6af89477e32519fe308",
+  "skill_zip_sha256": "5fcb46943dd9876c4bb6b7e8c252716857c69aaa86514a4eb8b7e255541da2ae",
+  "skill_zip_contents": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "harness": "python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "operator_allowed_hosts": [
+      "allowed.test"
+    ],
+    "ordered_calls": [
+      "GET http://127.0.0.1/",
+      "GET http://allowed.test/plain",
+      "HEAD http://allowed.test/head-ok"
+    ]
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "skill_tool_result_success": true,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ]
+      }
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": null,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "skill_tool_result_success": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ]
+      }
+    }
+  },
+  "cursor": {
+    "version": "2026.10.19-6bbf2c4",
+    "status": "not rerun; preceding native plan gate yielded zero MCP calls"
+  },
+  "cleanup": "Both temporary client workspaces and owned namespaces removed; no raw transcript, credential or model output committed.",
+  "scope": "Post-101-fix binary native-client control replay: loopback denial and approved GET/HEAD succeeded for Claude and Codex.",
+  "limitations": [
+    "This control sequence does not send an HTTP 101 response through a native client; the 101 regression is a separate direct MCP route-free probe.",
+    "No final-candidate adversarial or UI cancellation matrix, automatic skill trigger, Cursor or other-tool coverage."
+  ]
+}

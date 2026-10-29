@@ -2,6 +2,26 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Post-upgrade-fix native control replay, 2026-10-29
+
+The [post-fix control record](evidence/native-client-control-post-upgrade-2026-10-29.json)
+uses the executable SHA-256
+`5bc6e89ef3faf05bb754f1ae51c8ea50a1a1368558aba6af89477e32519fe308`
+from the HTTP 101 fix and the inspected two-file skill ZIP. Real Claude
+Code 2.1.301 and Codex CLI 0.151.0 sessions each completed a loopback GET
+with `EGRESS_INVALID_HOST`, then approved GET and HEAD controls with
+`EGRESS_ALLOWED`/200 in a route-free fixture.
+
+```bash
+python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `codex` for the second client. This sequence does not deliver a
+101 response through either native client; the 101 denial is established by
+the separate direct MCP route-free regression. Cursor was not rerun after
+its native plan gate yielded zero MCP calls. Explicit skill use does not
+prove automatic triggering or cover traffic sent through other tools.
+
 ## Current-binary native pinned-address fallback, 2026-10-29
 
 The [current-binary fallback record](evidence/native-client-fallback-current-binary-2026-10-29.json)
