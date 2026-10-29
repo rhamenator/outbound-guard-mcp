@@ -2,6 +2,30 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native pinned-address fallback, 2026-10-29
+
+The [current-binary fallback record](evidence/native-client-fallback-current-binary-2026-10-29.json)
+uses real Claude Code 2.1.301 and Codex CLI 0.151.0 skill sessions with
+executable SHA-256 `1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP. Each client first fetched approved
+`allowed.test`, then `fallback-pin.test`. The latter's first A answer listed
+a refused public-policy address followed by the locally served public-policy
+address; a hypothetical second A answer would switch to loopback. Each
+client completed two `EGRESS_ALLOWED`/200 calls, and the fixture recorded
+two `/plain` hits and one A query for `fallback-pin.test`.
+
+```bash
+OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `codex` for the second client. One observed A query shows no
+application-visible retry in this path; it does not cover every OS resolver,
+TLS or HTTP reconnect state. These native sessions did not trace packets or
+connect syscalls. The earlier route-free syscall fixture is separate
+evidence. Cursor was not rerun after its native plan gate yielded zero MCP
+calls. Explicit skill use does not prove automatic triggering or cover
+traffic sent through other tools.
+
 ## Current-binary native response-body limits and recovery, 2026-10-29
 
 The [current-binary body-limit record](evidence/native-client-body-limits-current-binary-2026-10-29.json)
