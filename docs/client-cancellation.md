@@ -2,6 +2,28 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client HTTP 101 denial and recovery, 2026-10-29
+
+The [native HTTP 101 record](evidence/native-client-http-upgrade-2026-10-29.json)
+uses executable SHA-256
+`5bc6e89ef3faf05bb754f1ae51c8ea50a1a1368558aba6af89477e32519fe308`
+and the inspected two-file skill ZIP in real Claude Code 2.1.301 and
+Codex CLI 0.151.0 sessions. Each client requested approved `/plain`, then
+a controlled HTTP/1.1 `101 Switching Protocols` response, then `/plain`
+again. Both received `EGRESS_ALLOWED`/200 for the controls and
+`EGRESS_PROTOCOL_UPGRADE_DENIED` without body text for the upgrade. The
+route-free fixture recorded exactly those three paths per session.
+
+```bash
+OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `codex` for the second client. This is one 101 response, not
+broad upgraded-protocol, HTTP/2 or parser conformance. Fixture hits do not
+prove every packet or syscall destination. Cursor was not rerun after its
+native plan gate yielded zero MCP calls. Explicit skill use does not prove
+automatic triggering or cover traffic sent through other tools.
+
 ## Post-upgrade-fix native control replay, 2026-10-29
 
 The [post-fix control record](evidence/native-client-control-post-upgrade-2026-10-29.json)
