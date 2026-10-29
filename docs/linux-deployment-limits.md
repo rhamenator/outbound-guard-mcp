@@ -39,6 +39,16 @@ The outer supervisor creates one randomly named transient user service with aggr
 
 On 2026-10-22, Linux 7.0.0-38-generic/systemd 259.5 produced the required OOM result and fresh-group recovery. This is deliberate helper-induced aggregate exhaustion, not an exploit that makes the server allocate unbounded memory. The result is process termination/disconnect, **not a structured MCP error**. It does not establish active-request completion, automatic recovery, durable state, every OOM victim-selection policy, PID exhaustion or CPU-saturation behavior. The hard no-swap 64 MiB limit applies only to that test group; no host memory limit or global OOM policy is changed. This test is separate from hosted CI and requires the same user-manager/controller permissions as the first probe.
 
+### Active HTTP during bounded group OOM
+
+```sh
+python3 tools/systemd_active_http_oom_probe.py /absolute/path/to/outbound-guard-mcp
+```
+
+This separate optional probe uses `sudo -n` only to create and enter a disposable route-free network namespace with a local `11.0.0.1` loopback address and resolver configuration. It runs one controlled DNS fixture, HTTP fixture, and real MCP stdio server in a uniquely named user-systemd group with 64 MiB memory, no swap, 16 tasks, 50% CPU, 64 descriptors and `OOMPolicy=kill`. The fixture sends one response byte for an approved `guarded_fetch` and holds the second. The probe checks the exact DNS queries and HTTP path, confirms the server belongs to the group and has no completed reply, then touches at most 128 MiB in one-MiB chunks. The outer supervisor requires `Result=oom-kill`, no surviving group processes, cleans its namespace and unit, and requires a fresh limited MCP group to serve a control call. No public route or target is used; the Python fixture launched by `sudo ip netns exec` runs as root inside the test namespace, so use only where that local privilege is authorized.
+
+The [2026-10-29 active-HTTP OOM evidence](evidence/cgroup-active-http-oom-2026-10-29.json) records two corrected local passes on Linux 7.0.0-38-generic/systemd 259.9. It proves one request was pending after the fixture wrote its first byte and before helper-induced group OOM, followed by group termination and a fresh-group control. The fixture dies with the group, so peer-observed socket closure and any post-OOM MCP reply are not measured. This is no guarantee of automatic recovery, native-client behavior, victim selection, or sustained/combined resource pressure. Hosted CI does not run this namespace/user-systemd probe.
+
 ## Deliberate task exhaustion control
 
 ```sh
