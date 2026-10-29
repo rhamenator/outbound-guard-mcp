@@ -34,6 +34,8 @@ def inside(binary):
     stop = threading.Event()
     first_byte = threading.Event()
     release_body = threading.Event()
+    cancel_started = threading.Event()
+    cancel_closed = threading.Event()
     dns_names = []
     http_paths = []
     dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -75,7 +77,7 @@ def inside(binary):
         def do_GET(self):
             http_paths.append(self.path)
             assert self.headers.get('Host') == HOST, self.headers
-            assert self.path in ('/drip', '/plain'), self.path
+            assert self.path in ('/drip', '/plain', '/cancel'), self.path
             body = b'AB' if self.path == '/drip' else b'OK'
             self.send_response(200)
             self.send_header('Content-Type', 'text/plain')
@@ -83,6 +85,17 @@ def inside(binary):
             self.end_headers()
             self.wfile.write(body[:1])
             self.wfile.flush()
+            if self.path == '/cancel':
+                cancel_started.set()
+                self.connection.settimeout(4)
+                try:
+                    if self.connection.recv(1) == b'':
+                        cancel_closed.set()
+                except (BrokenPipeError, ConnectionResetError):
+                    cancel_closed.set()
+                except socket.timeout:
+                    pass
+                return
             if self.path == '/drip':
                 first_byte.set()
                 assert release_body.wait(4), 'held HTTP body was not released'
@@ -122,6 +135,11 @@ def inside(binary):
                                       'params': payload}) + '\n')
         child.stdin.flush()
 
+    def notify(method, params):
+        child.stdin.write(json.dumps({'jsonrpc': '2.0', 'method': method,
+                                      'params': params}) + '\n')
+        child.stdin.flush()
+
     def receive(id_):
         assert select.select([child.stdout], [], [], 4)[0], f'MCP reply deadline for {id_}'
         reply = json.loads(child.stdout.readline())
@@ -157,10 +175,42 @@ def inside(binary):
         recovery = receive('recovery')['structuredContent']
         assert recovery['rule'] == 'EGRESS_ALLOWED' and recovery['body_text'] == 'OK', recovery
         assert burner.wait(timeout=5) == 0
+        burner.stderr.close()
+        burner = None
+        rpc('tools/call', 'cancel', {'name': 'guarded_fetch',
+                                   'arguments': {'url': 'http://allowed.test/cancel'}})
+        assert cancel_started.wait(3), 'cancellable HTTP request did not reach controlled fixture'
+        cancel_before = cpu_stats()
+        burner = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--burn'],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        assert Path(f'/proc/{burner.pid}/cgroup').read_text() == own_group
+        cancel_active = cpu_stats()
+        deadline = time.monotonic() + 1.5
+        while cancel_active['nr_throttled'] - cancel_before['nr_throttled'] < 3:
+            assert burner.poll() is None and time.monotonic() < deadline, 'no CPU throttling during pending cancellation'
+            time.sleep(.02)
+            cancel_active = cpu_stats()
+        assert not cancel_closed.is_set(), 'HTTP socket closed before MCP cancellation'
+        started = time.monotonic()
+        notify('notifications/cancelled', {'requestId': 'cancel'})
+        rpc('ping', 'cancel-barrier')
+        receive('cancel-barrier')  # A cancelled tool call has no reply.
+        assert cancel_closed.wait(1), 'cancelled HTTP socket remained open'
+        cancellation_seconds = time.monotonic() - started
+        assert cancellation_seconds < 1, cancellation_seconds
+        rpc('resources/read', 'audit', {'uri': 'outbound-guard://logs/audit.json'})
+        events = json.loads(receive('audit')['contents'][0]['text'])['events']
+        assert [event['rule'] for event in events] == [
+            'EGRESS_ALLOWED', 'EGRESS_ALLOWED', 'EGRESS_CANCELLED'], events
+        rpc('tools/call', 'cancel', {'name': 'guarded_fetch',
+                                   'arguments': {'url': 'http://allowed.test/plain'}})
+        reused = receive('cancel')['structuredContent']
+        assert reused['rule'] == 'EGRESS_ALLOWED' and reused['body_text'] == 'OK', reused
+        assert burner.wait(timeout=5) == 0
         rpc('ping', 'after')
         receive('after')
-        assert http_paths == ['/drip', '/plain'], http_paths
-        assert dns_names.count((HOST, 1)) == 2 and dns_names.count((HOST, 28)) == 2, dns_names
+        assert http_paths == ['/drip', '/plain', '/cancel', '/plain'], http_paths
+        assert dns_names.count((HOST, 1)) == 4 and dns_names.count((HOST, 28)) == 4, dns_names
         assert all(name == HOST for name, _ in dns_names), dns_names
         memory_peak = int((group / 'memory.peak').read_text())
         assert memory_peak < 96 * 1024 * 1024, memory_peak
@@ -169,15 +219,21 @@ def inside(binary):
         assert memory_after['oom_kill'] == memory_before['oom_kill']
         pids_peak = int((group / 'pids.peak').read_text())
         assert pids_peak <= 16, pids_peak
+        child.stdin.close()
+        assert child.wait(timeout=3) == 0, child.returncode
+        assert not child.stdout.read() and not child.stderr.read(), 'late MCP reply or stderr after cancellation'
         print(json.dumps({'result': 'passed', 'binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
                           'limits': limits, 'http_paths': http_paths, 'dns_queries': dns_names,
                           'throttled_periods_during_active_http': active['nr_throttled'] - before['nr_throttled'],
                           'throttled_usec_during_active_http': active['throttled_usec'] - before['throttled_usec'],
+                          'throttled_periods_before_cancellation': cancel_active['nr_throttled'] - cancel_before['nr_throttled'],
+                          'cancellation_socket_closed_seconds': round(cancellation_seconds, 6),
+                          'cancelled_reply_suppressed': True, 'cancelled_id_reused': True,
                           'memory_peak_bytes': memory_peak, 'pids_peak': pids_peak,
                           'oom_delta': memory_after['oom'] - memory_before['oom'],
                           'oom_kill_delta': memory_after['oom_kill'] - memory_before['oom_kill'],
                           'post_pressure_ping': True,
-                          'limitations': 'one finite active HTTP case in a route-free netns; no native client, cancellation, OOM or PID exhaustion'}),
+                          'limitations': 'finite active HTTP and cancellation under CPU pressure in a route-free netns; no native client, OOM or PID exhaustion'}),
               flush=True)
     finally:
         release_body.set()
