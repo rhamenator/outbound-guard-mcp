@@ -2,6 +2,30 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native slow HTTP denial and recovery, 2026-10-29
+
+The [current-binary slow HTTP record](evidence/native-client-slow-http-current-binary-2026-10-29.json)
+replays four ordered GETs through the installed skill in real Claude Code
+2.1.301 and Codex CLI 0.151.0 clients: an approved control, a body sent one
+byte per second, an eleven-second delay before headers, and a final approved
+control. Both clients received `EGRESS_RESPONSE_TOO_SLOW` for the drip,
+`EGRESS_NETWORK_FAILURE` for the delayed first byte, and `EGRESS_ALLOWED`
+for the final recovery call. The route-free fixture recorded exactly
+`/plain`, `/drip`, `/delayed`, `/plain`. Both used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Cursor was not rerun after its preceding native plan gate yielded zero MCP
+calls. This records decisions and fixture hits for one drip rate and one
+first-byte delay, not precise byte counts, packet timings, socket-close
+latency, peak memory, concurrent slow requests, or other pacing patterns.
+Explicit skill use does not prove automatic triggering or cover traffic sent
+through other tools.
+
 ## Current-binary native redirect and encoded-response traps, 2026-10-29
 
 The [current-binary trap record](evidence/native-client-traps-current-binary-2026-10-29.json)
