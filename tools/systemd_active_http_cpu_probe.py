@@ -36,6 +36,8 @@ def inside(binary):
     release_body = threading.Event()
     cancel_started = threading.Event()
     cancel_closed = threading.Event()
+    release_tasks = threading.Event()
+    task_threads = []
     dns_names = []
     http_paths = []
     dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -127,6 +129,9 @@ def inside(binary):
         return {key: int(value) for key, value in
                 (line.split() for line in (group / 'memory.events').read_text().splitlines())}
 
+    def task_limit_events():
+        return int(dict(line.split() for line in (group / 'pids.events').read_text().splitlines())['max'])
+
     def rpc(method, id_, params=None):
         payload = dict(params or {})
         payload['_meta'] = {'io.modelcontextprotocol/protocolVersion': '2026-07-28',
@@ -207,10 +212,53 @@ def inside(binary):
         reused = receive('cancel')['structuredContent']
         assert reused['rule'] == 'EGRESS_ALLOWED' and reused['body_text'] == 'OK', reused
         assert burner.wait(timeout=5) == 0
+        burner.stderr.close()
+        burner = None
+        cancel_started.clear()
+        cancel_closed.clear()
+        rpc('tools/call', 'task-cancel', {'name': 'guarded_fetch',
+                                        'arguments': {'url': 'http://allowed.test/cancel'}})
+        assert cancel_started.wait(3), 'task-pressure HTTP request did not reach fixture'
+        task_events_before = task_limit_events()
+        for _ in range(16):
+            thread = threading.Thread(target=release_tasks.wait)
+            try:
+                thread.start()
+            except RuntimeError:
+                break
+            task_threads.append(thread)
+        else:
+            raise AssertionError('task ceiling did not reject helper-thread creation')
+        tasks_at_ceiling = int((group / 'pids.current').read_text())
+        task_events_delta = task_limit_events() - task_events_before
+        assert tasks_at_ceiling == 16 and task_events_delta > 0, (tasks_at_ceiling, task_events_delta)
+        assert not cancel_closed.is_set(), 'HTTP socket closed before task-ceiling cancellation'
+        started = time.monotonic()
+        notify('notifications/cancelled', {'requestId': 'task-cancel'})
+        rpc('ping', 'task-barrier')
+        receive('task-barrier')
+        assert cancel_closed.wait(1), 'task-ceiling cancellation retained HTTP socket'
+        task_cancel_seconds = time.monotonic() - started
+        assert task_cancel_seconds < 1, task_cancel_seconds
+        release_tasks.set()
+        for thread in task_threads:
+            thread.join(timeout=2)
+            assert not thread.is_alive()
+        tasks_after_release = int((group / 'pids.current').read_text())
+        assert tasks_after_release < 16, tasks_after_release
+        rpc('resources/read', 'task-audit', {'uri': 'outbound-guard://logs/audit.json'})
+        events = json.loads(receive('task-audit')['contents'][0]['text'])['events']
+        assert [event['rule'] for event in events] == [
+            'EGRESS_ALLOWED', 'EGRESS_ALLOWED', 'EGRESS_CANCELLED',
+            'EGRESS_ALLOWED', 'EGRESS_CANCELLED'], events
+        rpc('tools/call', 'task-cancel', {'name': 'guarded_fetch',
+                                        'arguments': {'url': 'http://allowed.test/plain'}})
+        task_reuse = receive('task-cancel')['structuredContent']
+        assert task_reuse['rule'] == 'EGRESS_ALLOWED' and task_reuse['body_text'] == 'OK', task_reuse
         rpc('ping', 'after')
         receive('after')
-        assert http_paths == ['/drip', '/plain', '/cancel', '/plain'], http_paths
-        assert dns_names.count((HOST, 1)) == 4 and dns_names.count((HOST, 28)) == 4, dns_names
+        assert http_paths == ['/drip', '/plain', '/cancel', '/plain', '/cancel', '/plain'], http_paths
+        assert dns_names.count((HOST, 1)) == 6 and dns_names.count((HOST, 28)) == 6, dns_names
         assert all(name == HOST for name, _ in dns_names), dns_names
         memory_peak = int((group / 'memory.peak').read_text())
         assert memory_peak < 96 * 1024 * 1024, memory_peak
@@ -229,14 +277,21 @@ def inside(binary):
                           'throttled_periods_before_cancellation': cancel_active['nr_throttled'] - cancel_before['nr_throttled'],
                           'cancellation_socket_closed_seconds': round(cancellation_seconds, 6),
                           'cancelled_reply_suppressed': True, 'cancelled_id_reused': True,
+                          'task_helper_threads': len(task_threads), 'tasks_at_ceiling': tasks_at_ceiling,
+                          'task_limit_events_delta': task_events_delta,
+                          'task_cancel_socket_closed_seconds': round(task_cancel_seconds, 6),
+                          'tasks_after_release': tasks_after_release, 'task_cancelled_id_reused': True,
                           'memory_peak_bytes': memory_peak, 'pids_peak': pids_peak,
                           'oom_delta': memory_after['oom'] - memory_before['oom'],
                           'oom_kill_delta': memory_after['oom_kill'] - memory_before['oom_kill'],
                           'post_pressure_ping': True,
-                          'limitations': 'finite active HTTP and cancellation under CPU pressure in a route-free netns; no native client, OOM or PID exhaustion'}),
+                          'limitations': 'finite active HTTP cancellation under CPU and PID pressure in a route-free netns; no native client, OOM or sustained load'}),
               flush=True)
     finally:
         release_body.set()
+        release_tasks.set()
+        for thread in task_threads:
+            thread.join(timeout=2)
         stop.set()
         dns_socket.close()
         http.shutdown()

@@ -1,0 +1,100 @@
+{
+  "date_utc": "2026-10-29T08:46:21Z",
+  "source_base": "de7976419ee4c0f4557b10bd78d13bfcb3193616",
+  "host": {
+    "kernel": "7.0.0-38-generic",
+    "systemd": "systemd 259 (259.9-0ubuntu0.1)",
+    "cgroup_version": 2
+  },
+  "command": "python3 tools/systemd_active_http_cpu_probe.py target/debug/outbound-guard-mcp",
+  "extension_probe_runs": 2,
+  "retained_run": {
+    "result": "passed",
+    "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+    "limits": {
+      "memory.max": "100663296",
+      "memory.swap.max": "0",
+      "pids.max": "16",
+      "cpu.max": "50000 100000"
+    },
+    "http_paths": [
+      "/drip",
+      "/plain",
+      "/cancel",
+      "/plain",
+      "/cancel",
+      "/plain"
+    ],
+    "dns_queries": [
+      [
+        "allowed.test",
+        1
+      ],
+      [
+        "allowed.test",
+        28
+      ],
+      [
+        "allowed.test",
+        1
+      ],
+      [
+        "allowed.test",
+        28
+      ],
+      [
+        "allowed.test",
+        1
+      ],
+      [
+        "allowed.test",
+        28
+      ],
+      [
+        "allowed.test",
+        1
+      ],
+      [
+        "allowed.test",
+        28
+      ],
+      [
+        "allowed.test",
+        1
+      ],
+      [
+        "allowed.test",
+        28
+      ],
+      [
+        "allowed.test",
+        1
+      ],
+      [
+        "allowed.test",
+        28
+      ]
+    ],
+    "throttled_periods_during_active_http": 3,
+    "throttled_usec_during_active_http": 207570,
+    "throttled_periods_before_cancellation": 3,
+    "cancellation_socket_closed_seconds": 0.010423,
+    "cancelled_reply_suppressed": true,
+    "cancelled_id_reused": true,
+    "task_helper_threads": 9,
+    "tasks_at_ceiling": 16,
+    "task_limit_events_delta": 1,
+    "task_cancel_socket_closed_seconds": 0.023946,
+    "tasks_after_release": 7,
+    "task_cancelled_id_reused": true,
+    "memory_peak_bytes": 28962816,
+    "pids_peak": 16,
+    "oom_delta": 0,
+    "oom_kill_delta": 0,
+    "post_pressure_ping": true,
+    "limitations": "finite active HTTP cancellation under CPU and PID pressure in a route-free netns; no native client, OOM or sustained load"
+  },
+  "cleanup": "No matching namespace or /etc/netns directory remained after the run; the transient user unit was stopped and reset.",
+  "scope": "One controlled modern MCP stdio cancellation notification after a held HTTP response first byte, while helper threads saturated the user-systemd cgroup at TasksMax16. The fixture observed socket closure, cancellation audit and request-ID reuse after helpers exited.",
+  "limitations": "Finite route-free local namespace/cgroup test. The driver is synthetic; this does not establish Codex, Claude Code, Cursor or desktop Stop notification delivery, OOM behavior, sustained load, fresh DNS admission at the ceiling or all task-limit interleavings. Hosted CI does not run this user-systemd/namespace probe."
+}
