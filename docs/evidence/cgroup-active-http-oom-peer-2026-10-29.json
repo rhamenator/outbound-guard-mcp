@@ -1,0 +1,88 @@
+{
+  "date_utc": "2026-10-29T11:19:26Z",
+  "source_base": "d15a5b91453255beaaf034dbc46ee7c7501c822b",
+  "host": {
+    "kernel": "7.0.0-38-generic",
+    "systemd": "systemd 259 (259.9-0ubuntu0.1)",
+    "cgroup_version": 2
+  },
+  "command": "python3 tools/systemd_active_http_oom_peer_probe.py target/debug/outbound-guard-mcp",
+  "corrected_probe_runs": 2,
+  "first_run": {
+    "result": "passed",
+    "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+    "limits": {
+      "memory.max": 67108864,
+      "memory.swap.max": 0,
+      "pids.max": 16,
+      "cpu.max": "50000 100000",
+      "memory.oom.group": 1
+    },
+    "fixture_outside_oom_group": true,
+    "fixture_cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.chromium.Chromium-17556.scope",
+    "worker_cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/outbound-guard-http-oom-peer-992031935de04f12ae5e86b2da5b0ff4.service",
+    "fixture_first_byte": {
+      "event": "FIRST_BYTE",
+      "dns_queries": [
+        [
+          "allowed.test",
+          1
+        ],
+        [
+          "allowed.test",
+          28
+        ]
+      ],
+      "http_path": "/held"
+    },
+    "fixture_peer_closure": {
+      "event": "PEER_CLOSED",
+      "elapsed_seconds": 0.145024
+    },
+    "active_request_before_oom": true,
+    "unit_result": "oom-kill",
+    "surviving_group_processes": 0,
+    "limitations": "finite synthetic stdio and helper-induced group OOM; no native-client delivery, automatic replay or sustained load",
+    "fresh_limited_group_recovered": true
+  },
+  "retained_run": {
+    "result": "passed",
+    "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+    "limits": {
+      "memory.max": 67108864,
+      "memory.swap.max": 0,
+      "pids.max": 16,
+      "cpu.max": "50000 100000",
+      "memory.oom.group": 1
+    },
+    "fixture_outside_oom_group": true,
+    "fixture_cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.chromium.Chromium-17556.scope",
+    "worker_cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/outbound-guard-http-oom-peer-ea6f77bc2c4f49ddb5757e2bc02f3941.service",
+    "fixture_first_byte": {
+      "event": "FIRST_BYTE",
+      "dns_queries": [
+        [
+          "allowed.test",
+          1
+        ],
+        [
+          "allowed.test",
+          28
+        ]
+      ],
+      "http_path": "/held"
+    },
+    "fixture_peer_closure": {
+      "event": "PEER_CLOSED",
+      "elapsed_seconds": 0.152284
+    },
+    "active_request_before_oom": true,
+    "unit_result": "oom-kill",
+    "surviving_group_processes": 0,
+    "limitations": "finite synthetic stdio and helper-induced group OOM; no native-client delivery, automatic replay or sustained load",
+    "fresh_limited_group_recovered": true
+  },
+  "cleanup": "No matching namespace or /etc/netns directory remained after either run. Each owned fixture process and transient user unit exited and was stopped/reset.",
+  "scope": "A controlled DNS/HTTP peer outside the 64-MiB OOM group sent one HTTP response byte and a local marker. The modern MCP guarded fetch remained pending; bounded helper allocation triggered group oom-kill. The external HTTP fixture observed its peer socket close, no group process survived, and a fresh limited group served MCP.",
+  "limitations": "Finite route-free namespace/cgroup and synthetic MCP stdio test. It does not establish structured post-OOM replies, native-client delivery or recovery, automatic replay/restart, sustained pressure, arbitrary OOM victim selection or traffic through other tools. Hosted CI does not run the privileged namespace/user-systemd probe."
+}
