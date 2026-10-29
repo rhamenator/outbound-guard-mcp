@@ -2,6 +2,35 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Current-binary native JSON instruction and duplicate-key denials, 2026-10-29
+
+The [current-binary JSON record](evidence/native-client-json-current-binary-2026-10-29.json)
+replays two controlled responses through the installed skill in real Claude
+Code 2.1.301 and Codex CLI 0.151.0 sessions. For each client, an explicit
+instruction-like JSON key returned `EGRESS_UNTRUSTED_INSTRUCTION`, and a
+duplicate-key response that shadows a nested instruction returned
+`EGRESS_INVALID_JSON`. Each denial was followed by an approved `/plain`
+GET returning `EGRESS_ALLOWED` and HTTP 200. The fixture recorded exactly
+the attempted hostile path and `/plain` for each of the four sessions. The
+controlled instruction string did not appear in either native-client
+transcript. All sessions used executable SHA-256
+`1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
+and the inspected two-file skill ZIP.
+
+```bash
+OUTBOUND_GUARD_CLIENT_JSON_INJECTION=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+OUTBOUND_GUARD_CLIENT_JSON_INJECTION=duplicate python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Run both modes for each client to repeat the full record. The fixture used
+synthetic instructions, not credentials or public targets. This proves the
+two recognized JSON shapes were denied by this executable; instructions in
+other fields, plaintext, and HTML can still pass. The marker check is not a
+general prompt-injection quarantine or a proof of model resistance. Cursor
+was not rerun after its native plan gate yielded zero MCP calls. Explicit
+skill use does not prove automatic triggering or cover traffic sent through
+other tools.
+
 ## Current-binary native session with injected header and body arguments, 2026-10-29
 
 The [current-binary argument record](evidence/native-client-arguments-current-binary-2026-10-29.json)
