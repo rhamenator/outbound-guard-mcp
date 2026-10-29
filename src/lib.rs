@@ -267,7 +267,9 @@ where
         })
     {
         gate.store(false, Ordering::Release);
-        return Err(error);
+        // A failed thread creation is resource exhaustion, not an occupied
+        // resolver gate. Keep EGRESS_DNS_BUSY reserved for a live prior lookup.
+        return Err(io::Error::other(error));
     }
     loop {
         if cancel.load(Ordering::Acquire) {

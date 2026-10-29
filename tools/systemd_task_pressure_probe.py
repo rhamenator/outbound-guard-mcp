@@ -21,6 +21,9 @@ def inside(binary):
     quota, period = map(int, limits['cpu.max'].split())
     assert quota * 2 == period, limits
     env = {k: v for k, v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+    # The name is never resolved while the group is saturated: creating the
+    # resolver worker must fail before libc DNS or a TCP connection can run.
+    env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'pressure.invalid'
     children, threads = [], []
     release = threading.Event()
 
@@ -75,6 +78,11 @@ def inside(binary):
         denied = rpc(child, 'tools/call', 'deny', {'name': 'guarded_fetch',
                      'arguments': {'url': 'http://127.0.0.1/'}})['structuredContent']
         assert denied['status'] == 'BLOCKED' and denied['rule'] == 'EGRESS_INVALID_HOST', denied
+        dns_denied = rpc(child, 'tools/call', 'dns-worker-ceiling', {'name': 'guarded_fetch',
+                     'arguments': {'url': 'http://pressure.invalid/'}})['structuredContent']
+        assert dns_denied['status'] == 'BLOCKED' and dns_denied['rule'] == 'EGRESS_DNS_FAILURE', dns_denied
+        assert int((group / 'pids.current').read_text()) == saturated
+        rpc(child, 'ping', 'after-dns-worker-failure')
         after = event_count()
         assert after > before
         release.set()
@@ -91,9 +99,11 @@ def inside(binary):
             'sleeping_helper_threads': len(threads), 'pids_events_max_delta': after-before,
             'process_creation_errno': 'EAGAIN', 'mcp_ping_at_ceiling': True,
             'pre_network_denial_at_ceiling': denied['rule'],
+            'dns_worker_creation_denial_at_ceiling': dns_denied['rule'],
+            'ping_after_dns_worker_creation_failure': True,
             'manual_replacement_after_release': True,
             'binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
-            'limitations': 'helper-induced task exhaustion; no active fetch, CPU saturation, automatic recovery or new-worker success claimed'}), flush=True)
+            'limitations': 'helper-induced task exhaustion; DNS worker creation fails before lookup, no active HTTP socket, CPU saturation, automatic recovery or new-worker success claimed'}), flush=True)
     finally:
         release.set()
         for thread in threads:
