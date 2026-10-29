@@ -1,0 +1,41 @@
+{
+  "date_utc": "2026-10-29T04:20:37Z",
+  "source_base": "086163da5698a61988f6c608c43620f0e79bece3",
+  "host": {
+    "kernel": "7.0.0-38-generic",
+    "systemd": "259.9-0ubuntu0.1",
+    "cgroup_version": 2
+  },
+  "command": "python3 tools/systemd_task_pressure_probe.py target/debug/outbound-guard-mcp",
+  "pre_fix_finding": {
+    "observed_rule": "EGRESS_DNS_BUSY",
+    "observed_remediation": "A previous DNS lookup is still running; retry later.",
+    "cause": "thread::Builder::spawn returned WouldBlock under TasksMax=16 even though no previous lookup owned the resolver gate",
+    "probe_exit": "assertion failure; owned transient unit cleaned up"
+  },
+  "post_fix": {
+    "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+    "runs": 2,
+    "result": "passed",
+    "limits": {
+      "memory.max": "67108864",
+      "memory.swap.max": "0",
+      "pids.max": "16",
+      "cpu.max": "50000 100000",
+      "LimitNOFILE": 64
+    },
+    "sleeping_helper_threads": 12,
+    "pids_at_ceiling": 16,
+    "pids_after_release": 4,
+    "pids_events_max_delta_last_run": 3,
+    "extra_process_errno": "EAGAIN",
+    "loopback_pre_network_denial": "EGRESS_INVALID_HOST",
+    "allowlisted_resolver_worker_creation_denial": "EGRESS_DNS_FAILURE",
+    "pids_still_at_ceiling_after_denial": true,
+    "ping_after_resolver_failure": true,
+    "manual_replacement_after_release": true
+  },
+  "local_checks": "46 Rust tests, 17 Python tests, fmt, clippy -D warnings, bins/examples build, Python compile and git diff --check passed",
+  "scope": "One rootless user-systemd group with an MCP stdio process and helper-induced PID saturation. The allowed .invalid hostname did not reach libc lookup or HTTP because worker creation failed; no public target was contacted.",
+  "limitations": "This is not an active HTTP/DNS exchange, native-client delivery, sustained load, automatic recovery, or an aggregate guarantee across unrelated cgroups. CI runners do not provide this user-systemd fixture."
+}
