@@ -1,0 +1,105 @@
+{
+  "date_utc": "2026-10-29T23:17:50Z",
+  "source_base": "8b6e03b663d616975aa00df1851685cb79687810",
+  "binary_sha256": "5bc6e89ef3faf05bb754f1ae51c8ea50a1a1368558aba6af89477e32519fe308",
+  "skill_zip_sha256": "5fcb46943dd9876c4bb6b7e8c252716857c69aaa86514a4eb8b7e255541da2ae",
+  "skill_zip_contents": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "harness": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "operator_allowed_hosts": [
+      "allowed.test"
+    ],
+    "ordered_paths": [
+      "/plain",
+      "/switch-protocols",
+      "/plain"
+    ],
+    "trap": "HTTP/1.1 101 Switching Protocols with Upgrade headers and supported text media type"
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "skill_tool_result_success": true,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/switch-protocols",
+          "/plain"
+        ],
+        "upgrade_mode": true,
+        "http_101_body_text_present": false
+      }
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": null,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "skill_tool_result_success": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/switch-protocols",
+          "/plain"
+        ],
+        "upgrade_mode": true,
+        "http_101_body_text_present": false
+      }
+    }
+  },
+  "cursor": {
+    "version": "2026.10.19-6bbf2c4",
+    "status": "not rerun; preceding native plan gate yielded zero MCP calls"
+  },
+  "cleanup": "Both temporary client workspaces and owned namespaces removed; no raw transcript, credential or model output committed.",
+  "scope": "Two authenticated native client sessions observed HTTP 101 denial without body text and approved control recovery.",
+  "limitations": [
+    "One HTTP/1.1 101 response; not general upgraded-protocol, HTTP/2 or parser conformance.",
+    "Fixture hit list does not prove packet or syscall absence for every destination.",
+    "Explicit skill invocation does not prove automatic triggering; Cursor and other-tool traffic not covered."
+  ],
+  "body_presence_assertion": "The bridge records only a boolean for body_text key presence in structuredContent; each native replay asserted the single HTTP 101 denial had body_text_present=false. Replayed after review feedback with both clients; no response body was persisted."
+}
