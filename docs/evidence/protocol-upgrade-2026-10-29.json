@@ -1,0 +1,23 @@
+{
+  "date_utc": "2026-10-29T21:48:45Z",
+  "source_base": "2bc157ea6cfce1438ab3b0670e7858c2c4d9a28b",
+  "before_binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+  "after_binary_sha256": "5bc6e89ef3faf05bb754f1ae51c8ea50a1a1368558aba6af89477e32519fe308",
+  "fixture": "Route-free HTTP/1.1 101 Switching Protocols with Connection: Upgrade, Upgrade: websocket, Content-Type: text/plain",
+  "before": {
+    "rule": "EGRESS_ALLOWED",
+    "status_code": 101,
+    "body_text": ""
+  },
+  "after": {
+    "rule": "EGRESS_PROTOCOL_UPGRADE_DENIED",
+    "body_text_present": false
+  },
+  "harness": "cargo build --locked; bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "after_full_probe_decisions": 2233,
+  "scope": "One controlled final 101 response is denied before response content is returned.",
+  "limits": [
+    "No general upgraded-protocol parser or HTTP/2 test.",
+    "Route-free fixture behavior does not prove all Internet or cross-tool traffic is guarded."
+  ]
+}
