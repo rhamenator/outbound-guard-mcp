@@ -1,0 +1,37 @@
+{
+  "date_utc": "2026-10-29T05:49:15Z",
+  "source_base": "e040f9e5e5bea64ae6d7fce9f09d7a0eb427712a",
+  "host": {
+    "kernel": "7.0.0-38-generic",
+    "systemd": "259.9-0ubuntu0.1",
+    "cgroup_version": 2
+  },
+  "command": "python3 tools/systemd_active_http_cpu_probe.py target/debug/outbound-guard-mcp",
+  "binary_sha256": "1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3",
+  "final_probe_runs": 2,
+  "retained_run": {
+    "result": "passed",
+    "limits": {
+      "memory.max": "100663296",
+      "memory.swap.max": "0",
+      "pids.max": "16",
+      "cpu.max": "50000 100000",
+      "LimitNOFILE": 64
+    },
+    "dns_queries": [["allowed.test", 1], ["allowed.test", 28], ["allowed.test", 1], ["allowed.test", 28]],
+    "http_paths": ["/drip", "/plain"],
+    "held_body_decision": {"rule": "EGRESS_ALLOWED", "body_text": "AB"},
+    "recovery_decision": {"rule": "EGRESS_ALLOWED", "body_text": "OK"},
+    "throttled_periods_during_active_http": 3,
+    "throttled_usec_during_active_http": 239110,
+    "memory_peak_bytes": 28459008,
+    "pids_peak": 9,
+    "oom_delta": 0,
+    "oom_kill_delta": 0,
+    "post_pressure_ping": true
+  },
+  "cleanup": "No matching namespace or /etc/netns directory remained after the run; the transient user unit was stopped and reset.",
+  "local_checks": "46 Rust tests, 17 Python tests, fmt, clippy -D warnings, bins/examples build, Python compile, JSON parse and diff check passed. The separate controlled netns suite passed 2233 MCP decisions on the same binary; its local log SHA-256 is ec74c1318c81087c030c1828e14fc775e2182c590db037cbb5a89736a241fca8.",
+  "scope": "Real MCP modern stdio call, controlled DNS and HTTP inside a disposable route-free network namespace; fixture and server shared one 50% CPU user cgroup. The HTTP body was incomplete while kernel throttling was observed.",
+  "limitations": "Finite local test using sudo for namespace setup/entry and a three-second CPU helper. No native-client delivery, cancellation under pressure, OOM/PID exhaustion, sustained load, generalized latency guarantee or release approval. CI does not run the user-systemd/namespace fixture."
+}

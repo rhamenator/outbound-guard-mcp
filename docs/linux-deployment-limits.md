@@ -61,6 +61,18 @@ This additional optional Linux/user-systemd probe starts a real server and one b
 
 The [2026-10-23 local evidence](evidence/cgroup-cpu-pressure-2026-10-23.json) records 11 throttled periods and 557612 throttled microseconds over the measured controls, with all twenty controls and post-pressure ping passing. The recorded maximum reply time is a finite observation, **not a latency SLA**. The first trial finished its controls within one throttled period; the final probe deliberately spreads them out and requires multiple kernel throttling events. This tests helper-induced CPU pressure and continued pre-network MCP service. It does not certify active HTTP/DNS deadline accuracy under CPU pressure, combined memory/task/CPU exhaustion, automatic recovery or all scheduler configurations. Hosted CI does not run this user-manager test. Owned helper/server processes are killed and reaped on failure, and only the uniquely named transient unit is stopped/reset.
 
+## Active HTTP under an aggregate CPU quota
+
+```sh
+python3 tools/systemd_active_http_cpu_probe.py /absolute/path/to/outbound-guard-mcp
+```
+
+This optional Linux probe uses `sudo -n` only to create a disposable, route-free network namespace, assign `11.0.0.1` to its loopback, place a resolver configuration under that namespace, and enter it. It runs the fixture and real MCP stdio server in a uniquely named user-systemd unit with 96 MiB memory, no swap, 16 tasks, 50% CPU and 64 descriptors. A controlled UDP resolver answers only `allowed.test`; a controlled HTTP server binds only the namespace address. No public route or target is used. The Python fixture launched by `sudo ip netns exec` runs as root inside that namespace, so use this probe only on a host where that local test privilege is authorized. The wrapper stops/resets its own unit and deletes its own namespace and resolver file on exit.
+
+The probe starts a bounded three-second CPU helper, sends a modern MCP `guarded_fetch` call, and holds the second byte of a two-byte HTTP body after the first byte is written. While that approved HTTP exchange is incomplete, it requires at least three actual cgroup CPU-throttling periods. It then releases the body, requires an `EGRESS_ALLOWED` decision with exactly `AB`, performs a fresh approved GET returning `OK`, and checks a following ping. Exact DNS A/AAAA queries and HTTP paths are asserted. It checks cgroup membership, read-back limits, memory peak, task peak and unchanged OOM counters. This finite test does not prove latency under every scheduler load, cancellation, native-client delivery, PID/OOM exhaustion, or unrelated processes' quotas. Hosted CI does not supply this user-systemd and namespace setup.
+
+The [2026-10-29 local evidence](evidence/cgroup-active-http-cpu-2026-10-29.json) records two final passing runs on Linux 7.0.0-38-generic/systemd 259.9. In the retained run, three throttled periods and 239110 throttled microseconds occurred before the held body was released; both guarded GETs and ping passed, peak memory was 28,459,008 bytes, peak tasks were nine, and no OOM event occurred.
+
 ## Aggregate oversized-frame control
 
 ```sh
