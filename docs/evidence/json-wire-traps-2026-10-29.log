@@ -1,0 +1,46 @@
+trusted TLS probe: matching SAN accepted, same-CA mismatched SAN denied before HTTP, unconfigured CA denied; 10 invalid CA configurations rejected at startup
+HTML root probe: 13 mislabeled hidden-link fragments denied without body text
+JSON scanner wire probe: escaped/nested instruction keys and duplicate shadow denied without marker echo; private-number-key and recovery GET allowed in one MCP process
+MIME policy probe: six conflicting/ambiguous parameter cases denied without body; four UTF-8 controls returned intact
+wire budget probe: encoded request rejected before DNS/HTTP; small decoded body with excessive chunk overhead and response trailers denied without body
+response timing probe: delayed -> EGRESS_NETWORK_FAILURE in 3.01s; no partial body
+response timing probe: drip -> EGRESS_RESPONSE_TOO_SLOW in 3.02s; no partial body
+response timing probe: late-eof -> EGRESS_RESPONSE_TIMEOUT in 10.02s; no partial body
+response timing probe: burst-drip -> EGRESS_RESPONSE_TOO_SLOW in 4.02s; no partial body
+credential isolation probe: six same-process calls; response cookie, Basic challenge and four synthetic credential environment variables caused no auth/cookie/referer headers, retry, redirect or result/audit marker echo
+HEAD probe: eight cases; empty body, metadata policy, redirect/framing/header denials and first-byte timeout passed; no GET fallback or redirect target
+GitHub secret probe: 13 synthetic paths blocked before DNS/HTTP, no result/stderr/audit marker echo; 8 lookalike controls fetched
+GitLab/PyPI secret probe: 42 synthetic paths blocked before DNS/HTTP, no result/stderr/audit marker echo; 28 lookalike controls fetched
+library cancellation probe: cancelled after fixture byte in 0.01s, no partial body, peer observed closed socket, audited denial, next fetch recovered
+stdio cancellation probe: string/numeric IDs stayed distinct, integer-valued numeric representations matched; malformed, unknown and late notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered
+queue saturation legacy: bounded recovery; busy denial, priority cancellation and rejected-ID reuse; RSS=9036 KiB, FDs=3
+queue saturation modern: bounded recovery; busy denial, priority cancellation and rejected-ID reuse; RSS=9140 KiB, FDs=3
+input overload: both eras terminate with fixed diagnostic and close live fetch; queues remain bounded
+official SDK cancellation: not requested (set OUTBOUND_GUARD_TEST_SDK_DIR)
+official SDK cancellation: not requested (set OUTBOUND_GUARD_TEST_SDK_DIR)
+silent transport cancellation legacy/headers: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+silent transport cancellation legacy/body: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+silent transport cancellation legacy/tls: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+silent transport cancellation modern/headers: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+silent transport cancellation modern/body: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+silent transport cancellation modern/tls: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+repeated cancellation legacy: 30 cancel/recovery cycles, ID reuse and 61st-attempt budget denial; retained samples 3 FDs/3 threads/8416 KiB under hard NOFILE64
+repeated cancellation modern: 30 cancel/recovery cycles, ID reuse and 61st-attempt budget denial; retained samples 3 FDs/3 threads/8500 KiB under hard NOFILE64
+descriptor exhaustion legacy/NOFILE=4: 3 structured denials ['EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE'], no HTTP/body, ping/audit live and clean exit
+descriptor exhaustion modern/NOFILE=4: 3 structured denials ['EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE'], no HTTP/body, ping/audit live and clean exit
+descriptor exhaustion NOFILE=3: loader/startup failure, no MCP output (not a structured denial)
+connect blackhole legacy: 3.00s shared connect deadline, 0.01s cancellation; SYN sockets removed, no fallback renewal, recovery passed
+connect blackhole modern: 3.01s shared connect deadline, 0.01s cancellation; SYN sockets removed, no fallback renewal, recovery passed
+post-DNS syscall legacy: 8 real-DNS forbidden-answer denials, zero extra Internet stream sockets; approved TCP controls; refused address followed by pinned fallback without DNS retry; next-call private rebinding denied; redirect not followed
+post-DNS syscall modern: 8 real-DNS forbidden-answer denials, zero extra Internet stream sockets; approved TCP controls; refused address followed by pinned fallback without DNS retry; next-call private rebinding denied; redirect not followed
+live DNS worker legacy: timeout 3.00s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8132 KiB/4 FDs
+live DNS worker modern: timeout 3.00s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8204 KiB/4 FDs
+live DNS worker legacy: cancellation 0.02s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8256 KiB/4 FDs
+live DNS worker modern: cancellation 0.02s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8248 KiB/4 FDs
+network resource probe: hard 64-FD limit; sampled peak 7 FDs, VmHWM 8536 KiB across 20 samples
+network resource probe: hard 64-FD limit; sampled peak 4 FDs, VmHWM 8268 KiB across 10 samples
+network resource probe: hard 64-FD limit; sampled peak 7 FDs, VmHWM 8964 KiB across 346 samples
+live budget probe: per-host 60/61 (mixed-case hosts and failed HTTP), failed DNS 60/61, hourly 1000/1001 across 17 hosts in 2.00s; blocked calls opened no DNS or HTTP
+schema mutation probe: 644 invalid inputs; seed=306373022276; sha256=122313201384fa572dcc29a12650c8303ebc201b70788c8cb6cda1c8efbd6d0b; baseline fetched, invalid inputs opened no DNS/HTTP and echoed no marker
+absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; original Host/SNI and pinned destinations preserved
+netns adversarial probe: 2233 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; ambient proxy ignored; rebind A queries=2; framing={'conflict-framing': 'EGRESS_INVALID_FRAMING', 'duplicate-length': 'EGRESS_INVALID_FRAMING', 'stacked-transfer-coding': 'EGRESS_UNSUPPORTED_TRANSFER_CODING', 'duplicate-transfer-coding': 'EGRESS_UNSUPPORTED_TRANSFER_CODING', 'duplicate-type': 'EGRESS_AMBIGUOUS_RESPONSE_METADATA', 'duplicate-encoding': 'EGRESS_AMBIGUOUS_RESPONSE_METADATA', 'chunked-large': 'EGRESS_RESPONSE_LIMIT', 'chunked-bad-size': 'EGRESS_READ_FAILURE', 'chunked-truncated': 'EGRESS_READ_FAILURE', 'many-headers': 'EGRESS_INVALID_FRAMING', 'oversized-header': 'EGRESS_INVALID_FRAMING', 'parser-limit': 'EGRESS_INVALID_FRAMING'}
