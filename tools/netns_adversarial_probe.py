@@ -1840,8 +1840,8 @@ def main(binary, cancellation_probe):
         print("MIME policy probe: six conflicting/ambiguous parameter cases denied without body; four UTF-8 controls returned intact")
         before_queries, before_hits = DNS.queries, len(HTTP.hits)
         long_request, _ = call_arguments(binary, [{"url":"http://allowed.test/" + "é" * 700}])
-        assert long_request[0]["rule"] == "EGRESS_REQUEST_LIMIT" and "body_text" not in long_request[0]
-        assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits), "oversized serialized request reached DNS/HTTP"
+        assert long_request[0]["rule"] == "EGRESS_INVALID_URL" and "body_text" not in long_request[0]
+        assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits), "non-ASCII URL reached DNS/HTTP"
         for path, rule in (("chunk-overhead", "EGRESS_RESPONSE_WIRE_LIMIT"), ("chunk-trailers", "EGRESS_UNSUPPORTED_TRAILERS")):
             decision = call(binary, "allowed.test", path)
             assert decision["rule"] == rule and "body_text" not in decision, (path, decision)
