@@ -16,6 +16,8 @@ The [remaining-gap review](RELEASE_GAPS.md) separates next engineering/verificat
 
 The [native client after Debian upgrade replay](evidence/native-client-after-debian-upgrade-2026-10-30.json) adds changed-binary package upgrade followed by Claude/Codex guarded calls, removal, and residue checks. It covers one older experimental version path and leaves configuration migration and exact-candidate qualification open.
 
+The [installed-byte upgrade replay](evidence/debian-upgrade-installed-bytes-2026-10-30.json) now verifies the executable hash inside disposable Debian containers before and after both recent-prior and changed-binary upgrades. Neither tested package ships a configuration file, so this does not establish migration behavior for future configurations.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.

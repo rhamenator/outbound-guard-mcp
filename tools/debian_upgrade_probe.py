@@ -50,9 +50,11 @@ grep -q '^VERSION_ID="12"$' /etc/os-release
 dpkg -i /old.deb
 test "$(dpkg-query -W -f '${Version}' outbound-guard-mcp)" = "$OLD_VERSION"
 test "$(/usr/bin/outbound-guard-mcp --version)" = "outbound-guard-mcp $OLD_APP_VERSION"
+test "$(sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1)" = "$OLD_BINARY_SHA256"
 dpkg -i /new.deb
 test "$(dpkg-query -W -f '${Version}' outbound-guard-mcp)" = "$NEW_VERSION"
 test "$(/usr/bin/outbound-guard-mcp --version)" = "outbound-guard-mcp $NEW_APP_VERSION"
+test "$(sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1)" = "$NEW_BINARY_SHA256"
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"deb-upgrade","version":"1"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}}' '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://allowed.test/café"}}}' | /usr/bin/outbound-guard-mcp > /tmp/replies
 grep -q '"guarded_fetch"' /tmp/replies
 grep -q '"EGRESS_INVALID_HOST"' /tmp/replies
@@ -73,9 +75,11 @@ test ! -e /etc/outbound-guard-mcp
                     "--env", f"NEW_VERSION={after['version']}",
                     "--env", f"OLD_APP_VERSION={before['app_version']}",
                     "--env", f"NEW_APP_VERSION={after['app_version']}",
+                    "--env", f"OLD_BINARY_SHA256={before['binary_sha256']}",
+                    "--env", f"NEW_BINARY_SHA256={after['binary_sha256']}",
                     BUILDER_IMAGE, "sh", "-ec", script], check=True, timeout=90)
     result = {"result": "passed", "platform": "Debian 12 amd64", "old": before, "new": after,
-              "checks": ["old_install", "new_upgrade", "mcp_discovery", "loopback_denial", "non_ascii_url_denial",
+              "checks": ["old_install", "new_upgrade", "installed_binary_bytes", "mcp_discovery", "loopback_denial", "non_ascii_url_denial",
                          "remove", "residue"]}
     if args.output:
         args.output.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n")

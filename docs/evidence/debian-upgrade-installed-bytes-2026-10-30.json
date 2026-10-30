@@ -1,0 +1,75 @@
+{
+  "artifact_sources": {
+    "current_181_ci": 41090919033,
+    "old_167_ci": 40973936774,
+    "prior_178_ci": 41052316927
+  },
+  "artifact_validation": "The downloaded CI package bundles passed their SHA256SUMS manifests. The probe checked each package digest, embedded provenance binary digest, installed dpkg version and installed executable SHA-256 before and after upgrade.",
+  "changed_binary_167_to_current_181": {
+    "checks": [
+      "old_install",
+      "new_upgrade",
+      "installed_binary_bytes",
+      "mcp_discovery",
+      "loopback_denial",
+      "non_ascii_url_denial",
+      "remove",
+      "residue"
+    ],
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+      "revision": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+      "version": "0.1.0~candidate.181+ge4ef389622a7"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+      "package_sha256": "03af1505c7264bb6ee24882b611a1070bd6da3507a78504d344e8301d3f7bfd8",
+      "revision": "334c8d8e8613ce56b4fbd5524132c59aa5a9b0e7",
+      "version": "0.1.0~candidate.167+g334c8d8e8613"
+    },
+    "platform": "Debian 12 amd64",
+    "result": "passed"
+  },
+  "date_utc": "2026-10-30T23:44:47Z",
+  "environment": "Disposable Debian 12 amd64 Docker container, ordinary network none, all capabilities dropped, no-new-privileges, 256 MiB and 1 CPU limits.",
+  "limits": [
+    "The 178 and 181 packages have identical executable bytes; the 167-to-181 path proves a changed-binary transition but skips intermediate versions.",
+    "The probe exercises MCP discovery and two pre-network denials after upgrade. Native-client calls after the changed-binary upgrade have separate evidence in native-client-after-debian-upgrade-2026-10-30.json.",
+    "No user configuration migration was tested; the current package does not ship a configuration file.",
+    "Local gh 2.46 lacks attestation verify, so this replay does not claim independent cryptographic attestation verification.",
+    "Experimental unsigned packages only; no exact owner-approved candidate or other platform qualification."
+  ],
+  "prior_178_to_current_181": {
+    "checks": [
+      "old_install",
+      "new_upgrade",
+      "installed_binary_bytes",
+      "mcp_discovery",
+      "loopback_denial",
+      "non_ascii_url_denial",
+      "remove",
+      "residue"
+    ],
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+      "revision": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+      "version": "0.1.0~candidate.181+ge4ef389622a7"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "6ceac168c5cc3a327e4b68e9cc076d5a33501f86b633c4ee95faa50777ee8305",
+      "revision": "9a4731e9f448d052e3032afb6bdb1a8900730c41",
+      "version": "0.1.0~candidate.178+g9a4731e9f448"
+    },
+    "platform": "Debian 12 amd64",
+    "result": "passed"
+  },
+  "probe_sha256": "a07503098dab62d00fd57eeedbcb76a87b0a2694e96490e2db4809549ed8dd9a",
+  "source_base": "1f941c5e86fdf3d7d9369a5d7dbb07402f9eaaf2"
+}
