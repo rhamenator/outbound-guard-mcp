@@ -1,0 +1,53 @@
+{
+  "date_utc": "2026-10-30T12:57:21Z",
+  "source_revision": "9a4731e9f448d052e3032afb6bdb1a8900730c41",
+  "trusted_main_ci_run": 41052316927,
+  "trusted_main_codeql_run": 41052316894,
+  "candidate_artifact_id": 12975596214,
+  "candidate_artifact_name": "experimental-candidate-linux-x86_64",
+  "candidate_status": "experimental artifact; not an official release candidate or owner approval",
+  "archive_sha256": "0858de1325dc924bc143b998711e36a29a7d1da216291dd783f889001a3fdf6f",
+  "debian_package_sha256": "6ceac168c5cc3a327e4b68e9cc076d5a33501f86b633c4ee95faa50777ee8305",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "checksum_manifest_sha256": "57b97c8a1a6961572bee847af9e78dabefe3eab8bc176900cd2a651bb9d6a786",
+  "checksum_manifest_result": "all three downloaded candidate files passed sha256sum -c",
+  "skill_zip_contents": ["outbound-guard/SKILL.md", "outbound-guard/LICENSE"],
+  "extracted_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "independent_rebuild_artifact_name": "independent-rebuild-comparison-linux-x86_64",
+  "independent_rebuild_comparison_sha256": "f53ef0cc5ba55dfc060ee72c679c37cff082bcc9813987caa8ae0bd1abd9614f",
+  "independent_rebuild_result": "differences empty; both compared binary SHA-256 values match the extracted executable",
+  "command_template": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE=1 python3 tools/client_cancellation_probe.py CLIENT EXTRACTED_BINARY VERIFIED_SKILL_ZIP",
+  "fixture": "Disposable route-free Linux namespace; trusted ephemeral CA; first approved TLS address presents a wrong-host leaf, second a matching leaf; next A answer private; approved HTTP recovery",
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "native_skill_invoked": true,
+      "skill_tool_result_success": true,
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits": ["/plain"],
+      "denied_body_text_present": false
+    },
+    "codex": {
+      "version": "0.151.0",
+      "native_skill_discovered": true,
+      "explicit_skill_input_accepted": true,
+      "native_turn_completed": true,
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits": ["/plain"],
+      "denied_body_text_present": false
+    }
+  },
+  "limits": [
+    "The executable was extracted from a CI archive, not installed from the Debian package on this host.",
+    "No independent local cryptographic provenance verification was performed; trusted-main CI signing and independent rebuild checks passed.",
+    "Cursor was not run; automatic triggering, UI cancellation, all TLS alerts, other platforms and other tools' traffic remain unproven."
+  ]
+}
