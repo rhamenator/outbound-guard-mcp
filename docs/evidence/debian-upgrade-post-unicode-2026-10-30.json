@@ -1,0 +1,54 @@
+{
+  "date_utc": "2026-10-30T04:42:06+00:00",
+  "scope": "Exact trusted-main Debian 12 amd64 experimental unsigned package after the non-ASCII URL fix; this is not an official release candidate.",
+  "trusted_main_ci": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40996376327",
+  "trusted_main_codeql": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40996376423",
+  "builder_image": "docker.io/library/rust@sha256:8c8b26057f8ba46c755d934453b7abc40e88b1cd51d654a6d15c115564793edd",
+  "artifact_checksums": {
+    "old_deb": "32f1517e146d8b7b7f4a05114c3f0bc0d11af26b10995c275d3293c87dcbfe0f",
+    "new_deb": "ce20af61bceee4d1c7687c520c2027548eb80d9a3ca22161b9683fc2b8bc6eb8",
+    "new_archive": "7ae6d798c25ef4c11e4a2b63907cee6fb693bf8afaba90c44b38fe5b3675e4d0",
+    "new_skill_zip": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+    "new_sha256s": "d6655e473f826bd46d89d76a9b20bb45a17bc3c74c1e7e5d33f18e950496acb4"
+  },
+  "artifact_validation": "Downloaded both trusted-main package artifacts; each SHA256SUMS manifest passed. Downloaded CI provenance verification JSON has a matching .deb subject digest and exact main commit workflow identity. Local gh lacks the attestation subcommand, so no independent local cryptographic verification is claimed.",
+  "independent_rebuild": {
+    "ci_artifact": "independent-rebuild-comparison-linux-x86_64",
+    "matching": true,
+    "differences": [],
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670"
+  },
+  "upgrade_replay": {
+    "checks": [
+      "old_install",
+      "new_upgrade",
+      "mcp_discovery",
+      "loopback_denial",
+      "non_ascii_url_denial",
+      "remove",
+      "residue"
+    ],
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "ce20af61bceee4d1c7687c520c2027548eb80d9a3ca22161b9683fc2b8bc6eb8",
+      "revision": "6c2c9ae48072cce89ec5137f7c855780f19d79ef",
+      "version": "0.1.0~candidate.171+g6c2c9ae48072"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+      "package_sha256": "32f1517e146d8b7b7f4a05114c3f0bc0d11af26b10995c275d3293c87dcbfe0f",
+      "revision": "11114e343b3d106197a09a899992a554180519c2",
+      "version": "0.1.0~candidate.170+g11114e343b3d"
+    },
+    "platform": "Debian 12 amd64",
+    "result": "passed"
+  },
+  "clean_install_gate": "Trusted-main CI package_candidate.py --container-build passed its disposable Debian 12 amd64 clean install, launch, guarded-call, remove and residue smoke.",
+  "limitations": [
+    "This replay uses a no-network disposable Debian 12 amd64 container, not a second host or other distribution.",
+    "It verifies a changed executable and package version transition, MCP discovery, loopback and non-ASCII URL denials, removal and residue; it does not test configuration migration.",
+    "Unsigned experimental .deb; no owner exact-candidate residual-risk acceptance, official candidate or stable release."
+  ]
+}
