@@ -1,0 +1,54 @@
+{
+  "date_utc": "2026-10-30T16:26:17Z",
+  "source_base": "f3fd9fb2730f38d4e44822e0f8c2bffcbfe7722d",
+  "tested_archive_source": "9a4731e9f448d052e3032afb6bdb1a8900730c41",
+  "tested_archive_ci_run": 41052316927,
+  "tested_archive_sha256": "0858de1325dc924bc143b998711e36a29a7d1da216291dd783f889001a3fdf6f",
+  "tested_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "tested_skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "harness_sha256": "305667fd00ace6cb7e47d031881638909806de51b7fd2bc426d813e20461f195",
+  "bridge_sha256": "797784a121c226111e3e90ba28e246d0799c1823ed1479876a348089d9c30386",
+  "fixture_sha256": "2e42eed1d2329d2061a598a494b101038aaa85068fba62b48a4b512453fe513f",
+  "mitmdump_addon_sha256": "2eaf23a9cf058a63962a5469ff91066c9f240ba97ede85116d5435e5cbc16cd8",
+  "pentesting_tool": "mitmdump 8.1.1",
+  "command_template": "OUTBOUND_GUARD_CLIENT_EXFIL=1 OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY=1 python3 tools/client_cancellation_probe.py CLIENT VERIFIED_BINARY VERIFIED_SKILL_ZIP",
+  "network": "Disposable route-free Linux namespace with controlled DNS and HTTP fixture plus local mitmdump listener",
+  "ambient_proxy_variables": ["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"],
+  "positive_control": {
+    "client": "curl through local proxy",
+    "response_body": "fixture-ok",
+    "proxy_flows": [{"method": "GET", "host": "allowed.test", "path": "/proxy-control"}]
+  },
+  "native_clients": {
+    "claude": {
+      "version": "2.1.301",
+      "native_skill_invoked": true,
+      "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_SECRET_DETECTED", "EGRESS_INVALID_URL"],
+      "http_methods": ["GET", "GET", "HEAD", "GET", "GET"],
+      "status_codes": [200, 200],
+      "exfil_host_dns_queried": false,
+      "synthetic_marker_echo_in_mcp_result": false,
+      "fixture_hits_including_positive_control": ["/proxy-control", "/plain", "/head-ok"],
+      "additional_proxy_flows": 0
+    },
+    "codex": {
+      "version": "0.151.0",
+      "native_skill_discovered": true,
+      "explicit_skill_input_accepted": true,
+      "native_turn_completed": true,
+      "rules": ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_SECRET_DETECTED", "EGRESS_INVALID_URL"],
+      "http_methods": ["GET", "GET", "HEAD", "GET", "GET"],
+      "status_codes": [200, 200],
+      "exfil_host_dns_queried": false,
+      "synthetic_marker_echo_in_mcp_result": false,
+      "fixture_hits_including_positive_control": ["/proxy-control", "/plain", "/head-ok"],
+      "additional_proxy_flows": 0
+    }
+  },
+  "limits": [
+    "Synthetic paths were test markers, not credentials; no arbitrary secret corpus or unknown secret shape was proven.",
+    "One local HTTP proxy endpoint with one positive control; other proxy schemes and configurations were not tested.",
+    "The optimized executable was extracted from a CI archive, not installed from the Debian package for this replay.",
+    "Native explicit skill invocation does not prove automatic triggering, Cursor behavior, UI cancellation, every network path or traffic through other tools."
+  ]
+}
