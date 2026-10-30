@@ -1,0 +1,48 @@
+{
+  "date_utc": "2026-10-30T11:55:00Z",
+  "source_base": "29a67828a7caa9a5dd99aa2ab737f5579e071936",
+  "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+  "binary_kind": "local debug executable, not an installed candidate package",
+  "skill_zip_sha256": "a8fdc21e9b4c940ee84b4b6292b9aff95733877885091264e7b423f7dd7c0e90",
+  "skill_zip_contents": ["outbound-guard/SKILL.md", "outbound-guard/LICENSE"],
+  "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+  "harness_sha256": "4b7b2bf60f83fc8813053cc5ce188b2735efb241a8c905f1d2335ff810b25efb",
+  "fixture_sha256": "2e42eed1d2329d2061a598a494b101038aaa85068fba62b48a4b512453fe513f",
+  "bridge_sha256": "24f9ae05e7ff966c69905248efaf3910d808fda81c7acce95eb3eb391e75ddef",
+  "command_template": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE=1 python3 tools/client_cancellation_probe.py CLIENT target/debug/outbound-guard-mcp CLEAN_SKILL_ZIP",
+  "fixture": "Disposable route-free Linux namespace; trusted ephemeral CA; first approved TLS address serves a wrong-host leaf, second a matching leaf; next DNS A answer is private; approved HTTP recovery endpoint",
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "native_skill_invoked": true,
+      "skill_tool_result_success": true,
+      "installation_scope": "temporary project .claude/skills/outbound-guard",
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits": ["/plain"],
+      "denied_body_text_present": false
+    },
+    "codex": {
+      "version": "0.151.0",
+      "native_skill_discovered": true,
+      "explicit_skill_input_accepted": true,
+      "native_turn_completed": true,
+      "installation_scope": "temporary project .agents/skills/outbound-guard",
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits": ["/plain"],
+      "denied_body_text_present": false
+    }
+  },
+  "limits": [
+    "Cursor was not run in this slice; its later native workflows remain blocked by its recorded plan gate.",
+    "Explicit skill invocation and completed calls do not prove automatic triggering or model adherence outside this fixture.",
+    "This does not test all TLS alerts, UI cancellation, all platforms, installed candidate packages or traffic sent through other tools."
+  ]
+}
