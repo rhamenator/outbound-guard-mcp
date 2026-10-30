@@ -2,6 +2,27 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client malformed DNS compression loop, 2026-10-29
+
+The [malformed DNS record](evidence/native-client-dns-compression-loop-2026-10-29.json)
+extends the route-free DNS fixture with an answer whose CNAME RDATA
+compression pointer targets itself. Authenticated Claude Code 2.1.301 and
+Codex CLI 0.151.0 each completed eight ordered `guarded_fetch` calls through
+the installed two-file skill and current executable. The fixture observed
+an A query for `loop-dns.test`; the call returned `EGRESS_DNS_FAILURE`, and
+the HTTP fixture saw only the two approved control paths. Four preceding
+private, alias, mixed-answer and metadata DNS cases still returned
+`EGRESS_FORBIDDEN_ADDRESS`.
+
+```bash
+OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 python3 tools/client_cancellation_probe.py codex /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `claude`. This is one malformed answer shape on the tested
+resolver, not general DNS protocol conformance or a packet-level proof of
+all destinations. Cursor remains gated before MCP calls; explicit skill
+use does not cover automatic triggering or traffic sent through other tools.
+
 ## Native-client CNAME-to-private DNS denial, 2026-10-29
 
 The [CNAME SSRF record](evidence/native-client-cname-ssrf-2026-10-29.json)
@@ -18,7 +39,8 @@ this case to its earlier private, mixed-answer, and metadata replay:
 OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
 ```
 
-Repeat with `codex`. This one CNAME shape does not prove arbitrary DNS-chain
+Repeat with `codex`. The linked seven-call record predates the malformed DNS
+case; this command now makes eight calls. This one CNAME shape does not prove arbitrary DNS-chain
 handling or absence of every forbidden socket. Cursor's native plan gate
 still prevents MCP calls. Explicit skill use does not cover automatic
 triggering or traffic sent through other tools.
@@ -658,8 +680,8 @@ calls: loopback URL denial, approved GET and HEAD, then three
 three hostile names; the HTTP fixture saw only the approved control paths.
 The [redacted exact-candidate record](evidence/native-client-dns-ssrf-2026-10-28.json)
 contains source, artifact and binary hashes, client versions and results.
-That record predates the additional CNAME case; the command below now makes
-seven calls as described in the current CNAME section above.
+That record predates the additional CNAME and malformed DNS cases; the
+command below now makes eight calls as described above.
 
 Run one authenticated client at a time with the existing development
 prerequisites and a checksum-verified candidate:
