@@ -1,0 +1,99 @@
+{
+  "date_utc": "2026-10-30T05:54:10.072300+00:00",
+  "source_base": "a575565cd71464b87712f4fcc40bcd752ae5eb4c",
+  "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "skill_zip_contents": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "harness": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "operator_allowed_hosts": [
+      "allowed.test"
+    ],
+    "ordered_paths": [
+      "/plain",
+      "/switch-protocols",
+      "/plain"
+    ],
+    "trap": "HTTP/1.1 101 Switching Protocols with Upgrade headers and supported text media type"
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "native_skill_invoked": true,
+        "skill_tool_result_success": true,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/switch-protocols",
+          "/plain"
+        ],
+        "upgrade_mode": true
+      },
+      "http_101_body_text_present": false
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "native_skill_invoked": null,
+        "skill_tool_result_success": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/switch-protocols",
+          "/plain"
+        ],
+        "upgrade_mode": true
+      },
+      "http_101_body_text_present": false
+    }
+  },
+  "result": "Claude Code and Codex native explicit skill sessions each denied HTTP 101 without a response body, then completed an approved GET control.",
+  "limitations": [
+    "One HTTP 101 response, not broad upgraded-protocol, HTTP/2, or parser conformance.",
+    "No Cursor MCP call due prior native plan gate.",
+    "Explicit skill workflow does not prove automatic triggering, model adherence, UI/terminal cancellation, all network destinations, or traffic sent through other tools."
+  ]
+}
