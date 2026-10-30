@@ -1,0 +1,138 @@
+{
+  "date_utc": "2026-10-30T01:33:55+00:00",
+  "source_base": "199b99220acbb284b1a0352d0b2a8193fbab07aa",
+  "binary_sha256": "5bc6e89ef3faf05bb754f1ae51c8ea50a1a1368558aba6af89477e32519fe308",
+  "skill_zip_sha256": "5fcb46943dd9876c4bb6b7e8c252716857c69aaa86514a4eb8b7e255541da2ae",
+  "harness": "OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "allowed_hosts": [
+      "allowed.test",
+      "private.test",
+      "alias-private.test",
+      "mixed.test",
+      "metadata.test",
+      "loop-dns.test"
+    ],
+    "malformed_answer": "A/AAAA query for loop-dns.test receives one CNAME answer whose RDATA compression pointer targets its own two-byte location.",
+    "ordered_calls": [
+      "loopback URL GET",
+      "approved GET",
+      "approved HEAD",
+      "private A GET",
+      "CNAME-to-private GET",
+      "mixed public/private GET",
+      "metadata GET",
+      "malformed compression-loop DNS GET"
+    ]
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "skill_tool_result_success": true,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_DNS_FAILURE"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/head-ok"
+        ],
+        "forbidden_dns_names": [
+          "alias-private.test",
+          "loop-dns.test",
+          "metadata.test",
+          "mixed.test",
+          "private.test"
+        ],
+        "alias_cname_a_queried": true,
+        "compression_loop_a_queried": true
+      }
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_invoked": null,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "skill_tool_result_success": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "adb9f78550cb3ef07703ac6ad115cf6ff036a33608c2f1ed452a34f1fee46994",
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_DNS_FAILURE"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/head-ok"
+        ],
+        "forbidden_dns_names": [
+          "alias-private.test",
+          "loop-dns.test",
+          "metadata.test",
+          "mixed.test",
+          "private.test"
+        ],
+        "alias_cname_a_queried": true,
+        "compression_loop_a_queried": true
+      }
+    }
+  },
+  "scope": "Authenticated Claude and Codex explicit native skill calls returned EGRESS_DNS_FAILURE for one malformed DNS compression-pointer-loop answer; the controlled HTTP fixture saw no hostile path and approved controls succeeded.",
+  "cleanup": "Both temporary client workspaces and owned namespaces removed; no raw transcript, credential or model output committed.",
+  "limitations": [
+    "One malformed DNS answer shape on this resolver; no general DNS protocol conformance or guarantee for all resolver implementations.",
+    "Fixture HTTP hit list is not packet/syscall proof of every destination.",
+    "Cursor native plan gate yields zero MCP calls on current client; explicit skill invocation does not establish automatic triggering or cover other-tool traffic."
+  ]
+}

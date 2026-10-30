@@ -49,6 +49,7 @@ RECORDS = {
     "many-answers.test": [f"11.0.0.{n}" for n in range(1, 21)],
     "private.test": ["127.0.0.1"],
     "alias-private.test": [],  # The CNAME branch below supplies its answer.
+    "loop-dns.test": [],  # The DNS compression-loop branch supplies its answer.
     "metadata.test": ["169.254.169.254"],
     "carrier.test": ["100.64.0.1"],
     "documentation.test": ["192.0.2.1"],
@@ -123,6 +124,14 @@ class DNS(socketserver.BaseRequestHandler):
                       + socket.inet_pton(socket.AF_INET, "127.0.0.1")) if qtype == 1 else b""
             header = data[:2] + struct.pack("!HHHHH", 0x8180, 1, 1 + (qtype == 1), 0, 0)
             sock.sendto(header + question + cname + answer, self.client_address)
+            return
+        if name == "loop-dns.test" and qtype in (1, 28):
+            # The CNAME RDATA compression pointer points to itself.
+            rdata_offset = 12 + len(question) + 12
+            cname = (b"\xc0\x0c" + struct.pack("!HHIH", 5, 1, 60, 2)
+                     + struct.pack("!H", 0xc000 | rdata_offset))
+            header = data[:2] + struct.pack("!HHHHH", 0x8180, 1, 1, 0, 0)
+            sock.sendto(header + question + cname, self.client_address)
             return
         flags = 0x8180 if name in RECORDS else 0x8183
         header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
