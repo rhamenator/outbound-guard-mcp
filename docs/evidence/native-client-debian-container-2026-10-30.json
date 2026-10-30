@@ -1,0 +1,66 @@
+{
+  "date_utc": "2026-10-30T19:00:10Z",
+  "source_base": "2b5f9f9ee501155372ed2a183c41527a515c0bb4",
+  "tested_package_source": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+  "tested_package_ci_run": 41090919033,
+  "tested_package_artifact_id": 12994336893,
+  "package_version": "0.1.0~candidate.181+ge4ef389622a7",
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "container_probe_sha256": "834fffa5be697791a54c20f49f847e0c613a7a25c16cc9ded49273fb70b82c0e",
+  "native_harness_sha256": "3a769849885a76f12570011042a81ad02f3eeb7aa27802601a810aba61af1e90",
+  "native_bridge_sha256": "797784a121c226111e3e90ba28e246d0799c1823ed1479876a348089d9c30386",
+  "fixture_sha256": "2e42eed1d2329d2061a598a494b101038aaa85068fba62b48a4b512453fe513f",
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256",
+  "container": {
+    "image": "docker.io/library/rust@sha256:8c8b26057f8ba46c755d934453b7abc40e88b1cd51d654a6d15c115564793edd",
+    "local_image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+    "platform_checked": "Debian 12 amd64",
+    "ordinary_network": "none",
+    "server_network": "joined only the disposable route-free DNS/TLS/HTTP fixture namespace",
+    "dependency_install": "dpkg -i without --force-depends",
+    "container_privileges": ["SYS_ADMIN for setns", "Docker default seccomp", "no-new-privileges"],
+    "bind_mounts": ["exact fixture namespace handle read-only", "verified package file read-only"],
+    "fixture_ca": "copied one controlled public test CA certificate into container",
+    "installed_binary_matched_package_provenance": true,
+    "package_removed_after_calls": true,
+    "residue_absent": ["executable", "package documentation directory", "configuration path", "package database entry"],
+    "owned_container_stopped": true
+  },
+  "native_clients": {
+    "claude": {
+      "version": "2.1.301",
+      "native_skill_invoked": true,
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits": ["/plain"],
+      "package_removed_and_residue_checked": true
+    },
+    "codex": {
+      "version": "0.151.0",
+      "native_skill_discovered": true,
+      "explicit_skill_input_accepted": true,
+      "native_turn_completed": true,
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits": ["/plain"],
+      "package_removed_and_residue_checked": true
+    }
+  },
+  "repair_during_probe": "The first Codex replay completed guarded calls, but a cleanup race stopped the container before package-removal proof. The probe moved removal and residue checks to the parent process; both clients passed after the fix.",
+  "timeout_cleanup_regression": "Forced 1-second and 5-second harness deadlines failed as intended. The parent sent SIGTERM, allowed the harness cleanup path to finish, and verified no owned network namespace, container, or /tmp/outbound-cancel-* directory remained. Both full native client replays passed after this change.",
+  "limits": [
+    "Native clients ran on the Ubuntu host; the installed MCP server ran inside the Debian 12 container.",
+    "The native harness binary_sha256 field identifies its generated launcher in this replay. The installed package executable identity is verified separately by the container probe and recorded above.",
+    "The downloaded CI artifact checksum manifest was checked; this replay did not locally verify a cryptographic attestation.",
+    "The tested package is experimental and predates any owner-approved exact release candidate; no current-version upgrade or configuration migration was tested here.",
+    "This finite TLS/DNS/recovery workflow does not prove automatic triggering, Cursor behavior, UI cancellation, all network paths or traffic through other tools."
+  ]
+}
