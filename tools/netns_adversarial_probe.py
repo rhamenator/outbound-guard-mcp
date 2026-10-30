@@ -532,7 +532,7 @@ def test_trusted_tls(binary):
                 "-addext", "keyUsage=critical,keyCertSign,cRLSign")
         openssl("req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", path("leaf.key"),
                 "-out", path("leaf.csr"), "-subj", "/CN=Fixture Leaf")
-        for index, host in enumerate(("allowed.test", "wrong.test"), 1):
+        for index, host in enumerate(("allowed.test", "wrong.test", "fallback-pin.test"), 1):
             with open(path("extensions"), "w") as output:
                 output.write(f"subjectAltName=DNS:{host}\nbasicConstraints=critical,CA:FALSE\n"
                              "keyUsage=critical,digitalSignature,keyEncipherment\n"
@@ -550,6 +550,20 @@ def test_trusted_tls(binary):
             thread.start()
             try:
                 before_hits = len(HTTP.hits)
+                if host == "fallback-pin.test":
+                    DNS.fallback_a_queries = 0
+                    decisions, _ = call_arguments(binary, [
+                        {"url": "https://fallback-pin.test/plain"},
+                        {"url": "https://fallback-pin.test/plain"},
+                    ], extra_ca=path("ca.pem"))
+                    assert [item["rule"] for item in decisions] == [
+                        "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS"], decisions
+                    assert decisions[0]["body_text"] == "fixture-ok"
+                    assert "body_text" not in decisions[1]
+                    assert DNS.fallback_a_queries == 2
+                    assert seen_sni == ["fallback-pin.test"], seen_sni
+                    assert HTTP.hits[before_hits:] == ["/plain"], HTTP.hits[before_hits:]
+                    continue
                 decision = call(binary, "allowed.test", "plain", scheme="https", extra_ca=path("ca.pem"))
                 expected = "EGRESS_ALLOWED" if host == "allowed.test" else "EGRESS_NETWORK_FAILURE"
                 assert decision["rule"] == expected, (host, decision)
@@ -590,6 +604,7 @@ def test_trusted_tls(binary):
             assert folder not in result.stderr and "synthetic-CA-secret" not in result.stderr
         assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
         print("trusted TLS probe: matching SAN accepted, same-CA mismatched SAN denied before HTTP, "
+              "refused-address pinned TLS fallback accepted without DNS retry and subsequent private answer denied, "
               "unconfigured CA denied; 10 invalid CA configurations rejected at startup")
 
 
@@ -1946,7 +1961,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1198 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1200 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

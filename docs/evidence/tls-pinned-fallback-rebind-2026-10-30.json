@@ -1,0 +1,24 @@
+{
+  "date_utc": "2026-10-30T08:58:25Z",
+  "source_base": "a2442c7dc09a48c36ea555f2be6e60ac988e1e7b",
+  "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+  "fixture_sha256": "dd65205cb25ed97ac91f16f0fab2597e7b7411e4da2d54390c2afef88fd3b527",
+  "harness": "python3 -m py_compile tools/netns_adversarial_probe.py && bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp target/debug/examples/cancel_fetch_probe",
+  "fixture": "Route-free Linux namespace; ephemeral operator CA; matching fallback-pin.test SAN; first A answer 11.0.0.2 (TCP refused) then 11.0.0.1 (served); second A answer 127.0.0.1",
+  "observed": {
+    "first_rule": "EGRESS_ALLOWED",
+    "first_body_text": "fixture-ok",
+    "second_rule": "EGRESS_FORBIDDEN_ADDRESS",
+    "second_body_text_present": false,
+    "a_queries": 2,
+    "sni": ["fallback-pin.test"],
+    "http_paths": ["/plain"]
+  },
+  "full_probe_exit_code": 0,
+  "full_probe_mcp_decisions": 2236,
+  "scope": "A matching-SAN TLS request succeeds after TCP refusal at the first prevalidated address; the next MCP call denies a private DNS answer before HTTP.",
+  "limits": [
+    "This fixture does not test a failed TLS handshake followed by another address or a reconnect after an established connection.",
+    "It exercises one Linux resolver and client path, not every platform or traffic sent through other tools."
+  ]
+}
