@@ -2,6 +2,27 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Native-client CNAME-to-private DNS denial, 2026-10-29
+
+The [CNAME SSRF record](evidence/native-client-cname-ssrf-2026-10-29.json)
+uses the current HTTP-upgrade-fixed executable and inspected two-file skill
+ZIP. In a disposable route-free namespace, `alias-private.test` returns a
+CNAME to `private.test` and a loopback A record. Authenticated Claude Code
+2.1.301 and Codex CLI 0.151.0 each made seven ordered calls. Loopback URL
+denial, approved GET/HEAD, and four DNS denials matched expectations; the
+CNAME call returned `EGRESS_FORBIDDEN_ADDRESS`. The fixture observed an A
+query for the alias and only the two approved HTTP paths. The mode now adds
+this case to its earlier private, mixed-answer, and metadata replay:
+
+```bash
+OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `codex`. This one CNAME shape does not prove arbitrary DNS-chain
+handling or absence of every forbidden socket. Cursor's native plan gate
+still prevents MCP calls. Explicit skill use does not cover automatic
+triggering or traffic sent through other tools.
+
 ## Native-client HTTP 101 denial and recovery, 2026-10-29
 
 The [native HTTP 101 record](evidence/native-client-http-upgrade-2026-10-29.json)
@@ -637,6 +658,8 @@ calls: loopback URL denial, approved GET and HEAD, then three
 three hostile names; the HTTP fixture saw only the approved control paths.
 The [redacted exact-candidate record](evidence/native-client-dns-ssrf-2026-10-28.json)
 contains source, artifact and binary hashes, client versions and results.
+That record predates the additional CNAME case; the command below now makes
+seven calls as described in the current CNAME section above.
 
 Run one authenticated client at a time with the existing development
 prerequisites and a checksum-verified candidate:

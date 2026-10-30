@@ -4,7 +4,7 @@ import sys,subprocess,threading,json,time,pathlib
 assert len(sys.argv) in (4,5,6)
 ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
-assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,fallback-pin.test','allowed.test,private.test,mixed.test,metadata.test','allowed.test,exfil.test','allowed.test,rebind.test')
+assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,fallback-pin.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
 assert mutation in (None,'mutate','inject-arguments')
 mutant_enabled=mutation=='mutate'
