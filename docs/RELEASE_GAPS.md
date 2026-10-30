@@ -14,6 +14,8 @@ Review baseline: main `699a627ed2ccfec89e7739f9899612c5b73b9e46` (2026-10-22). T
 
 The [current trusted-main Debian package replay](evidence/debian-package-current-2026-10-29.json) verifies artifact hashes and matching provenance identity for `334c8d8`, plus a disposable Bookworm upgrade from the preceding package with MCP discovery, guarded loopback denial, removal, and residue checks. The two package revisions contain identical executable bytes, so the earlier differing-binary upgrade evidence remains distinct. This packaging check does not constitute exact-candidate owner acceptance.
 
+The [post-Unicode-fix Debian upgrade replay](evidence/debian-upgrade-post-unicode-2026-10-30.json) verifies the trusted-main `6c2c9ae` package against its checksums and CI provenance identity, with a matching independent rebuild. A disposable Debian 12 container upgraded from the prior package with different executable bytes, discovered the MCP tools, denied loopback and non-ASCII URL requests, and passed removal and residue checks. Configuration migration and exact-candidate owner acceptance remain open.
+
 ## Quality-bar differences requiring implementation or explicit scope review
 
 | Requirement | Current implementation and evidence | What remains |
