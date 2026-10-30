@@ -94,6 +94,15 @@ prove every packet or syscall destination. Cursor was not rerun after its
 native plan gate yielded zero MCP calls. Explicit skill use does not prove
 automatic triggering or cover traffic sent through other tools.
 
+The [current-binary HTTP 101 replay](evidence/native-client-http-upgrade-current-binary-2026-10-30.json)
+repeats this exact native workflow after the Unicode URL fix. Claude Code
+2.1.301 and Codex CLI 0.151.0 each loaded the inspected two-file skill ZIP
+and made three guarded calls through the current executable. The approved
+GETs returned `EGRESS_ALLOWED`/200 around a `101 Switching Protocols`
+response denied as `EGRESS_PROTOCOL_UPGRADE_DENIED` without body text. The
+route-free fixture saw only `/plain`, `/switch-protocols`, `/plain` per
+session. The same finite-case and client limitations above still apply.
+
 ## Post-upgrade-fix native control replay, 2026-10-29
 
 The [post-fix control record](evidence/native-client-control-post-upgrade-2026-10-29.json)
