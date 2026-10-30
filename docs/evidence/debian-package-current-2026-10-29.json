@@ -1,0 +1,55 @@
+{
+  "date_utc": "2026-10-30T00:04:48+00:00",
+  "scope": "Exact trusted-main Debian 12 amd64 package artifact at merge 334c8d8; experimental unsigned package, not an official release candidate.",
+  "trusted_main_ci": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40973936774",
+  "trusted_main_codeql": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/40973936760",
+  "builder_image": "docker.io/library/rust@sha256:8c8b26057f8ba46c755d934453b7abc40e88b1cd51d654a6d15c115564793edd",
+  "builder_os": "Debian GNU/Linux 12 (bookworm), linux/amd64, checked in a no-network disposable container",
+  "artifact_checksums": {
+    "old_deb": "8fb6b665e35a2c59349c35652a1a4fc8bd894b6702eae440cc656d8eeb5fa307",
+    "new_deb": "03af1505c7264bb6ee24882b611a1070bd6da3507a78504d344e8301d3f7bfd8",
+    "new_archive": "d404d53fe21bae9552a84765074079eb612203cbe49a1dfdb37d4f6a3f14ec6d",
+    "new_skill_zip": "5fcb46943dd9876c4bb6b7e8c252716857c69aaa86514a4eb8b7e255541da2ae",
+    "new_sha256s": "482202785704c9beb147c0acb216a5c4f69a6042a89af52892a4f96687324ef4"
+  },
+  "artifact_validation": "Downloaded both CI package artifacts; SHA256SUMS verified each archive, skill ZIP and .deb. Downloaded trusted-main provenance verification JSON; its package subject digest matches the downloaded .deb and its certificate fields identify CI on exact main commit. Local gh lacks attestation verify, so no independent cryptographic verification claimed.",
+  "independent_rebuild": {
+    "ci_artifact": "independent-rebuild-comparison-linux-x86_64",
+    "matching": true,
+    "differences": [],
+    "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5"
+  },
+  "upgrade_replay": {
+    "checks": [
+      "old_install",
+      "new_upgrade",
+      "mcp_discovery",
+      "loopback_denial",
+      "remove",
+      "residue"
+    ],
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+      "package_sha256": "03af1505c7264bb6ee24882b611a1070bd6da3507a78504d344e8301d3f7bfd8",
+      "revision": "334c8d8e8613ce56b4fbd5524132c59aa5a9b0e7",
+      "version": "0.1.0~candidate.167+g334c8d8e8613"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+      "package_sha256": "8fb6b665e35a2c59349c35652a1a4fc8bd894b6702eae440cc656d8eeb5fa307",
+      "revision": "8b6e03b663d616975aa00df1851685cb79687810",
+      "version": "0.1.0~candidate.166+g8b6e03b663d6"
+    },
+    "platform": "Debian 12 amd64",
+    "result": "passed"
+  },
+  "clean_install_gate": "Trusted-main CI package_candidate.py --container-build ran its disposable Debian 12 amd64 clean install, launch, guarded loopback denial, removal and residue gate; full CI run passed.",
+  "limitations": [
+    "The two downloaded versions contain identical executable bytes; this replay checks package version transition and current packaging, not binary migration.",
+    "The separate earlier signed trusted-main version-to-version replay from 3f117f8 to 9b2a781 tested differing executable bytes.",
+    "No configuration migration, other platform or architecture qualification, or independent-host release approval.",
+    "Unsigned experimental .deb. No official candidate or stable release published."
+  ]
+}
