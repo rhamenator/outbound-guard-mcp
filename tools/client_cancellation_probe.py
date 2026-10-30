@@ -27,8 +27,8 @@ Set OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1 for a refused first validated
 address followed by a pinned public fallback while DNS flips to loopback.
 Set OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE=1 for a wrong-host first TLS certificate,
 private next-call DNS answer and same-process approved recovery.
-Add OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY=1 to that replay to run an active
-mitmdump trap with a positive proxy-flow control.
+Add OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY=1 to the TLS handshake or synthetic
+exfiltration replay to run an active mitmdump trap with a positive control.
 Set OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 for delayed-first-byte and slow-drip
 HTTP denials followed by an approved recovery GET.
 Set OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 for an HTTP 101 denial and recovery,
@@ -54,7 +54,7 @@ json_duplicate_mode=json_variant=='duplicate'
 fallback_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK')=='1'
 tls_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1'
 active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
-assert not active_proxy_mode or tls_mode, 'active proxy trap requires TLS handshake replay'
+assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim'), 'unsupported HTTP upgrade replay mode'
@@ -394,7 +394,7 @@ if skill_zip:
    dns_names=json.loads((root/'dns.json').read_text())
    assert 'exfil.test' not in dns_names, dns_names
    hits=json.loads((root/'hits.json').read_text())
-   assert hits==['/plain','/head-ok'], hits
+   assert hits==(['/proxy-control','/plain','/head-ok'] if active_proxy_mode else ['/plain','/head-ok']), hits
    scanned=[e for e in events if e.get('direction')=='out' and 'synthetic_marker_echo' in e]
    if not scanned or any(e['synthetic_marker_echo'] for e in scanned):
     print(json.dumps({'marker_diagnostic':[{k:e.get(k) for k in ('id','method','rule','synthetic_marker_echo')}
@@ -475,15 +475,15 @@ if skill_zip:
    assert hits==(['/proxy-control','/plain'] if active_proxy_mode else ['/plain']), hits
    denied=[e for e in events if e.get('rule') in ('EGRESS_NETWORK_FAILURE','EGRESS_FORBIDDEN_ADDRESS')]
    assert len(denied)==2 and all(e.get('body_text_present') is False for e in denied), denied
-   if active_proxy_mode:
-    proxy_flows=[json.loads(line) for line in (root/'proxy-flows.jsonl').read_text().splitlines()]
-    assert proxy_flows==[{'method':'GET','host':'allowed.test','path':'/proxy-control'}], proxy_flows
   if slow_http_mode:
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
     if len(hits)==4:break
     time.sleep(.01)
    assert hits==['/plain','/drip','/delayed','/plain'], hits
+  if active_proxy_mode:
+   proxy_flows=[json.loads(line) for line in (root/'proxy-flows.jsonl').read_text().splitlines()]
+   assert proxy_flows==[{'method':'GET','host':'allowed.test','path':'/proxy-control'}], proxy_flows
   print(json.dumps({'client':name,'native_skill_loaded':True,'native_skill_discovered':True if name=='codex' else None,'explicit_skill_input_accepted':True if name=='codex' else None,'native_turn_completed':True if name=='codex' else None,'native_skill_invoked':True if name=='claude' else None,
    'skill_tool_result_success':True if name=='claude' else None,'native_project_read_completed':True if name=='cursor' else None,
    'skill_zip_sha256':hashlib.sha256(skill_zip.read_bytes()).hexdigest(),
