@@ -157,6 +157,13 @@ The HTTP/1 transport now dials only validated addresses and uses Hyper directly 
 
 Configured bounds are 64 parsed header fields, a 16 KiB parser buffer including status line, 4096 outbound HTTP bytes, response HTTP bytes of `max_return_bytes + 32 KiB`, and underlying TCP/TLS read/write budgets of 1 MiB/64 KiB. Stream counters sit before HTTP parsing and before TLS processing respectively; the HTTP counter sits after decryption. Request serialization is conservatively estimated with fixed overhead before budget reservation/DNS, with an I/O cap as defense in depth. HTTP body frames are checked before copying into the return buffer. Compression remains denied, so decompression/expansion is unsupported rather than silently unbounded. These limits exclude IP headers, retransmissions, kernel buffers, resolver allocations and CPU.
 
+The [interim-header flood record](evidence/http-interim-header-flood-2026-10-30.json)
+attempts 150 individually small HTTP/1.1 `103 Early Hints` responses before an
+attempted final `200 OK`. The route-free fixture's guarded call returns
+`EGRESS_RESPONSE_WIRE_LIMIT` within ten seconds with no body text. This
+checks that repeated informational responses share one transport read
+budget; it does not establish general HTTP parser or native-client coverage.
+
 Six additional MCP decisions bring the full controlled corpus to 1,973 plus two library cancellation calls: an encoded Unicode path exceeding the serialized request budget (no DNS/HTTP), 20,000 one-byte chunks whose framing exceeds the HTTP budget despite a small decoded body, unsupported response trailers, and raw header blocks of 16,383/16,384/16,385 bytes. The first two header controls return `ok`; the over-limit header fails within parsing. Oversized/invalid heads now return `EGRESS_INVALID_FRAMING`; Hyper's client API does not publicly distinguish every parser size error, so tests require this deterministic general framing rule instead of claiming a precise cause. Other framing/metadata denials remain explicit where observable. Denials return no body.
 
 The synchronous library API rejects invocation inside an already active Tokio runtime with `EGRESS_CLIENT_FAILURE` before validation/network work, avoiding nested-runtime panic. Async embeddings must use a blocking worker. A regression verifies this fail-closed behavior. Header/TLS buffers still belong to the maintained libraries; these stream budgets are not a process-wide memory quota. Remaining protocol/client/release acceptance criteria are not waived.

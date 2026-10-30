@@ -1,0 +1,22 @@
+{
+  "date_utc": "2026-10-30T07:09:39Z",
+  "source_base": "53358c79ff0f3639a2346d5147d4b2d710b0a299",
+  "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+  "fixture_script_sha256": "1f97fdb4c6d7e2574b7a04766ad09089aa7fcaf167d1d04d336f9536b7dc4e37",
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp target/debug/examples/cancel_fetch_probe",
+  "fixture": "Disposable route-free Linux namespace; approved allowed.test endpoint attempts 150 individually small HTTP/1.1 103 Early Hints responses with 1024-byte Link values, then a 200 OK body.",
+  "assertions": {
+    "guard_rule": "EGRESS_RESPONSE_WIRE_LIMIT",
+    "body_text_present": false,
+    "fixture_hit": "/interim-header-flood",
+    "elapsed_seconds_less_than": 10,
+    "entire_netns_corpus_mcp_decisions": 2234,
+    "namespace_removed": true
+  },
+  "result": "passed",
+  "limitations": [
+    "This proves one bounded sequence of interim HTTP/1.1 responses shares the application stream read budget; it is not a proof for every informational response or HTTP parser state.",
+    "The hostile fixture is controlled and route-free. This replay did not run inside native Claude, Codex or Cursor clients, and does not cover traffic sent through other tools.",
+    "The 200 final response was attempted by the fixture but the guard denied before returning a body; fixture hit counts do not prove all packet destinations."
+  ]
+}
