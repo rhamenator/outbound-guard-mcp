@@ -20,7 +20,7 @@ while True:
   hits_tmp.write_text(json.dumps(hits))
   os.replace(hits_tmp,root/'hits.json')
   last_hits=hits
- names=[name for name in DNS.names if name in ('private.test','mixed.test','metadata.test','exfil.test')]
+ names=[name for name in DNS.names if name in ('private.test','alias-private.test','mixed.test','metadata.test','exfil.test')]
  if names!=last_dns:
   dns_tmp=root/'dns.json.tmp'
   dns_tmp.write_text(json.dumps(names))

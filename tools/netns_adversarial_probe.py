@@ -48,6 +48,7 @@ RECORDS = {
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
     "many-answers.test": [f"11.0.0.{n}" for n in range(1, 21)],
     "private.test": ["127.0.0.1"],
+    "alias-private.test": [],  # The CNAME branch below supplies its answer.
     "metadata.test": ["169.254.169.254"],
     "carrier.test": ["100.64.0.1"],
     "documentation.test": ["192.0.2.1"],
@@ -115,6 +116,14 @@ class DNS(socketserver.BaseRequestHandler):
             # Any retry through DNS would now return a forbidden destination.
             addresses = (["11.0.0.2", PUBLIC_FIXTURE] if self.fallback_a_queries == 1
                          else ["127.0.0.1"])
+        if name == "alias-private.test" and qtype in (1, 28):
+            target = b"\x07private\x04test\x00"
+            cname = b"\xc0\x0c" + struct.pack("!HHIH", 5, 1, 60, len(target)) + target
+            answer = (target + struct.pack("!HHIH", 1, 1, 60, 4)
+                      + socket.inet_pton(socket.AF_INET, "127.0.0.1")) if qtype == 1 else b""
+            header = data[:2] + struct.pack("!HHHHH", 0x8180, 1, 1 + (qtype == 1), 0, 0)
+            sock.sendto(header + question + cname + answer, self.client_address)
+            return
         flags = 0x8180 if name in RECORDS else 0x8183
         header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
         answers = b"".join(
