@@ -223,6 +223,8 @@ Strace must show exactly four TCP connects across the complete post-DNS sequence
 
 This proves the exercised Linux TCP-refusal fallback and per-call DNS pinning behavior. It does not prove every address order/platform, SYN timeout, TLS-handshake fallback, HTTP reconnect or retry path. No server capability or dependency changed.
 
+The trusted TLS fixture now repeats the refused-address fallback with an ephemeral operator CA and a leaf certificate whose SAN matches `fallback-pin.test`. The first HTTPS call accepts the certificate after connecting to the second pinned public address, preserves the original hostname in SNI and returns the fixture body. The next call in the same MCP process resolves the hostname again, rejects the changed private answer and opens no additional HTTP connection. Both calls require exactly two A lookups in total. This covers one Linux TLS request after TCP refusal, not a TLS-handshake failure followed by another address, reconnect after an established connection, or other clients' traffic. The evidence is in [the TLS fallback record](evidence/tls-pinned-fallback-rebind-2026-10-30.json).
+
 ### TCP SYN blackhole deadline and cancellation
 
 The launcher assigns `11.0.0.3` only inside its freshly created route-free namespace and installs an nftables rule **inside that namespace** dropping TCP packets to that address on port80. The host firewall is not modified. The development launcher now requires `nft` (the distribution's `nftables` package), in addition to its existing privileged namespace setup; ordinary server installations need neither nftables nor sudo. Deleting the owned namespace removes its rules and addresses, including on launcher failure.
