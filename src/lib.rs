@@ -433,12 +433,16 @@ fn validate_with_reservation<R: Resolver, F: FnOnce(&str) -> Result<(), Denial>>
         .ok_or_else(|| Denial::new("EGRESS_INVALID_URL", "Provide an HTTP(S) URL."))?;
     if raw.len() > 2048
         || raw.bytes().any(|byte| {
-            byte.is_ascii_control() || byte.is_ascii_whitespace() || byte == b'\\' || byte == b'%'
+            !byte.is_ascii()
+                || byte.is_ascii_control()
+                || byte.is_ascii_whitespace()
+                || byte == b'\\'
+                || byte == b'%'
         })
     {
         return Err(Denial::new(
             "EGRESS_INVALID_URL",
-            "Use a short URL without ASCII controls, whitespace, backslashes, or percent encoding.",
+            "Use a short ASCII URL without controls, whitespace, backslashes, or percent encoding.",
         ));
     }
     if has_known_secret(raw) || high_entropy_segment(raw) {
@@ -1227,6 +1231,16 @@ mod tests {
                 );
                 assert_eq!(result.err().unwrap().rule, "EGRESS_INVALID_URL");
             }
+        }
+    }
+    #[test]
+    fn non_ascii_url_is_denied_before_reservation_or_dns() {
+        for url in ["https://example.com/café", "https://ｅxample.com/plain"] {
+            let result =
+                validate_with_reservation(&json!({"url":url}), &allowed(), &Fake(vec![]), |_| {
+                    panic!("Non-ASCII URL reached reservation or DNS")
+                });
+            assert_eq!(result.err().unwrap().rule, "EGRESS_INVALID_URL");
         }
     }
     #[test]

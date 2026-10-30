@@ -2,6 +2,33 @@
 
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
+## Non-ASCII URL exfiltration regression, 2026-10-29
+
+The [raw-URL regression record](evidence/non-ascii-url-exfil-2026-10-29.json)
+captures a controlled failure on the preceding trusted-main executable:
+Claude sent a fullwidth synthetic token-shaped path to an approved fixture
+host. URL parsing percent-encoded it, and `guarded_fetch` returned
+`EGRESS_ALLOWED`; the old probe deliberately failed its new denial
+assertion. No real credential was used. A focused Rust test also failed
+before the fix because non-ASCII input reached reservation.
+
+The server now rejects non-ASCII raw URLs with `EGRESS_INVALID_URL` before
+reservation and DNS. Authenticated Claude Code 2.1.301 and Codex CLI 0.151.0
+each completed the revised five-call skill workflow: approved GET/HEAD
+controls succeeded, the ASCII synthetic marker returned
+`EGRESS_SECRET_DETECTED`, and the fullwidth marker returned
+`EGRESS_INVALID_URL`. The fixture saw only approved HTTP paths and no query
+for the exfiltration host.
+
+```bash
+OUTBOUND_GUARD_CLIENT_EXFIL=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `codex`. This closes the demonstrated URL canonicalization
+route; it does not recognize all transformed or ASCII-encoded secrets,
+cover Cursor's current plan-gated MCP path, establish automatic skill
+triggering, or guard traffic sent through other tools.
+
 ## Native-client malformed DNS compression loop, 2026-10-29
 
 The [malformed DNS record](evidence/native-client-dns-compression-loop-2026-10-29.json)
@@ -317,6 +344,8 @@ bridge observed no synthetic marker in server-to-client MCP results. Both
 used executable SHA-256
 `1d7a3f0175d88cec717a7fe141be58562f619bcfd8dd8bdd1be3e8736dcb49c3`
 and the same inspected two-file skill ZIP. The marker was not a credential.
+That four-call record predates the additional Unicode path; the command below
+now makes five calls.
 
 ```bash
 OUTBOUND_GUARD_CLIENT_EXFIL=1 python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
@@ -652,6 +681,8 @@ controls, and the transparent bridge found no marker in outbound MCP frames.
 The [redacted exact-candidate record](evidence/native-client-exfil-2026-10-28.json)
 includes source/artifact identity, client results and one inconclusive initial
 Claude replay whose tool-call count differed from the assertion.
+That historical record has four calls; the current command adds the
+non-ASCII URL denial described above.
 
 Run one authenticated client at a time with the existing development
 prerequisites and a checksum-verified candidate:

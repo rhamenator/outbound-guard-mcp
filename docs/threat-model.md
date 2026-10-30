@@ -48,6 +48,8 @@ Generated address-policy evidence: [the CIDR integration corpus](ip-policy.md#ge
 
 GitHub token URL coverage now includes `github_pat_`, `ghu_`, `ghs_`, and `ghr_` alongside `ghp_`/`gho_`. The [GitHub corpus](adversarial-netns.md#github-token-signatures) checks 13 synthetic blocked paths and eight allowed lookalikes, with pre-DNS/pre-HTTP denial and redacted MCP/audit output. Prefix plus a 20-character suffix is a conservative heuristic, not complete secret discovery or token validity checking.
 
+The [non-ASCII URL regression](client-cancellation.md#non-ascii-url-exfiltration-regression-2026-10-29) showed that the URL parser percent-encoded a fullwidth synthetic token-shaped path that bypassed the ASCII shape scanner and reached an approved fixture host. Raw non-ASCII URL bytes now fail before reservation or DNS. ASCII encodings and other transformed secrets remain outside the heuristic; operator allowlists are still the primary destination boundary.
+
 Repeated-call resource evidence: the [isolated live-budget workloads](adversarial-netns.md#repeated-call-descriptor-and-memory-evidence) run each server process under an observed OS-enforced 64-file-descriptor limit, sample descriptor count and kernel RSS high-water, and require correct responses and audit retention below a 128 MiB RSS test threshold. This is finite workload evidence, not a production memory cap or host-wide resource policy.
 
 MCP envelope metadata: [the stdio metadata regression](adversarial-stdio.md#mcp-parameter-and-metadata-regression) rejects malformed parameter/metadata shapes before dispatch, preserves correlation and handshake state, and proves no malformed tool audit entry or marker echo. This does not close the newer-revision, progress, or cancellation gates.

@@ -1,0 +1,111 @@
+{
+  "date_utc": "2026-10-30T03:07:08+00:00",
+  "source_base": "11114e343b3d106197a09a899992a554180519c2",
+  "before": {
+    "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+    "package_sha256": "32f1517e146d8b7b7f4a05114c3f0bc0d11af26b10995c275d3293c87dcbfe0f",
+    "native_client": "Claude Code 2.1.301",
+    "observed_rules": [
+      "EGRESS_INVALID_HOST",
+      "EGRESS_ALLOWED",
+      "EGRESS_ALLOWED",
+      "EGRESS_SECRET_DETECTED",
+      "EGRESS_ALLOWED"
+    ],
+    "observed_http_paths": [
+      "/plain",
+      "/head-ok",
+      "/percent-encoded-fullwidth-synthetic-marker"
+    ],
+    "harness_result": "Expected-denial assertion failed on old binary because the fullwidth synthetic marker returned EGRESS_ALLOWED and reached HTTP. The old run is a positive regression reproduction, not a passing old-client test."
+  },
+  "after": {
+    "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+    "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+    "clients": {
+      "claude": {
+        "version": "2.1.301",
+        "run": {
+          "native_skill_loaded": true,
+          "native_skill_invoked": true,
+          "native_skill_discovered": null,
+          "explicit_skill_input_accepted": null,
+          "native_turn_completed": null,
+          "skill_tool_result_success": true,
+          "installation_scope": "temporary project .claude/skills/outbound-guard",
+          "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+          "http_methods": [
+            "GET",
+            "GET",
+            "HEAD",
+            "GET",
+            "GET"
+          ],
+          "rules": [
+            "EGRESS_INVALID_HOST",
+            "EGRESS_ALLOWED",
+            "EGRESS_ALLOWED",
+            "EGRESS_SECRET_DETECTED",
+            "EGRESS_INVALID_URL"
+          ],
+          "status_codes": [
+            200,
+            200
+          ],
+          "fixture_hits": [
+            "/plain",
+            "/head-ok"
+          ],
+          "exfil_dns_queried": false,
+          "synthetic_marker_echo": false
+        }
+      },
+      "codex": {
+        "version": "0.151.0",
+        "run": {
+          "native_skill_loaded": true,
+          "native_skill_invoked": null,
+          "native_skill_discovered": true,
+          "explicit_skill_input_accepted": true,
+          "native_turn_completed": true,
+          "skill_tool_result_success": null,
+          "installation_scope": "temporary project .agents/skills/outbound-guard",
+          "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+          "http_methods": [
+            "GET",
+            "GET",
+            "HEAD",
+            "GET",
+            "GET"
+          ],
+          "rules": [
+            "EGRESS_INVALID_HOST",
+            "EGRESS_ALLOWED",
+            "EGRESS_ALLOWED",
+            "EGRESS_SECRET_DETECTED",
+            "EGRESS_INVALID_URL"
+          ],
+          "status_codes": [
+            200,
+            200
+          ],
+          "fixture_hits": [
+            "/plain",
+            "/head-ok"
+          ],
+          "exfil_dns_queried": false,
+          "synthetic_marker_echo": false
+        }
+      }
+    }
+  },
+  "synthetic_marker": "Fullwidth characters normalize to the shape of a GitHub token marker; no actual secret was used or committed.",
+  "fix": "Reject every non-ASCII byte in the raw URL before budget reservation and DNS, preventing URL canonicalization into percent-encoded request paths.",
+  "scope": "Raw URL input to guarded_fetch only; not a general secret detector or protection for other tools.",
+  "cleanup": "Owned namespaces and temporary client workspaces removed. Raw model transcripts and marker paths were not committed.",
+  "limitations": [
+    "Only one fullwidth synthetic marker shape and two native clients were tested after the fix.",
+    "ASCII encodings, transformed secrets and unrecognized token formats can still leak through an approved host; narrow allowlists remain necessary.",
+    "Cursor native plan gate yields zero MCP calls on the current client. Explicit skill invocation does not prove automatic triggering or other-tool traffic coverage."
+  ]
+}
