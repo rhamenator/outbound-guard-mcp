@@ -1,0 +1,102 @@
+{
+  "date_utc": "2026-10-30T08:11:15Z",
+  "source_base": "7e38f7dc247135f2d777518a3f72d90626fec03b",
+  "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "skill_zip_contents": [
+    "outbound-guard/SKILL.md",
+    "outbound-guard/LICENSE"
+  ],
+  "harness_sha256": "78f05381ae93fda98fc08d513130830127088cb40e671c66182fc83004f299ed",
+  "fixture_sha256": "1f97fdb4c6d7e2574b7a04766ad09089aa7fcaf167d1d04d336f9536b7dc4e37",
+  "command": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=interim python3 tools/client_cancellation_probe.py CLIENT BINARY SKILL_ZIP",
+  "fixture": {
+    "network": "disposable route-free Linux namespace",
+    "operator_allowed_hosts": [
+      "allowed.test"
+    ],
+    "ordered_paths": [
+      "/plain",
+      "/interim-header-flood",
+      "/plain"
+    ],
+    "trap": "Attempts 150 HTTP/1.1 103 Early Hints blocks with 1024-byte Link values before a final 200 OK"
+  },
+  "clients": {
+    "claude": {
+      "version": "2.1.301",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_discovered": null,
+        "explicit_skill_input_accepted": null,
+        "native_turn_completed": null,
+        "native_skill_invoked": true,
+        "skill_tool_result_success": true,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_RESPONSE_WIRE_LIMIT",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/interim-header-flood",
+          "/plain"
+        ],
+        "interim_mode": true
+      },
+      "denied_body_text_present": false
+    },
+    "codex": {
+      "version": "0.151.0",
+      "run": {
+        "native_skill_loaded": true,
+        "native_skill_discovered": true,
+        "explicit_skill_input_accepted": true,
+        "native_turn_completed": true,
+        "native_skill_invoked": null,
+        "skill_tool_result_success": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_RESPONSE_WIRE_LIMIT",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "fixture_hits": [
+          "/plain",
+          "/interim-header-flood",
+          "/plain"
+        ],
+        "interim_mode": true
+      },
+      "denied_body_text_present": false
+    }
+  },
+  "legacy_101_mode_regression": "Codex native replay with OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 passed after harness extension.",
+  "result": "Both real native client skill sessions denied the interim-header flood with EGRESS_RESPONSE_WIRE_LIMIT, returned no denied body, and recovered on an approved GET.",
+  "limitations": [
+    "One finite HTTP/1.1 103 header-flood pattern; not general parser conformance or a proof of all packet destinations.",
+    "Cursor MCP calls remain blocked by the native plan gate.",
+    "Explicit skill use does not prove automatic triggering, UI cancellation, model adherence or coverage of traffic sent through other tools."
+  ]
+}

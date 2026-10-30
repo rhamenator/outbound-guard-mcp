@@ -103,6 +103,26 @@ response denied as `EGRESS_PROTOCOL_UPGRADE_DENIED` without body text. The
 route-free fixture saw only `/plain`, `/switch-protocols`, `/plain` per
 session. The same finite-case and client limitations above still apply.
 
+## Native interim-header flood and recovery, 2026-10-30
+
+The [current-binary 103 flood record](evidence/native-client-interim-header-flood-2026-10-30.json)
+replays the route-free `103 Early Hints` header flood through real Claude Code
+2.1.301 and Codex CLI 0.151.0 skill sessions. Each client made three guarded
+GETs in order: approved `/plain`, hostile `/interim-header-flood`, and
+approved `/plain`. The middle call returned `EGRESS_RESPONSE_WIRE_LIMIT`
+without body text; both controls returned `EGRESS_ALLOWED`/200. The fixture
+saw exactly those paths. The original HTTP 101 mode also passed a Codex
+regression after this harness extension.
+
+```bash
+OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=interim python3 tools/client_cancellation_probe.py claude /absolute/path/to/outbound-guard-mcp /absolute/path/to/outbound-guard-skill.zip
+```
+
+Repeat with `codex`. This is one HTTP/1.1 interim-response pattern. Cursor
+remains untested for this case after its native plan gate; explicit skill
+use, fixture hits and successful recovery do not prove automatic triggering,
+every packet destination, UI cancellation or traffic sent through other tools.
+
 ## Post-upgrade-fix native control replay, 2026-10-29
 
 The [post-fix control record](evidence/native-client-control-post-upgrade-2026-10-29.json)
