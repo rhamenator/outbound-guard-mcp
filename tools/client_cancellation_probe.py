@@ -27,13 +27,15 @@ Set OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK=1 for a refused first validated
 address followed by a pinned public fallback while DNS flips to loopback.
 Set OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE=1 for a wrong-host first TLS certificate,
 private next-call DNS answer and same-process approved recovery.
+Add OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY=1 to that replay to run an active
+mitmdump trap with a positive proxy-flow control.
 Set OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 for delayed-first-byte and slow-drip
 HTTP denials followed by an approved recovery GET.
 Set OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 for an HTTP 101 denial and recovery,
 or =interim for a 103 Early Hints header flood denial and recovery.
 Only one opt-in mode may be selected.
 """
-import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit
+import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit,pwd
 assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __doc__
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
 attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
@@ -51,6 +53,8 @@ json_injection_mode=json_variant in ('1','duplicate')
 json_duplicate_mode=json_variant=='duplicate'
 fallback_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK')=='1'
 tls_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1'
+active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
+assert not active_proxy_mode or tls_mode, 'active proxy trap requires TLS handshake replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim'), 'unsupported HTTP upgrade replay mode'
@@ -70,7 +74,7 @@ if exfil_mode or argument_mode:
 ns='outbound-client-cancel-'+str(os.getpid())
 (root/'namespace').write_text(ns)
 skill_dir=root/({'claude':'.claude','cursor':'.cursor','codex':'.agents'}[sys.argv[1]]+'/skills/outbound-guard')
-p = backend = None
+p = backend = proxy_process = None
 owns_namespace = cleaned = False
 def cleanup():
  global cleaned
@@ -94,6 +98,9 @@ def cleanup():
  if backend is not None:
   try:backend.wait(timeout=4)
   except subprocess.TimeoutExpired:backend.terminate();backend.wait(timeout=4)
+ if proxy_process is not None:
+  try:proxy_process.wait(timeout=4)
+  except subprocess.TimeoutExpired:proxy_process.terminate();proxy_process.wait(timeout=4)
  shutil.rmtree(root)
 atexit.register(cleanup)
 if skill_zip:
@@ -116,6 +123,32 @@ for _ in range(200):
  if (root/'ready').exists():break
  time.sleep(.02)
 assert (root/'ready').exists() and backend.poll() is None, 'fixture startup failed'
+if active_proxy_mode:
+ assert shutil.which('mitmdump') and shutil.which('curl'), 'mitmdump and curl are required for the active proxy trap'
+ proxy_process=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,
+  'runuser','-u',pwd.getpwuid(os.getuid()).pw_name,'--','env',
+  'OUTBOUND_GUARD_PROXY_FLOW_LOG='+str(root/'proxy-flows.jsonl'),
+  'mitmdump','--listen-host','127.0.0.1','--listen-port','3128',
+  '--set','confdir='+str(root/'mitmprofile'),'-s',str(script_dir/'mitmproxy_flow_probe.py')],
+  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ ready=False
+ for _ in range(100):
+  result=subprocess.run(['sudo','-n','ip','netns','exec',ns,'python3','-c',
+   'import socket; socket.create_connection(("127.0.0.1",3128),0.2).close()'],
+   stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+  if result.returncode==0:
+   ready=True;break
+  assert proxy_process.poll() is None, 'mitmdump exited during startup'
+  time.sleep(.05)
+ assert ready, 'mitmdump listener did not start'
+ control=subprocess.run(['sudo','-n','ip','netns','exec',ns,'curl','--fail','--silent','--show-error',
+  '--noproxy','','--proxy','http://127.0.0.1:3128','http://allowed.test/proxy-control'],
+  text=True,capture_output=True,timeout=10,check=True)
+ assert control.stdout=='fixture-ok', 'active proxy positive control failed'
+ for _ in range(100):
+  if (root/'proxy-flows.jsonl').exists():break
+  time.sleep(.01)
+ assert (root/'proxy-flows.jsonl').exists(), 'positive proxy flow was not observed'
 bridge=[str(script_dir/'client_wire_bridge.py'),ns,binary,str(root/'wire.jsonl')]
 if dns_mode:bridge.append('allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test')
 if exfil_mode:bridge.append('allowed.test,exfil.test')
@@ -124,6 +157,7 @@ if frame_mode:bridge.extend(['allowed.test,private.test','mutate'])
 if argument_mode:bridge.extend(['allowed.test','inject-arguments'])
 if fallback_mode:bridge.append('allowed.test,fallback-pin.test')
 if tls_mode:bridge.append('allowed.test,tls-handshake.test')
+if active_proxy_mode:bridge.append('active-proxy')
 config=root/'mcp.json';config.write_text(json.dumps({'mcpServers':{'outbound_guard':{'command':'python3','args':bridge}}}))
 (root/'.cursor').mkdir(exist_ok=True)
 (root/'.cursor/mcp.json').write_text(config.read_text())
@@ -438,9 +472,12 @@ if skill_zip:
    assert tls_a_queries==2, tls_a_queries
    assert tls_sni==[['11.0.0.2','tls-handshake.test']], tls_sni
    hits=json.loads((root/'hits.json').read_text())
-   assert hits==['/plain'], hits
+   assert hits==(['/proxy-control','/plain'] if active_proxy_mode else ['/plain']), hits
    denied=[e for e in events if e.get('rule') in ('EGRESS_NETWORK_FAILURE','EGRESS_FORBIDDEN_ADDRESS')]
    assert len(denied)==2 and all(e.get('body_text_present') is False for e in denied), denied
+   if active_proxy_mode:
+    proxy_flows=[json.loads(line) for line in (root/'proxy-flows.jsonl').read_text().splitlines()]
+    assert proxy_flows==[{'method':'GET','host':'allowed.test','path':'/proxy-control'}], proxy_flows
   if slow_http_mode:
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
@@ -455,7 +492,7 @@ if skill_zip:
    'installation_scope':'temporary project '+str(skill_dir.relative_to(root)),
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
    'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) else None,
    'mutant_parse_error_seen':True if frame_mode else None,
    'injected_argument_denials':2 if argument_mode else None,
@@ -466,6 +503,7 @@ if skill_zip:
    'fallback_a_queries':fallback_a_queries if fallback_mode else None,
    'tls_handshake_a_queries':tls_a_queries if tls_mode else None,
    'tls_sni':tls_sni if tls_mode else None,
+   'proxy_flows':proxy_flows if active_proxy_mode else None,
    'forbidden_dns_names':sorted(set(dns_names)) if dns_mode else None,
    'alias_cname_a_queried':'alias-private.test' in dns_a_names if dns_mode else None,
    'compression_loop_a_queried':'loop-dns.test' in dns_a_names if dns_mode else None,

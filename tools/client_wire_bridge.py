@@ -6,12 +6,16 @@ ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
 assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,fallback-pin.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
-assert mutation in (None,'mutate','inject-arguments')
+assert mutation in (None,'mutate','inject-arguments','active-proxy')
 mutant_enabled=mutation=='mutate'
 argument_enabled=mutation=='inject-arguments'
 server_env=['PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts]
 if hosts=='allowed.test,tls-handshake.test':
  server_env.append('OUTBOUND_GUARD_EXTRA_CA_CERT='+str(pathlib.Path(log).with_name('ca.pem')))
+if mutation=='active-proxy':
+ proxy='http://127.0.0.1:3128'
+ server_env += [name+'='+proxy for name in ('HTTP_PROXY','http_proxy','HTTPS_PROXY','https_proxy','ALL_PROXY','all_proxy')]
+ server_env += ['NO_PROXY=','no_proxy=']
 p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i',*server_env,binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
 lock=threading.Lock()
 mutant_pending=threading.Event()
