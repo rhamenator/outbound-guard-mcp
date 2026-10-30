@@ -1,0 +1,84 @@
+{
+  "artifact_validation": "Each downloaded CI artifact bundle passed sha256sum -c SHA256SUMS for archive, skill ZIP and Debian package. All three CI runs succeeded at their recorded main source SHAs. Local gh 2.46 cannot independently verify cryptographic attestations; this replay makes no such claim.",
+  "changed_binary_upgrade": {
+    "checks": [
+      "old_install",
+      "new_upgrade",
+      "mcp_discovery",
+      "loopback_denial",
+      "non_ascii_url_denial",
+      "remove",
+      "residue"
+    ],
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+      "revision": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+      "version": "0.1.0~candidate.181+ge4ef389622a7"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+      "package_sha256": "03af1505c7264bb6ee24882b611a1070bd6da3507a78504d344e8301d3f7bfd8",
+      "revision": "334c8d8e8613ce56b4fbd5524132c59aa5a9b0e7",
+      "version": "0.1.0~candidate.167+g334c8d8e8613"
+    },
+    "platform": "Debian 12 amd64",
+    "result": "passed"
+  },
+  "commands": "python3 tools/debian_upgrade_probe.py --old VERIFIED_OLD.deb --old-sha256 OLD_SHA256 --new VERIFIED_NEW.deb --new-sha256 NEW_SHA256",
+  "current_package_ci_run": 41090919033,
+  "current_package_source": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+  "date_utc": "2026-10-30T20:48:00Z",
+  "environment": {
+    "capabilities": "all dropped",
+    "cpu_limit": 1,
+    "disposable_container": true,
+    "image": "docker.io/library/rust@sha256:8c8b26057f8ba46c755d934453b7abc40e88b1cd51d654a6d15c115564793edd",
+    "memory_limit_mib": 256,
+    "no_new_privileges": true,
+    "ordinary_network": "none",
+    "pid_limit": 64,
+    "platform": "Debian 12 amd64"
+  },
+  "limitations": [
+    "These are experimental package versions; the exact owner-approved release candidate does not exist.",
+    "The recent prior 178 and current 181 packages contain identical executable bytes, so that replay proves a package version transition rather than binary migration.",
+    "The older 167 to 181 replay changes executable bytes but skips intervening versions; it does not prove every upgrade path.",
+    "The probe tests version, MCP discovery, pre-network loopback/invalid-URL denial, removal and residue. It does not test user configuration migration, native-client calls after upgrade, other platforms or arbitrary network traffic.",
+    "No local cryptographic attestation verification was available with installed gh 2.46."
+  ],
+  "old_package_ci_runs": {
+    "changed_binary_baseline": 40973936774,
+    "recent_prior": 41052316927
+  },
+  "recent_prior_upgrade": {
+    "checks": [
+      "old_install",
+      "new_upgrade",
+      "mcp_discovery",
+      "loopback_denial",
+      "non_ascii_url_denial",
+      "remove",
+      "residue"
+    ],
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+      "revision": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+      "version": "0.1.0~candidate.181+ge4ef389622a7"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "6ceac168c5cc3a327e4b68e9cc076d5a33501f86b633c4ee95faa50777ee8305",
+      "revision": "9a4731e9f448d052e3032afb6bdb1a8900730c41",
+      "version": "0.1.0~candidate.178+g9a4731e9f448"
+    },
+    "platform": "Debian 12 amd64",
+    "result": "passed"
+  },
+  "scope": "Experimental Debian 12 amd64 package upgrade into trusted-main package from e4ef389622a7; no official candidate or release approval."
+}
