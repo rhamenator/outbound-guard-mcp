@@ -14,6 +14,8 @@ Status: experimental; no official pre-1.0 release candidate or stable release ap
 
 The [remaining-gap review](RELEASE_GAPS.md) separates next engineering/verification steps from concrete differences between the current narrow implementation and the quality bar. No difference is silently accepted by passing CI.
 
+The [native client after Debian upgrade replay](evidence/native-client-after-debian-upgrade-2026-10-30.json) adds changed-binary package upgrade followed by Claude/Codex guarded calls, removal, and residue checks. It covers one older experimental version path and leaves configuration migration and exact-candidate qualification open.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.

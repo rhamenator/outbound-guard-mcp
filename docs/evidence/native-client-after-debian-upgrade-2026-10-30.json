@@ -1,0 +1,104 @@
+{
+  "artifact_validation": "Old and new downloaded CI bundles matched their SHA256SUMS manifests; package_info verified package payload binary against embedded provenance. No local cryptographic attestation verification was performed.",
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_NEW_DEB NEW_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --old-package VERIFIED_OLD_DEB --old-sha256 OLD_SHA256",
+  "date_utc": "2026-10-30T22:18:00Z",
+  "fixture_sha256": "2e42eed1d2329d2061a598a494b101038aaa85068fba62b48a4b512453fe513f",
+  "harness_sha256": "3a769849885a76f12570011042a81ad02f3eeb7aa27802601a810aba61af1e90",
+  "limitations": [
+    "Older 167 to 181 changed-binary transition skips intervening versions; it does not prove every upgrade path or the next official candidate.",
+    "The native client process remained on the Ubuntu host; only the MCP server ran in Debian 12.",
+    "This finite TLS mismatch, private DNS flip and recovery workflow does not test configuration migration, Cursor, automatic skill triggering, UI cancellation, all adversarial network paths or traffic sent through other tools.",
+    "The package is an unsigned experimental artifact. No official candidate, owner self-review, or residual-risk acceptance is implied."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "native_skill_and_guarded_calls",
+        "tls_hostname_denial",
+        "private_dns_flip_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "rules": [
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200
+      ],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [
+        [
+          "11.0.0.2",
+          "tls-handshake.test"
+        ]
+      ],
+      "version": "2.1.301"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "native_skill_and_guarded_calls",
+        "tls_hostname_denial",
+        "private_dns_flip_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "rules": [
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200
+      ],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [
+        [
+          "11.0.0.2",
+          "tls-handshake.test"
+        ]
+      ],
+      "version": "0.151.0"
+    }
+  },
+  "negative_control": "Wrong old-package SHA-256 failed before container/namespace setup. No owned Docker container or fixture namespace remained.",
+  "new_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "new_package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "new_package_source": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+  "new_trusted_main_ci_run": 41090919033,
+  "no_upgrade_regression": "Claude clean-install path still passed after adding the optional upgrade mode.",
+  "old_binary_sha256": "47ae116628e1127a59d25878ca3034a4bf89b5437e6c09f2fbaba550abbe62d5",
+  "old_package_sha256": "03af1505c7264bb6ee24882b611a1070bd6da3507a78504d344e8301d3f7bfd8",
+  "old_package_source": "334c8d8e8613ce56b4fbd5524132c59aa5a9b0e7",
+  "old_trusted_main_ci_run": 40973936774,
+  "package_transition": "dpkg -i old then dpkg -i new without --force-depends; exact package versions and executable hashes checked before client calls; dpkg -r and executable/documentation/configuration/package-database residue checks after each client.",
+  "platform": "Debian 12 amd64 disposable Docker container with ordinary network none; server joined controlled route-free fixture namespace only. Native clients ran on Ubuntu host.",
+  "probe_sha256": "d611003f7faa259c9939b943dce865d897bf9a8a47f7fd5d70142c232ce0b95f",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "24e88f37301f0889246832b552e2df4d2396d24d"
+}
