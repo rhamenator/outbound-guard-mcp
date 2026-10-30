@@ -1,0 +1,60 @@
+{
+  "date_utc": "2026-10-30T17:47:35Z",
+  "tested_source": "e4ef389622a73dfb2d507f03c12ae11943da0797",
+  "trusted_main_ci_run": 41090919033,
+  "trusted_main_artifact_id": 12994336893,
+  "package_version": "0.1.0~candidate.181+ge4ef389622a7",
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "probe_script_sha256": "ec97b2486215ab49afb722d69fa931b3db1d6d9d005eba430fd137892cc21d44",
+  "native_harness_sha256": "305667fd00ace6cb7e47d031881638909806de51b7fd2bc426d813e20461f195",
+  "native_bridge_sha256": "797784a121c226111e3e90ba28e246d0799c1823ed1479876a348089d9c30386",
+  "mitmdump_addon_sha256": "2eaf23a9cf058a63962a5469ff91066c9f240ba97ede85116d5435e5cbc16cd8",
+  "command_template": "tools/staged_deb_native_probe.sh CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256",
+  "package_staging": {
+    "method": "sudo dpkg --root=PRIVATE_TEMP_DIRECTORY --force-depends -i VERIFIED_DEB",
+    "host": "Ubuntu 26.04.1 LTS amd64, glibc 2.43",
+    "alternate_database_initial_package_count": 0,
+    "package_control_files": ["control"],
+    "installed_binary_matches_deb_payload": true,
+    "package_status_before_native_calls": "install ok installed",
+    "removed_after_native_calls": true,
+    "residue_absent": ["executable", "package documentation directory", "configuration path", "package database entry"]
+  },
+  "native_clients": {
+    "claude": {
+      "version": "2.1.301",
+      "native_skill_invoked": true,
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits_including_positive_control": ["/proxy-control", "/plain"],
+      "additional_proxy_flows": 0,
+      "package_removed_and_residue_checked": true
+    },
+    "codex": {
+      "version": "0.151.0",
+      "native_skill_discovered": true,
+      "explicit_skill_input_accepted": true,
+      "native_turn_completed": true,
+      "rules": ["EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+      "http_methods": ["GET", "GET", "GET"],
+      "status_codes": [200],
+      "tls_handshake_a_queries": 2,
+      "tls_sni": [["11.0.0.2", "tls-handshake.test"]],
+      "fixture_hits_including_positive_control": ["/proxy-control", "/plain"],
+      "additional_proxy_flows": 0,
+      "package_removed_and_residue_checked": true
+    }
+  },
+  "limits": [
+    "The alternate package database has no libc6 or libgcc-s1 record; installation used --force-depends and host Ubuntu libraries, not a Debian 12 runtime.",
+    "The separate disposable Debian 12 container package gate validates clean install, launch, guarded denial, removal and residue, but these native client calls did not execute in that container.",
+    "The downloaded CI artifact SHA256SUMS was checked; local cryptographic attestation verification was not performed in this replay.",
+    "Explicit native skill workflows do not prove automatic triggering, Cursor behavior, UI cancellation, all network paths or traffic through other tools.",
+    "This experimental package is not an owner-approved official release candidate."
+  ]
+}
