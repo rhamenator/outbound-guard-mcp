@@ -1,0 +1,26 @@
+{
+  "date_utc": "2026-10-30T10:53:04Z",
+  "source_base": "58482ad0ccc2de40568157d798820500f6ed6940",
+  "binary_sha256": "a9a0141f06e80e8468f645e068f718f0c7c1599d18d8a7858b154abd86b499ef",
+  "fixture_sha256": "e8b88a4c7471d5dab5af71bd2b3aba5f72b62ca48f3904b391bcb1622bff3311",
+  "harness": "python3 -m py_compile tools/netns_adversarial_probe.py && bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp target/debug/examples/cancel_fetch_probe",
+  "fixture": "Route-free Linux namespace; ephemeral trusted CA; tls-handshake.test resolves first to 11.0.0.2 with wrong-host leaf and then to 11.0.0.1 with matching leaf; next DNS A lookup returns private 127.0.0.1",
+  "observed": {
+    "first_rule": "EGRESS_NETWORK_FAILURE",
+    "first_body_text_present": false,
+    "second_rule": "EGRESS_FORBIDDEN_ADDRESS",
+    "second_body_text_present": false,
+    "recovery_rule": "EGRESS_ALLOWED",
+    "recovery_body_text": "fixture-ok",
+    "a_queries": 2,
+    "sni": [["11.0.0.2", "tls-handshake.test"]],
+    "http_paths": ["/plain"]
+  },
+  "full_probe_exit_code": 0,
+  "full_probe_mcp_decisions": 2239,
+  "scope": "Certificate hostname validation failure on the first pinned TLS endpoint stops the request without trying a second approved address; a private next-call DNS answer is denied and same-process recovery succeeds.",
+  "limits": [
+    "This single fixture does not cover all TLS alerts, incomplete handshakes, or reconnect after an established connection.",
+    "It tests one Linux resolver and MCP process, not every platform or traffic sent through other tools."
+  ]
+}

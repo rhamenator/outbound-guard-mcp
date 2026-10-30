@@ -42,6 +42,7 @@ RECORDS = {
     "exfil.test": [PUBLIC_FIXTURE],
     "syn-stall.test": ["11.0.0.3", PUBLIC_FIXTURE],
     "fallback-pin.test": ["11.0.0.2", PUBLIC_FIXTURE],
+    "tls-handshake.test": ["11.0.0.2", PUBLIC_FIXTURE],
     "allowed.test.search-trap.test": ["127.0.0.1"],
     "second.test": [PUBLIC_FIXTURE],
     "rebind.test": [PUBLIC_FIXTURE],
@@ -78,6 +79,7 @@ class DNS(socketserver.BaseRequestHandler):
     stall_release = threading.Event()
     rebind_a_queries = 0
     fallback_a_queries = 0
+    tls_handshake_a_queries = 0
     queries = 0
     names = []
     a_names = []
@@ -116,6 +118,10 @@ class DNS(socketserver.BaseRequestHandler):
             type(self).fallback_a_queries += 1
             # Any retry through DNS would now return a forbidden destination.
             addresses = (["11.0.0.2", PUBLIC_FIXTURE] if self.fallback_a_queries == 1
+                         else ["127.0.0.1"])
+        if name == "tls-handshake.test" and qtype == 1:
+            type(self).tls_handshake_a_queries += 1
+            addresses = (["11.0.0.2", PUBLIC_FIXTURE] if self.tls_handshake_a_queries == 1
                          else ["127.0.0.1"])
         if name == "alias-private.test" and qtype in (1, 28):
             target = b"\x07private\x04test\x00"
@@ -582,6 +588,55 @@ def test_trusted_tls(binary):
                 server.server_close()
                 thread.join(timeout=2)
 
+        # The first approved TCP address completes a TLS handshake with a
+        # trusted CA but the wrong hostname. A second address has the correct
+        # certificate; a certificate failure must not silently advance to it.
+        with open(path("extensions"), "w") as output:
+            output.write("subjectAltName=DNS:tls-handshake.test\n"
+                         "basicConstraints=critical,CA:FALSE\n"
+                         "keyUsage=critical,digitalSignature,keyEncipherment\n"
+                         "extendedKeyUsage=serverAuth\n")
+        openssl("x509", "-req", "-in", path("leaf.csr"), "-CA", path("ca.pem"),
+                "-CAkey", path("ca.key"), "-set_serial", "4", "-days", "1",
+                "-extfile", path("extensions"), "-out", path("tls-handshake.test.pem"))
+        seen_sni = []
+        servers = []
+        threads = []
+        try:
+            for address, cert in (("11.0.0.2", "wrong.test.pem"),
+                                  (PUBLIC_FIXTURE, "tls-handshake.test.pem")):
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(path(cert), path("leaf.key"))
+                context.set_servername_callback(
+                    lambda _socket, name, _context, address=address:
+                    seen_sni.append((address, name)))
+                server = QuietTLSHTTP((address, 443), HTTP)
+                server.socket = context.wrap_socket(server.socket, server_side=True)
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                servers.append(server)
+                threads.append(thread)
+                thread.start()
+            before_hits = len(HTTP.hits)
+            DNS.tls_handshake_a_queries = 0
+            decisions, _ = call_arguments(binary, [
+                {"url": "https://tls-handshake.test/plain"},
+                {"url": "https://tls-handshake.test/plain"},
+                {"url": "http://allowed.test/plain"},
+            ], extra_ca=path("ca.pem"))
+            assert [item["rule"] for item in decisions] == [
+                "EGRESS_NETWORK_FAILURE", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"], decisions
+            assert all("body_text" not in item for item in decisions[:2]), decisions
+            assert decisions[2]["body_text"] == "fixture-ok", decisions[2]
+            assert DNS.tls_handshake_a_queries == 2, DNS.tls_handshake_a_queries
+            assert seen_sni == [("11.0.0.2", "tls-handshake.test")], seen_sni
+            assert HTTP.hits[before_hits:] == ["/plain"], HTTP.hits[before_hits:]
+        finally:
+            for server in servers:
+                server.shutdown()
+                server.server_close()
+            for thread in threads:
+                thread.join(timeout=2)
+
         for name, data in (("empty", b""), ("invalid", b"synthetic-CA-secret"),
                            ("large", b"x" * 65537),
                            ("bad-der", b"-----BEGIN CERTIFICATE-----\nAA==\n-----END CERTIFICATE-----\n")):
@@ -605,6 +660,7 @@ def test_trusted_tls(binary):
         assert (DNS.queries, len(HTTP.hits)) == (before_queries, before_hits)
         print("trusted TLS probe: matching SAN accepted, same-CA mismatched SAN denied before HTTP, "
               "refused-address pinned TLS fallback accepted without DNS retry and subsequent private answer denied, "
+              "wrong-host TLS handshake denied without trying a second pinned address; private DNS flip and recovery passed, "
               "unconfigured CA denied; 10 invalid CA configurations rejected at startup")
 
 
@@ -1961,7 +2017,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1200 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1203 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
