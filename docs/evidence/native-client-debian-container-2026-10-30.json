@@ -8,8 +8,8 @@
   "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
   "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
   "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
-  "container_probe_sha256": "bfe9a655dc341d6fbb04d1c0e0f18dc1365d9a8d0b291a474573c0421d7d20dd",
-  "native_harness_sha256": "305667fd00ace6cb7e47d031881638909806de51b7fd2bc426d813e20461f195",
+  "container_probe_sha256": "834fffa5be697791a54c20f49f847e0c613a7a25c16cc9ded49273fb70b82c0e",
+  "native_harness_sha256": "3a769849885a76f12570011042a81ad02f3eeb7aa27802601a810aba61af1e90",
   "native_bridge_sha256": "797784a121c226111e3e90ba28e246d0799c1823ed1479876a348089d9c30386",
   "fixture_sha256": "2e42eed1d2329d2061a598a494b101038aaa85068fba62b48a4b512453fe513f",
   "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256",
@@ -55,6 +55,7 @@
     }
   },
   "repair_during_probe": "The first Codex replay completed guarded calls, but a cleanup race stopped the container before package-removal proof. The probe moved removal and residue checks to the parent process; both clients passed after the fix.",
+  "timeout_cleanup_regression": "Forced 1-second and 5-second harness deadlines failed as intended. The parent sent SIGTERM, allowed the harness cleanup path to finish, and verified no owned network namespace, container, or /tmp/outbound-cancel-* directory remained. Both full native client replays passed after this change.",
   "limits": [
     "Native clients ran on the Ubuntu host; the installed MCP server ran inside the Debian 12 container.",
     "The native harness binary_sha256 field identifies its generated launcher in this replay. The installed package executable identity is verified separately by the container probe and recorded above.",

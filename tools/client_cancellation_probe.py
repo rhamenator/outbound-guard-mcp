@@ -35,7 +35,7 @@ Set OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 for an HTTP 101 denial and recovery,
 or =interim for a 103 Early Hints header flood denial and recovery.
 Only one opt-in mode may be selected.
 """
-import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit,pwd
+import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit,pwd,signal
 assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __doc__
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
 attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
@@ -103,6 +103,7 @@ def cleanup():
   except subprocess.TimeoutExpired:proxy_process.terminate();proxy_process.wait(timeout=4)
  shutil.rmtree(root)
 atexit.register(cleanup)
+signal.signal(signal.SIGTERM, lambda _signum, _frame: sys.exit(143))
 if skill_zip:
  import zipfile
  with zipfile.ZipFile(skill_zip) as archive:

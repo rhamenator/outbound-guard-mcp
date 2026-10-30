@@ -6,8 +6,10 @@ import json
 import os
 from pathlib import Path
 import shlex
+import signal
 import subprocess
 import tempfile
+import shutil
 
 from debian_upgrade_probe import package_info
 from package_candidate import BUILDER_IMAGE
@@ -53,6 +55,8 @@ def main():
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
     info = package_info(package, args.package_sha256)
+    timeout_seconds = int(os.environ.get("OUTBOUND_GUARD_NATIVE_TIMEOUT_SECONDS", "180"))
+    assert 1 <= timeout_seconds <= 180, "native timeout outside supported range"
     assert len(args.skill_sha256) == 64 and sha256(skill) == args.skill_sha256, "skill ZIP digest mismatch"
     control = subprocess.check_output(["dpkg-deb", "--ctrl-tarfile", str(package)])
     listing = subprocess.check_output(["tar", "-tf", "-"], input=control, text=False).decode().splitlines()
@@ -74,8 +78,37 @@ def main():
         env = os.environ.copy()
         env["OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE"] = "1"
         try:
-            subprocess.run(["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
-                            args.client, str(wrapper), str(skill)], env=env, check=True, timeout=180)
+            with (root / "harness.stdout").open("w+") as output:
+                process = subprocess.Popen(["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
+                                            args.client, str(wrapper), str(skill)], env=env, stdout=output)
+                try:
+                    returncode = process.wait(timeout=timeout_seconds)
+                except subprocess.TimeoutExpired:
+                    process.send_signal(signal.SIGTERM)
+                    try:
+                        process.wait(timeout=20)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+                        namespace = f"outbound-client-cancel-{process.pid}"
+                        pids = subprocess.run(["sudo", "-n", "ip", "netns", "pids", namespace],
+                                              capture_output=True, text=True).stdout.split()
+                        for pid in pids:
+                            subprocess.run(["sudo", "-n", "kill", "-TERM", pid], check=False)
+                        subprocess.run(["sudo", "-n", "ip", "netns", "delete", namespace], check=False)
+                        subprocess.run(["sudo", "-n", "rm", "-rf", "--", "/etc/netns/" + namespace], check=False)
+                        output.seek(0)
+                        for line in output:
+                            if line.startswith("ROOT="):
+                                fixture_root = Path(line.removeprefix("ROOT=").strip())
+                                if fixture_root.parent == Path("/tmp") and fixture_root.name.startswith("outbound-cancel-"):
+                                    shutil.rmtree(fixture_root, ignore_errors=True)
+                                break
+                    raise RuntimeError("native client probe timed out; fixture cleanup attempted")
+                output.seek(0)
+                print(output.read(), end="")
+                if returncode:
+                    raise subprocess.CalledProcessError(returncode, process.args)
             assert state.exists(), "Debian container was not started"
             container = state.read_text().strip()
             assert container.startswith("outbound-native-"), "invalid container identity"
