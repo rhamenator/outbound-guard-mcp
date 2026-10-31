@@ -5,11 +5,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import signal
 import subprocess
 import tempfile
 import shutil
+import time
 
 from debian_upgrade_probe import package_info
 from package_candidate import BUILDER_IMAGE
@@ -106,10 +108,13 @@ def main():
         wrapper.chmod(0o700)
         env = os.environ.copy()
         env["OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE"] = "1"
+        process = None
+        success = False
         try:
             with (root / "harness.stdout").open("w+") as output:
                 process = subprocess.Popen(["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
-                                            args.client, str(wrapper), str(skill)], env=env, stdout=output)
+                                            args.client, str(wrapper), str(skill)], env=env, stdout=output,
+                                           start_new_session=True)
                 try:
                     returncode = process.wait(timeout=timeout_seconds)
                 except subprocess.TimeoutExpired:
@@ -150,12 +155,26 @@ def main():
                             "test ! -d /usr/share/doc/outbound-guard-mcp; "
                             "test ! -e /etc/outbound-guard-mcp; "
                             "! dpkg-query -W outbound-guard-mcp >/dev/null 2>&1"], check=True)
+            success = True
         finally:
+            if process is not None:
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
             if state.exists():
                 container = state.read_text().strip()
-                if container.startswith("outbound-native-"):
-                    subprocess.run(["docker", "stop", "-t", "1", container],
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if re.fullmatch(r"outbound-native-\d+", container):
+                    for attempt in range(10):
+                        subprocess.run(["docker", "stop", "-t", "1", container],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        present = subprocess.run(["docker", "container", "inspect", container],
+                                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+                        if not present and attempt >= (1 if success else 4):
+                            break
+                        time.sleep(0.5)
+                    else:
+                        raise RuntimeError("owned Debian probe container remained after cleanup")
     print(json.dumps({"result": "passed", "client": args.client,
                       "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
                       "image_id": image_id, "package": info, "old_package": old_info,
