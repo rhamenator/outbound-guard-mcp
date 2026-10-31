@@ -22,6 +22,8 @@ A [native container failure-cleanup replay](evidence/native-container-failure-cl
 
 A [later package-installed slow-HTTP replay](evidence/native-client-debian-slow-http-2026-10-31.json) fixed the HTTP-only fixture startup and passed Claude/Codex slow-drip, delayed-first-byte and recovery calls against the actual Debian-installed server. It is finite evidence for those endpoints; the earlier failed attempt remains disclosed above.
 
+A [package-installed malformed-HTTP replay](evidence/native-client-debian-malformed-http-2026-10-31.json) passed native Claude/Codex bad-chunk-size and truncated-chunk denial followed by an approved recovery GET, plus package removal and residue. It covers two controlled encodings, not general malformed-protocol resistance.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.

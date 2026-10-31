@@ -240,9 +240,9 @@ if skill_zip:
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_FORBIDDEN_ADDRESS']
    expected_methods=['GET','GET','GET']
   if malformed_mode:
-   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/chunked-bad-size ; GET http://allowed.test/chunked-truncated . The last two responses have deliberately malformed HTTP chunk framing. The operator approved allowed.test. Make every call once even when an earlier call fails. Do not retry or use any other tool. Report the actual results.'
-   expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_READ_FAILURE','EGRESS_READ_FAILURE']
-   expected_methods=['GET','HEAD','GET','GET']
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these five calls in order: GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/chunked-bad-size ; GET http://allowed.test/chunked-truncated ; GET http://allowed.test/plain . The middle two GET responses have deliberately malformed HTTP chunk framing. The operator approved allowed.test. Make every call once even when an earlier call fails. Do not retry or use any other tool. Report the actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_READ_FAILURE','EGRESS_READ_FAILURE','EGRESS_ALLOWED']
+   expected_methods=['GET','HEAD','GET','GET','GET']
   if response_limit_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/large ; GET http://allowed.test/chunked-large ; GET http://allowed.test/plain . The middle two responses have 70000-byte bodies, one fixed-length and one chunked. The operator approved allowed.test. Make every call once even if an earlier call fails. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_RESPONSE_LIMIT','EGRESS_RESPONSE_LIMIT','EGRESS_ALLOWED']
@@ -373,7 +373,8 @@ if skill_zip:
    print(json.dumps({'probe_diagnostic':{'http_methods':[e['http_method'] for e in fetches],
     'rules':[e['rule'] for e in events if 'rule' in e]}}),flush=True)
   assert [e['http_method'] for e in fetches]==expected_methods
-  assert [e['status_code'] for e in events if 'status_code' in e]==([200] if (json_injection_mode or tls_mode) else [200,200])
+  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if malformed_mode else [200,200])
+  assert [e['status_code'] for e in events if 'status_code' in e]==expected_statuses
   if attack_mode:
    expected_hits=['/plain','/head-ok','/redirect','/gzip-bomb']
    for _ in range(100):
@@ -427,9 +428,9 @@ if skill_zip:
   if malformed_mode:
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
-    if len(hits)==4:break
+    if len(hits)==5:break
     time.sleep(.01)
-   assert hits==['/plain','/head-ok','/chunked-bad-size','/chunked-truncated'], hits
+   assert hits==['/plain','/head-ok','/chunked-bad-size','/chunked-truncated','/plain'], hits
   if response_limit_mode:
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())

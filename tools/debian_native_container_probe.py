@@ -72,7 +72,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http"), default="tls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -112,10 +112,12 @@ def main():
         wrapper.write_text(source)
         wrapper.chmod(0o700)
         env = os.environ.copy()
-        for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP"):
+        for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
+                          "OUTBOUND_GUARD_CLIENT_MALFORMED"):
             env.pop(mode_name, None)
         env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
-             "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP"}[args.fixture_mode]] = "1"
+             "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
+             "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED"}[args.fixture_mode]] = "1"
         process = None
         success = False
         try:
@@ -189,8 +191,10 @@ def main():
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
                                  "native_skill_and_guarded_calls",
-                                 *(["tls_hostname_denial", "private_dns_flip_denial"] if args.fixture_mode == "tls"
-                                   else ["slow_drip_denial", "delayed_first_byte_denial"]),
+                                 *({"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
+                                    "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
+                                    "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"]}
+                                   [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
 
