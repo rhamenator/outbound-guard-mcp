@@ -36,6 +36,8 @@ A [package-installed synthetic URL exfiltration replay](evidence/native-client-d
 
 A [package-installed synthetic argument replay](evidence/native-client-debian-argument-denials-2026-10-31.json) passed native Claude/Codex sessions with bridge-injected unsupported header and body fields denied before HTTP, no marker echo, and approved recovery. This is schema rejection, not secret scanning of supported header/body content.
 
+A [package-installed response body-limit replay](evidence/native-client-debian-body-limit-2026-10-31.json) passed native Claude/Codex fixed-length and chunked 70,000-byte denials with no denied body text and approved recovery. Aggregate process resource exhaustion remains unproven by this finite replay.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.

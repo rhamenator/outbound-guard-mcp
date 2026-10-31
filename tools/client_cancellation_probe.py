@@ -442,6 +442,8 @@ if skill_zip:
     if len(hits)==4:break
     time.sleep(.01)
    assert hits==['/plain','/large','/chunked-large','/plain'], hits
+   denied=[e for e in events if e.get('rule')=='EGRESS_RESPONSE_LIMIT']
+   assert len(denied)==2 and all(e.get('body_text_present') is False for e in denied), denied
   if frame_mode:
    assert [e['event'] for e in events if 'event' in e]==['mutant_sent','mutant_parse_error'], events
    dns_names=json.loads((root/'dns.json').read_text())
