@@ -1,0 +1,109 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode argument-injection",
+  "date_utc": "2026-10-31T05:16:00Z",
+  "fixture": "During real native client skill session, transparent bridge injects two synthetic secret-bearing unsupported request argument objects (header and body), hides their replies, then the client makes two approved guarded GET calls. Captures only synthetic marker absence booleans.",
+  "harness_sha256": "757e79c51f0125b6e5c7b466adc2a204eb0719204a01749d0c2235169e7d2014",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "The header and body fields are unsupported by the guarded_fetch schema. This proves fail-closed validation of those argument objects, not secret scanning of supported request headers or bodies.",
+    "The bridge injects the invalid calls during a real native client session; the clients did not author those two argument objects themselves.",
+    "Synthetic marker was present in the local test bridge, but absent from outbound MCP results and saved probe logs. No broad audit or provider transcript assertion.",
+    "DNS and HTTP fixture observations are finite; no universal native socket syscall or packet absence instrumentation.",
+    "Native clients on Ubuntu, server in Debian 12; unsigned experimental package, not an approved exact candidate. No Cursor, automatic triggering, arbitrary exfiltration or traffic through other tools."
+  ],
+  "native_clients": {
+    "claude": {
+      "argument_probe_allowed_dns_queries": 4,
+      "argument_probe_dns_queries": 2,
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "synthetic_header_denial",
+        "synthetic_body_denial",
+        "no_marker_echo_or_denied_http_hit",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "injected_argument_denials": 2,
+      "injected_argument_marker_echo": false,
+      "native_skill_discovered": null,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_INVALID_INPUT",
+        "EGRESS_INVALID_INPUT",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "synthetic_marker_echo": false,
+      "synthetic_marker_in_saved_probe_log": false,
+      "version": "2.1.301"
+    },
+    "codex": {
+      "argument_probe_allowed_dns_queries": 4,
+      "argument_probe_dns_queries": 2,
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "synthetic_header_denial",
+        "synthetic_body_denial",
+        "no_marker_echo_or_denied_http_hit",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "injected_argument_denials": 2,
+      "injected_argument_marker_echo": false,
+      "native_skill_discovered": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_INVALID_INPUT",
+        "EGRESS_INVALID_INPUT",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "synthetic_marker_echo": false,
+      "synthetic_marker_in_saved_probe_log": false,
+      "version": "0.151.0"
+    }
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Disposable Debian 12 amd64 package-installed server in network-disabled Docker container joined to controlled route-free DNS/HTTP namespace; native clients on Ubuntu host.",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "77a1d13943e8d4f2bc549a4f6c3100f7d6a86f0e",
+  "trusted_main_package_ci_run": 41090919033,
+  "wrapper_sha256": "bb563cd169eb3cca43dc4b2eb30f39090fd94a3b7aeed9ecd5ae925458657bb5"
+}

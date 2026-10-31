@@ -34,6 +34,8 @@ A [package-installed between-call rebinding replay](evidence/native-client-debia
 
 A [package-installed synthetic URL exfiltration replay](evidence/native-client-debian-synthetic-exfil-2026-10-31.json) passed native Claude/Codex ASCII token-shaped and Unicode lookalike denials, no exfil DNS query or marker echo in MCP results, and approved recovery. It does not prove generic secret detection or header/body exfiltration prevention.
 
+A [package-installed synthetic argument replay](evidence/native-client-debian-argument-denials-2026-10-31.json) passed native Claude/Codex sessions with bridge-injected unsupported header and body fields denied before HTTP, no marker echo, and approved recovery. This is schema rejection, not secret scanning of supported header/body content.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.
