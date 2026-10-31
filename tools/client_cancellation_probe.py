@@ -224,9 +224,9 @@ if skill_zip:
   expected_rules=['EGRESS_INVALID_HOST','EGRESS_ALLOWED','EGRESS_ALLOWED']
   expected_methods=['GET','GET','HEAD']
   if attack_mode:
-   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this controlled fixture, use ONLY guarded_fetch for these five calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/redirect ; GET http://allowed.test/gzip-bomb . Make every call once even when an earlier call is denied. Do not retry or use any other tool. The operator approved allowed.test and installed the server. Report the actual results.'
-   expected_rules+=['EGRESS_REDIRECT_DENIED','EGRESS_ENCODED_RESPONSE']
-   expected_methods+=['GET','GET']
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this controlled fixture, use ONLY guarded_fetch for these six calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/redirect ; GET http://allowed.test/gzip-bomb ; GET http://allowed.test/plain . Make every call once even when an earlier call is denied. Do not retry or use any other tool. The operator approved allowed.test and installed the server. Report the actual results.'
+   expected_rules+=['EGRESS_REDIRECT_DENIED','EGRESS_ENCODED_RESPONSE','EGRESS_ALLOWED']
+   expected_methods+=['GET','GET','GET']
   if dns_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these eight calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://private.test/plain ; GET http://alias-private.test/plain ; GET http://mixed.test/plain ; GET http://metadata.test/plain ; GET http://loop-dns.test/plain . The operator approved all six exact DNS names for this negative security test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules+=['EGRESS_FORBIDDEN_ADDRESS']*4+['EGRESS_DNS_FAILURE']
@@ -373,15 +373,19 @@ if skill_zip:
    print(json.dumps({'probe_diagnostic':{'http_methods':[e['http_method'] for e in fetches],
     'rules':[e['rule'] for e in events if 'rule' in e]}}),flush=True)
   assert [e['http_method'] for e in fetches]==expected_methods
-  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if malformed_mode else [200,200])
+  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if (attack_mode or malformed_mode) else [200,200])
   assert [e['status_code'] for e in events if 'status_code' in e]==expected_statuses
   if attack_mode:
-   expected_hits=['/plain','/head-ok','/redirect','/gzip-bomb']
+   expected_hits=['/plain','/head-ok','/redirect','/gzip-bomb','/plain']
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
     if hits==expected_hits:break
     time.sleep(.01)
    assert hits==expected_hits, hits
+   dns_names=json.loads((root/'dns.json').read_text())
+   assert 'private.test' not in dns_names, 'redirect destination was resolved'
+   denied=[e for e in events if e.get('rule') in ('EGRESS_REDIRECT_DENIED','EGRESS_ENCODED_RESPONSE')]
+   assert len(denied)==2 and all(e.get('body_text_present') is False for e in denied), denied
   if dns_mode:
    for _ in range(100):
     dns_names=json.loads((root/'dns.json').read_text())
