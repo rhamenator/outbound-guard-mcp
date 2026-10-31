@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Private helper: transparently forward MCP; log only method/ID/rule metadata."""
 import sys,subprocess,threading,json,time,pathlib
+from client_wire_url_class import fixture_url_class
 assert len(sys.argv) in (4,5,6)
 ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
@@ -24,7 +25,10 @@ synthetic_marker=marker_file.read_bytes() if marker_file.exists() else None
 def record(direction,line):
  try:
   m=json.loads(line);entry={'t':time.monotonic(),'direction':direction,'method':m.get('method'),'id':m.get('id')}
-  if m.get('method')=='tools/call':entry['http_method']=m.get('params',{}).get('arguments',{}).get('method','GET')
+  if m.get('method')=='tools/call':
+   arguments=m.get('params',{}).get('arguments',{})
+   entry['http_method']=arguments.get('method','GET')
+   entry['url_class']=fixture_url_class(arguments.get('url'))
   if m.get('method')=='notifications/cancelled':entry['requestId']=m.get('params',{}).get('requestId')
   if direction=='out' and synthetic_marker:
    entry['synthetic_marker_echo']=synthetic_marker in line

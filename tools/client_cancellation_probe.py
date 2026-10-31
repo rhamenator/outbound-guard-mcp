@@ -314,6 +314,7 @@ if skill_zip:
   else:
    client_messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()] if (root/'client.jsonl').exists() else []
    print(json.dumps({'incomplete_workflow':{'rules':[e.get('rule') for e in events if 'rule' in e],
+    'url_classes':[e.get('url_class') for e in events if e.get('method')=='tools/call'],
     'methods':[e.get('http_method') for e in events if e.get('method')=='tools/call'],
     'fixture_hits':json.loads((root/'hits.json').read_text()) if (root/'hits.json').exists() else [],
     'client_methods':sorted(set(m.get('method','') for m in client_messages)),
@@ -497,7 +498,8 @@ if skill_zip:
    'binary_sha256':hashlib.sha256(pathlib.Path(binary).read_bytes()).hexdigest(),
    'installation_scope':'temporary project '+str(skill_dir.relative_to(root)),
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
-   'http_methods':[e['http_method'] for e in fetches], 'rules':[e['rule'] for e in events if 'rule' in e],
+   'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
+   'rules':[e['rule'] for e in events if 'rule' in e],
    'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
    'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) else None,
    'mutant_parse_error_seen':True if frame_mode else None,
