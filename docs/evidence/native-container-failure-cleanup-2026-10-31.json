@@ -1,0 +1,49 @@
+{
+  "client_startup_failure_replay": "A Codex native-client startup failure after the repair left no owned container or namespace; it did not reach MCP and provides no egress result.",
+  "date_utc": "2026-10-31T00:51:28Z",
+  "negative_replay": "A forced 5-second harness deadline failed as intended; no owned outbound-native Docker container, outbound-client-cancel namespace or /tmp/outbound-cancel-* project remained.",
+  "normal_regressions": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "tls_hostname_denial",
+        "private_dns_flip_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+      "result": "passed"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "tls_hostname_denial",
+        "private_dns_flip_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+      "result": "passed"
+    }
+  },
+  "probe_sha256": "bd09761ee51f12a1e33b18cfeb2cac6f8391eb2ae34fdbdc15a1fbd8104d51e3",
+  "repair": "Start the harness in its own process group. On exit, terminate remaining descendants, then make bounded repeated stop/inspect attempts for the exact owned container name. Fail if the container remains.",
+  "scope_limitations": [
+    "The cleanup repair protects the probe environment; it does not change Outbound Guard runtime policy.",
+    "The exploratory slow-HTTP package replay made no guarded MCP calls and does not add slow-drip coverage. Earlier archive-based native slow-HTTP evidence remains separately scoped.",
+    "The two successful normal replays exercise TLS hostname denial, private DNS flip denial, recovery, package removal and residue, with native clients on the Ubuntu host and the server inside Debian 12.",
+    "This is one host and Docker implementation; it does not prove cleanup under host process death, Docker daemon failure or power loss."
+  ],
+  "source_base": "7d33a5894786a85e2fc77ae44384b297704e9536",
+  "trigger": "An exploratory package-installed slow-HTTP client replay failed before any guarded MCP call. The earlier parent cleanup left one owned Docker container after a startup race; it was manually stopped and verified gone. This failure is not evidence that the server handled slow HTTP."
+}
