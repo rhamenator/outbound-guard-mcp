@@ -2,7 +2,7 @@
   "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode json-injection|json-duplicate",
   "date_utc": "2026-10-31T07:18:08Z",
   "fixture": "Two separate sessions per native client. JSON instruction response produces EGRESS_UNTRUSTED_INSTRUCTION; duplicate-key shadow response produces EGRESS_INVALID_JSON. Each is followed by an approved /plain GET. The controlled instruction string must be absent from captured client transcript.",
-  "harness_sha256": "17ec5c638fc38c6bd4c47237f5edee0a03caeee1702906042d9db63c9cc7293e",
+  "harness_sha256": "fd0cc63e517ec14bb531e9d57d616519b2acb85b963213a269ac82d95cfd90bb",
   "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
   "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
   "limitations": [
@@ -27,6 +27,7 @@
           "residue"
         ],
         "controlled_json_instruction_seen": false,
+        "denied_body_text_present": false,
         "fixture_hits": [
           "/json-duplicate-shadow",
           "/plain"
@@ -59,6 +60,7 @@
           "residue"
         ],
         "controlled_json_instruction_seen": false,
+        "denied_body_text_present": false,
         "fixture_hits": [
           "/json-duplicate-shadow",
           "/plain"
@@ -93,6 +95,7 @@
           "residue"
         ],
         "controlled_json_instruction_seen": false,
+        "denied_body_text_present": false,
         "fixture_hits": [
           "/json-injection",
           "/plain"
@@ -125,6 +128,7 @@
           "residue"
         ],
         "controlled_json_instruction_seen": false,
+        "denied_body_text_present": false,
         "fixture_hits": [
           "/json-injection",
           "/plain"
@@ -150,6 +154,7 @@
   "platform": "Disposable Debian 12 amd64 installed package in network-disabled Docker container joined to controlled route-free DNS/HTTP namespace; native clients on Ubuntu host.",
   "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
   "source_base": "a66db117dbc7ad81a2ac7fab8a413e1a65404f97",
+  "transcript_assertion": "The harness selects the exact controlled instruction for each fixture: full instruction for json-injection and shorter instruction for json-duplicate-shadow; each denied result also has no body_text.",
   "trusted_main_package_ci_run": 41090919033,
   "wrapper_sha256": "fb6cdeb12497c5cf3f0dc11adbd152fc536cd56b1b18c1f566e695da4c5266d2"
 }
