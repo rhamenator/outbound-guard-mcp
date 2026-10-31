@@ -72,7 +72,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf"), default="tls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -113,12 +113,14 @@ def main():
         wrapper.chmod(0o700)
         env = os.environ.copy()
         for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
-                          "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_TRAPS"):
+                          "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_TRAPS",
+                          "OUTBOUND_GUARD_CLIENT_DNS_SSRF"):
             env.pop(mode_name, None)
         env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
              "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
-             "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS"}[args.fixture_mode]] = "1"
+             "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS",
+             "dns-ssrf": "OUTBOUND_GUARD_CLIENT_DNS_SSRF"}[args.fixture_mode]] = "1"
         process = None
         success = False
         try:
@@ -195,7 +197,9 @@ def main():
                                  *({"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
                                     "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"],
-                                    "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"]}
+                                    "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"],
+                                    "dns-ssrf": ["loopback_denial", "private_dns_denial", "alias_private_denial",
+                                                 "mixed_dns_denial", "metadata_dns_denial", "resolver_failure_denial"]}
                                    [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
