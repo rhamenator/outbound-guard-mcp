@@ -1,0 +1,164 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-ssrf",
+  "date_utc": "2026-10-31T03:48:36+00:00",
+  "fixture": "Nine exact native guarded calls: loopback denial, approved GET/HEAD, private A, private CNAME alias, mixed answer, metadata address, loop-DNS failure, approved recovery GET. The fixture captures DNS queries and exact HTTP hits.",
+  "harness_sha256": "5396efe0c8c777cbc55c19a4588fa6514e926720c136b70d7a01d5788eaf9833",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Five finite hostile DNS names and one loopback literal; no claim for arbitrary address encodings or resolver implementations.",
+    "Native-client fixture checked HTTP hits and DNS query set, not packet/syscall absence for every forbidden destination.",
+    "Native clients on Ubuntu host, server inside Debian 12; unsigned experimental package, not an approved exact candidate.",
+    "No Cursor, automatic skill triggering, all network paths, or traffic through other tools."
+  ],
+  "native_clients": {
+    "claude": {
+      "alias_cname_a_queried": true,
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "private_dns_denial",
+        "alias_private_denial",
+        "mixed_dns_denial",
+        "metadata_dns_denial",
+        "resolver_failure_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "forbidden_dns_names": [
+        "alias-private.test",
+        "loop-dns.test",
+        "metadata.test",
+        "mixed.test",
+        "private.test"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "HEAD",
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_DNS_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200,
+        200
+      ],
+      "url_classes": [
+        "other",
+        "allowed_plain",
+        "other",
+        "other",
+        "other",
+        "other",
+        "other",
+        "other",
+        "allowed_plain"
+      ],
+      "version": "2.1.301"
+    },
+    "codex": {
+      "alias_cname_a_queried": true,
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "private_dns_denial",
+        "alias_private_denial",
+        "mixed_dns_denial",
+        "metadata_dns_denial",
+        "resolver_failure_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "forbidden_dns_names": [
+        "alias-private.test",
+        "loop-dns.test",
+        "metadata.test",
+        "mixed.test",
+        "private.test"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "HEAD",
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_DNS_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200,
+        200
+      ],
+      "url_classes": [
+        "other",
+        "allowed_plain",
+        "other",
+        "other",
+        "other",
+        "other",
+        "other",
+        "other",
+        "allowed_plain"
+      ],
+      "version": "0.151.0"
+    }
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Disposable Debian 12 amd64 package-installed server with Docker ordinary network disabled, joined to controlled route-free DNS/HTTP fixture namespace; native clients on Ubuntu host.",
+  "probe_sha256": "d9f1646d8bcb06f9268f9e6e4af3106ec98695997e1a8a2c9b6da85d42cfcf35",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "a3e786f86a3560730585e61929a84e3584e7eb69",
+  "trusted_main_package_ci_run": 41090919033
+}
