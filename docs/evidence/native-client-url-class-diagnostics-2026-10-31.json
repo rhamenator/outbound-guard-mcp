@@ -1,0 +1,55 @@
+{
+  "bridge_sha256": "eddc6214a290aacab6eafd698c1d117d4b2b04411950296095c2fdcb67b8e354",
+  "change": "Wire bridge now emits only a fixed URL class for exact controlled TLS and approved recovery URLs; unknown or secret-bearing inputs are labeled other, not recorded. Incomplete-workflow diagnostics include classes without raw URLs.",
+  "classifier_sha256": "b4f34ffd0d83eb6448aa7d785b18820dd5c4d32daaf74b641d7dc1d54954680a",
+  "command_template": "python3 tools/debian_native_container_probe.py codex VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256",
+  "date_utc": "2026-10-31T03:17:45+00:00",
+  "harness_sha256": "80927e403624c7b63853dc7685c933d224866bcf4a2d316beefb46e6522ae2bf",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "One passing follow-up control does not explain or remove the earlier intermittent invalid-URL observation.",
+    "URL categories diagnose exact fixture equality only; other does not distinguish model input error from server normalization behavior.",
+    "No raw URL, query, path, credential or synthetic secret marker is retained by this classifier.",
+    "Unsigned experimental package; no Cursor, automatic skill triggering, all network paths, other-tool traffic or owner candidate acceptance."
+  ],
+  "native_client": {
+    "checks": [
+      "checksum",
+      "clean_dpkg_install",
+      "no_upgrade",
+      "native_skill_and_guarded_calls",
+      "tls_hostname_denial",
+      "private_dns_flip_denial",
+      "approved_recovery",
+      "package_remove",
+      "residue"
+    ],
+    "client": "codex",
+    "fixture_hits": [
+      "/plain"
+    ],
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET"
+    ],
+    "rules": [
+      "EGRESS_NETWORK_FAILURE",
+      "EGRESS_FORBIDDEN_ADDRESS",
+      "EGRESS_ALLOWED"
+    ],
+    "url_classes": [
+      "tls_fixture",
+      "tls_fixture",
+      "allowed_plain"
+    ],
+    "version": "0.151.0"
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Codex CLI 0.151.0 on Ubuntu host, Debian 12 amd64 server installed from verified experimental package in a disposable network-disabled container; route-free TLS/DNS/HTTP fixture.",
+  "previous_mismatch": "The prior package-native default Codex TLS/DNS run returned EGRESS_INVALID_URL on its second call, then a bounded retry passed; raw requested URL was deliberately not logged, so the cause cannot be determined retrospectively.",
+  "probe_sha256": "8c9985a5aa98428f49c9ac61e21b21b8e0f54595cfdd81c5df2594285f9762db",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "1cacc7d380434798b9f64477adea3fcd9d981297",
+  "trusted_main_package_ci_run": 41090919033
+}

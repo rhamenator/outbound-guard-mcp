@@ -962,3 +962,9 @@ The [package-installed replay](evidence/native-client-debian-redirect-encoded-20
 The server currently denies every redirect and every encoded response. This replay does not establish safe redirect following, atomic multi-hop budgets, or expansion-ratio enforcement for accepted compressed content. Native clients ran on Ubuntu while the server ran in Debian. Cursor, automatic skill triggering, arbitrary network paths, traffic sent through other tools, and exact-candidate owner acceptance remain outside this finite result.
 
 A separate default Codex TLS/DNS regression initially produced an unexpected `EGRESS_INVALID_URL` in place of the expected private-address denial and failed the harness assertion. One bounded retry passed the expected three rules. The cause of that first mismatch was not established, and it is not counted as a passing run.
+
+### Redacted native URL diagnostic after a rule mismatch — 2026-10-31
+
+The wire bridge now records a fixed class for an exact controlled TLS URL or approved recovery URL, plus `other`, `missing`, or `non_string` for all other input shapes. It does not record a raw URL, query, path or hash of unknown input. The [follow-up evidence](evidence/native-client-url-class-diagnostics-2026-10-31.json) shows a package-native Codex TLS/DNS/recovery replay with classes `tls_fixture`, `tls_fixture`, `allowed_plain` and the expected three rules. Unit tests verify that secret-shaped unknown inputs collapse to `other`.
+
+This diagnostic cannot determine what caused the earlier `EGRESS_INVALID_URL`: that run preceded the classifier. A future mismatch can distinguish an unexpected client URL from an exact fixture URL reaching server validation, but the classes alone cannot explain why either happened. The run remains a finite native-client control, not release acceptance.
