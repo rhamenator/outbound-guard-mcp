@@ -72,7 +72,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded"), default="tls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -113,11 +113,12 @@ def main():
         wrapper.chmod(0o700)
         env = os.environ.copy()
         for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
-                          "OUTBOUND_GUARD_CLIENT_MALFORMED"):
+                          "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_TRAPS"):
             env.pop(mode_name, None)
         env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
-             "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED"}[args.fixture_mode]] = "1"
+             "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
+             "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS"}[args.fixture_mode]] = "1"
         process = None
         success = False
         try:
@@ -193,7 +194,8 @@ def main():
                                  "native_skill_and_guarded_calls",
                                  *({"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
-                                    "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"]}
+                                    "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"],
+                                    "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"]}
                                    [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
