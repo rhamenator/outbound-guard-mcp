@@ -1,0 +1,117 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode synthetic-exfil",
+  "date_utc": "2026-10-31T04:47:30+00:00",
+  "fixture": "Six exact native guarded calls: loopback denial, approved GET/HEAD, synthetic ASCII token-shaped path at exfil.test, Unicode lookalike path at exfil.test, approved recovery GET. The marker is synthetic; only absence booleans are retained.",
+  "harness_sha256": "757e79c51f0125b6e5c7b466adc2a204eb0719204a01749d0c2235169e7d2014",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Two synthetic path shapes, not generic secret-proof exfiltration prevention or arbitrary header/body protection.",
+    "Native-client fixture checked no exfil DNS query and no HTTP hit; it did not instrument every socket syscall or packet.",
+    "The marker is present in the clients controlled prompts by design; absence is asserted only for outbound MCP results and saved probe logs.",
+    "Native clients on Ubuntu host, server inside Debian 12; unsigned experimental package, not an approved exact candidate.",
+    "No Cursor, automatic skill triggering, all network paths, or traffic through other tools."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "secret_path_denial",
+        "unicode_lookalike_denial",
+        "no_exfil_dns_or_marker_echo",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "exfil_dns_queried": false,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "HEAD",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_SECRET_DETECTED",
+        "EGRESS_INVALID_URL",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200,
+        200
+      ],
+      "synthetic_marker_echo": false,
+      "synthetic_marker_in_saved_probe_log": false,
+      "version": "2.1.301"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "secret_path_denial",
+        "unicode_lookalike_denial",
+        "no_exfil_dns_or_marker_echo",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "exfil_dns_queried": false,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "HEAD",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_SECRET_DETECTED",
+        "EGRESS_INVALID_URL",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200,
+        200
+      ],
+      "synthetic_marker_echo": false,
+      "synthetic_marker_in_saved_probe_log": false,
+      "version": "0.151.0"
+    }
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Disposable Debian 12 amd64 package-installed server with Docker ordinary network disabled, joined to controlled route-free DNS/HTTP fixture namespace; native clients on Ubuntu host.",
+  "probe_sha256": "2471e52af9be1e8dacf8a0dcbd5516df0729fc9beb1151a94f5690ba2859ce49",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "f9f9bab4f405f73d1e15b19650b11d8c8bea082d",
+  "trusted_main_package_ci_run": 41090919033
+}
