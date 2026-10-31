@@ -30,6 +30,8 @@ A [redacted URL-class diagnostic](evidence/native-client-url-class-diagnostics-2
 
 A [package-installed DNS SSRF replay](evidence/native-client-debian-dns-ssrf-2026-10-31.json) passed native Claude/Codex private, alias, mixed and metadata DNS denials, resolver failure and approved recovery, with only approved HTTP fixture hits. It is finite evidence, not universal socket or packet absence proof.
 
+A [package-installed between-call rebinding replay](evidence/native-client-debian-dns-rebind-2026-10-31.json) passed native Claude/Codex public answer, private changed answer denial and approved recovery. Intra-call DNS changes and universal socket absence remain unproven by this replay.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.
