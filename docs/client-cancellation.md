@@ -1004,3 +1004,9 @@ This finite replay checks two response framings and recovery. It does not measur
 The [package-installed header-limit replay](evidence/native-client-debian-header-limit-2026-10-31.json) sent five exact guarded GETs from native Claude Code 2.1.301 and Codex CLI 0.151.0 to an installed experimental Debian 12 amd64 server. Excess header count, an oversized header, and a parser-limit response each produced `EGRESS_INVALID_FRAMING`; none of the denied MCP results contained `body_text`. An approved GET before and after the denials returned HTTP 200. The controlled fixture recorded the five expected hits, and package install, removal and residue checks passed for both clients.
 
 These three finite fixtures do not establish arbitrary framing safety or aggregate process resource bounds. The replay does not measure memory peaks or instrument every socket and packet. The clients ran on Ubuntu while the server ran in Debian, and traffic sent through other tools remains outside this server's boundary.
+
+### Native malformed MCP frame recovery against an installed Debian package — 2026-10-31
+
+The [package-installed malformed-frame replay](evidence/native-client-debian-malformed-mcp-frame-2026-10-31.json) used a transparent bridge to inject one invalid MCP JSON frame during native Claude Code 2.1.301 and Codex CLI 0.151.0 skill sessions. The installed Debian 12 amd64 server reported a parse error. The bridge observed no `private.test` DNS query and only two approved `/plain` HTTP hits; two later client-authored guarded GETs succeeded. Clean package install, removal and residue checks passed for each client.
+
+The bridge authored the malformed frame, while the native clients authored the valid calls. This finite replay does not prove behavior for every malformed frame, universal socket or packet absence, or traffic sent through other tools. The clients ran on Ubuntu while the server ran in Debian.
