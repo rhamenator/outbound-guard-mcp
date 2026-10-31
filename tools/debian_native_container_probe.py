@@ -72,7 +72,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit"), default="tls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -115,7 +115,8 @@ def main():
         for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
                           "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_TRAPS",
                           "OUTBOUND_GUARD_CLIENT_DNS_SSRF", "OUTBOUND_GUARD_CLIENT_REBIND",
-                          "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION"):
+                          "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
+                          "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT"):
             env.pop(mode_name, None)
         env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
@@ -124,7 +125,8 @@ def main():
              "dns-ssrf": "OUTBOUND_GUARD_CLIENT_DNS_SSRF",
              "dns-rebind": "OUTBOUND_GUARD_CLIENT_REBIND",
              "synthetic-exfil": "OUTBOUND_GUARD_CLIENT_EXFIL",
-             "argument-injection": "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION"}[args.fixture_mode]] = "1"
+             "argument-injection": "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
+             "response-body-limit": "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT"}[args.fixture_mode]] = "1"
         process = None
         success = False
         try:
@@ -208,7 +210,9 @@ def main():
                                     "synthetic-exfil": ["loopback_denial", "secret_path_denial",
                                                         "unicode_lookalike_denial", "no_exfil_dns_or_marker_echo"],
                                     "argument-injection": ["synthetic_header_denial", "synthetic_body_denial",
-                                                           "no_marker_echo_or_denied_http_hit"]}
+                                                           "no_marker_echo_or_denied_http_hit"],
+                                    "response-body-limit": ["fixed_length_body_denial", "chunked_body_denial",
+                                                            "no_denied_body_text"]}
                                    [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
