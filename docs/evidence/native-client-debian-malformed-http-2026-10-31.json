@@ -1,0 +1,110 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode malformed-http",
+  "date_utc": "2026-10-31T02:20:44+00:00",
+  "default_tls_regression": "Codex package-native default TLS/DNS/recovery mode passed after the malformed-mode harness extension.",
+  "fixture": "Five exact calls: ordinary GET, HEAD, malformed chunk size, truncated chunk body, ordinary recovery GET. The route-free HTTP fixture records exact hit order.",
+  "harness_sha256": "5eb11b276c1f707239cf438c5d6fd0f3457823527a7f0391e7d3dbdd8dbe8199",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Two finite malformed chunk encodings; no claim for all malformed protocol cases or arbitrary framing.",
+    "Server installed inside Debian 12 while authenticated native clients ran on Ubuntu host.",
+    "Unsigned experimental package, not owner-approved exact release candidate.",
+    "No Cursor, automatic skill triggering, all network paths, or traffic sent through other tools."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "bad_chunk_size_denial",
+        "truncated_chunk_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/chunked-bad-size",
+        "/chunked-truncated",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "HEAD",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200,
+        200
+      ],
+      "version": "2.1.301"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "bad_chunk_size_denial",
+        "truncated_chunk_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/chunked-bad-size",
+        "/chunked-truncated",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "HEAD",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200,
+        200
+      ],
+      "version": "0.151.0"
+    }
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Disposable Debian 12 amd64 package-installed server with Docker ordinary network disabled, joined to controlled route-free fixture namespace; native clients on Ubuntu host.",
+  "probe_sha256": "dc16e2ed3da4b883ce260c17f196e21a3c42ac5a4ccb797605a76fe11f3141ae",
+  "repair": "The first five-call replay reached the server but the harness still expected only two success status codes from the older four-call sequence. The harness assertion was corrected to expect three 200 statuses; both final replays passed. Earlier four-call passes did not test recovery after malformed responses and are not counted for that claim.",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "fda3cb6fa4ba0d32178a6e1e92210b59db0ec971",
+  "trusted_main_package_ci_run": 41090919033
+}
