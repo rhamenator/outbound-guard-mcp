@@ -72,7 +72,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame"), default="tls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -116,7 +116,8 @@ def main():
                           "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_TRAPS",
                           "OUTBOUND_GUARD_CLIENT_DNS_SSRF", "OUTBOUND_GUARD_CLIENT_REBIND",
                           "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
-                          "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT", "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT"):
+                          "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT", "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
+                          "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION"):
             env.pop(mode_name, None)
         env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
@@ -127,7 +128,8 @@ def main():
              "synthetic-exfil": "OUTBOUND_GUARD_CLIENT_EXFIL",
              "argument-injection": "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
              "response-body-limit": "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT",
-             "response-header-limit": "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT"}[args.fixture_mode]] = "1"
+             "response-header-limit": "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
+             "malformed-mcp-frame": "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION"}[args.fixture_mode]] = "1"
         process = None
         success = False
         try:
@@ -215,7 +217,8 @@ def main():
                                     "response-body-limit": ["fixed_length_body_denial", "chunked_body_denial",
                                                             "no_denied_body_text"],
                                     "response-header-limit": ["excess_header_count_denial", "oversized_header_denial",
-                                                              "parser_header_limit_denial", "no_denied_body_text"]}
+                                                              "parser_header_limit_denial", "no_denied_body_text"],
+                                    "malformed-mcp-frame": ["malformed_frame_parse_error", "no_forbidden_dns_or_http"]}
                                    [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
