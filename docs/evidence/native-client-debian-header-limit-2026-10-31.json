@@ -1,0 +1,110 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode response-header-limit",
+  "date_utc": "2026-10-31T06:15:59Z",
+  "fixture": "Five exact guarded GETs: approved /plain, excess-count /many-headers, oversized /oversized-header, parser-limit /parser-limit, approved recovery /plain. Three denied MCP results checked for absent body_text.",
+  "harness_sha256": "17ec5c638fc38c6bd4c47237f5edee0a03caeee1702906042d9db63c9cc7293e",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Three finite response-header fixtures; not a proof of arbitrary framing or aggregate memory, file-descriptor or concurrency bounds.",
+    "Fixture records HTTP hits and denied MCP body_text absence; it does not instrument process memory peaks, socket syscalls or every packet.",
+    "Native clients on Ubuntu, server in Debian 12; unsigned experimental package, not an approved exact candidate.",
+    "No Cursor or automatic triggering in this package replay; traffic through other tools is outside the server boundary."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "excess_header_count_denial",
+        "oversized_header_denial",
+        "parser_header_limit_denial",
+        "no_denied_body_text",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "denied_body_text_present": false,
+      "fixture_hits": [
+        "/plain",
+        "/many-headers",
+        "/oversized-header",
+        "/parser-limit",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "2.1.301"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "excess_header_count_denial",
+        "oversized_header_denial",
+        "parser_header_limit_denial",
+        "no_denied_body_text",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "denied_body_text_present": false,
+      "fixture_hits": [
+        "/plain",
+        "/many-headers",
+        "/oversized-header",
+        "/parser-limit",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "0.151.0"
+    }
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Disposable Debian 12 amd64 installed package in network-disabled Docker container joined to controlled route-free DNS/HTTP namespace; native clients on Ubuntu host.",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "7c4c37c47f3dff249e5c8f4b769a0c585e6d6720",
+  "trusted_main_package_ci_run": 41090919033,
+  "wrapper_sha256": "d3c0450ecbf34a9a3475ee41ba7abdf2cbb442e8cb4fe454d6512a1053bc2c0b"
+}
