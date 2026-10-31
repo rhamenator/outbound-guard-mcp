@@ -421,6 +421,8 @@ if skill_zip:
     if len(hits)==5:break
     time.sleep(.01)
    assert hits==['/plain','/many-headers','/oversized-header','/parser-limit','/plain'], hits
+   denied=[e for e in events if e.get('rule')=='EGRESS_INVALID_FRAMING']
+   assert len(denied)==3 and all(e.get('body_text_present') is False for e in denied), denied
   if upgrade_mode:
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/interim-header-flood' if interim_mode else '/switch-protocols','/plain'], hits
