@@ -42,6 +42,8 @@ A [package-installed response header-limit replay](evidence/native-client-debian
 
 A [package-installed malformed MCP frame replay](evidence/native-client-debian-malformed-mcp-frame-2026-10-31.json) passed native Claude/Codex sessions with one bridge-injected parse error, no forbidden fixture DNS/HTTP, and two later approved calls. It does not establish arbitrary malformed-protocol coverage.
 
+A [package-installed JSON quarantine replay](evidence/native-client-debian-json-quarantine-2026-10-31.json) passed native Claude/Codex controlled instruction and duplicate-key denials, no instruction string in captured client transcripts, and approved recovery. Arbitrary prompt-injection coverage remains open.
+
 ## Record for each candidate
 
 Add a comment to issue #65 containing the exact source SHA and artifact binary SHA-256, pre-1.0 candidate version, supported platform matrix and installer/package identities, toolchain, CI URLs, package/skill checksums, install/upgrade/uninstall evidence, test corpus versions and results, client versions/configuration/permissions, limitations, and owner decision. State whether independent human review occurred. Attach or link durable evidence: CI artifacts expire after seven days. Never put credentials, session tokens or private local paths in the record.
