@@ -48,9 +48,13 @@ fi
 docker exec "$container" dpkg -i /candidate.deb >&2
 [[ $(docker exec "$container" dpkg-query -W -f='${Version}' outbound-guard-mcp) == "$expected_version" ]]
 [[ $(docker exec "$container" sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1) == "$expected_binary" ]]
-docker cp "$OUTBOUND_GUARD_EXTRA_CA_CERT" "$container:/tmp/fixture-ca.pem" >/dev/null
+cert_env=()
+if [[ -n ${OUTBOUND_GUARD_EXTRA_CA_CERT:-} ]]; then
+  docker cp "$OUTBOUND_GUARD_EXTRA_CA_CERT" "$container:/tmp/fixture-ca.pem" >/dev/null
+  cert_env=(--env OUTBOUND_GUARD_EXTRA_CA_CERT=/tmp/fixture-ca.pem)
+fi
 docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS="$OUTBOUND_GUARD_ALLOWED_HOSTS" \
-  --env OUTBOUND_GUARD_EXTRA_CA_CERT=/tmp/fixture-ca.pem \
+  "${cert_env[@]}" \
   "$container" nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp
 '''
 
@@ -68,6 +72,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http"), default="tls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -107,7 +112,10 @@ def main():
         wrapper.write_text(source)
         wrapper.chmod(0o700)
         env = os.environ.copy()
-        env["OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE"] = "1"
+        for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP"):
+            env.pop(mode_name, None)
+        env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
+             "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP"}[args.fixture_mode]] = "1"
         process = None
         success = False
         try:
@@ -178,10 +186,12 @@ def main():
     print(json.dumps({"result": "passed", "client": args.client,
                       "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
                       "image_id": image_id, "package": info, "old_package": old_info,
-                      "skill_zip_sha256": args.skill_sha256,
+                      "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
                                  "native_skill_and_guarded_calls",
-                                 "tls_hostname_denial", "private_dns_flip_denial", "approved_recovery",
+                                 *(["tls_hostname_denial", "private_dns_flip_denial"] if args.fixture_mode == "tls"
+                                   else ["slow_drip_denial", "delayed_first_byte_denial"]),
+                                 "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
 
 

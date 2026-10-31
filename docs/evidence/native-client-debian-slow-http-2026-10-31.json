@@ -1,0 +1,94 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode slow-http",
+  "date_utc": "2026-10-31T01:50:33Z",
+  "default_tls_regression": "Codex default package-native TLS/DNS/recovery replay passed after the optional CA change.",
+  "fixture": "The controlled HTTP server serves /plain, /drip at one body byte per second, /delayed with eleven seconds before headers, then /plain recovery. Exact four-call order was asserted.",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "The recorded denial rule for /drip is EGRESS_RESPONSE_TOO_SLOW; /delayed is EGRESS_NETWORK_FAILURE. This finite replay does not prove all timing or resource-exhaustion cases.",
+    "The native clients were installed on Ubuntu, while the package-installed MCP server ran in Debian 12.",
+    "The tested package is an unsigned experimental CI artifact, not an owner-approved exact candidate.",
+    "No Cursor, automatic skill triggering, arbitrary network paths or traffic through other tools are covered."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "slow_drip_denial",
+        "delayed_first_byte_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "2.1.301"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "slow_drip_denial",
+        "delayed_first_byte_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "0.151.0"
+    }
+  },
+  "package_sha256": "a3859b893cfb2aec7d744599fc6f6eafb9239b9629754ec37e0851bf1c275087",
+  "platform": "Debian 12 amd64 disposable container, ordinary network disabled; installed server joined controlled route-free fixture namespace. Native clients ran on Ubuntu host.",
+  "probe_sha256": "5de379eb787b2edabdd2034d7947d6cee91e1fa16a57998f18c1cfd82a2f411d",
+  "repair": "Initial slow mode failed before MCP handshake because the bridge unconditionally required a TLS fixture CA path, which is absent in HTTP-only mode. The bridge now copies and passes the CA only when supplied. Both native client replays and the default TLS regression then passed.",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "f403505f3143e44fbd8de269a6f282e127ec42c7",
+  "trusted_main_package_ci_run": 41090919033
+}
