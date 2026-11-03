@@ -1,0 +1,203 @@
+{
+  "clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "matching_mcp_cancel_and_socket_close",
+        "two_same_process_cancel_recovery_cycles",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "claude",
+      "client_control_result": {
+        "binary_sha256": "8c511c9021d29fe811573c4ec47d686b11ec87a7bdf06f7450b034b6fdaed65c",
+        "cancel_cycles": 2,
+        "cancel_notifications": 2,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": false,
+        "client": "claude",
+        "client_control_acknowledged": true,
+        "control_path": "stream-json interrupt",
+        "fetches": 6,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": true,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_each_seconds": [
+          0.061,
+          0.04
+        ],
+        "socket_closed_after_seconds": 0.061,
+        "status_codes": [
+          200,
+          200,
+          200
+        ]
+      },
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17121280,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_mode": "client-control-repeated-cancellation",
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "old_package": null,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+        "package_sha256": "960e1dd5e2ec2d377289cfca066b4ce00f4d03f99e6ff82e7866735608b01dba",
+        "revision": "49b333e9c7927a34de3c7ca10c407021e80c7442",
+        "version": "0.1.0~candidate.203+g49b333e9c792"
+      },
+      "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+      "result": "passed",
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3872,
+        "sample_interval_ms": 50,
+        "samples": 315,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "missing_mcp_cancel_server_timeout_and_socket_close",
+        "two_same_process_cancel_recovery_cycles",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "codex",
+      "client_control_result": {
+        "binary_sha256": "ff7cdc61015c3426add7d283f4ff1aec184349e3339c9534e90679e9de91f5ae",
+        "cancel_cycles": 2,
+        "cancel_notifications": 0,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": true,
+        "client": "codex",
+        "client_control_acknowledged": true,
+        "control_path": "app-server turn/interrupt",
+        "fetches": 6,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": false,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_each_seconds": [
+          3.005,
+          3.011
+        ],
+        "socket_closed_after_seconds": 3.005,
+        "status_codes": [
+          200,
+          200,
+          200
+        ]
+      },
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16633856,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_mode": "client-control-repeated-cancellation",
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "old_package": null,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+        "package_sha256": "960e1dd5e2ec2d377289cfca066b4ce00f4d03f99e6ff82e7866735608b01dba",
+        "revision": "49b333e9c7927a34de3c7ca10c407021e80c7442",
+        "version": "0.1.0~candidate.203+g49b333e9c792"
+      },
+      "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+      "result": "passed",
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3936,
+        "sample_interval_ms": 50,
+        "samples": 602,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15"
+    }
+  },
+  "date_utc": "2026-11-03",
+  "scope": "Two interruption/recovery cycles within one native client process, followed by loopback denial and HEAD recovery. Clients run on Ubuntu; installed server runs in Debian 12 amd64 under 128 MiB cgroup, route-free namespace. Fixture HTTP/DNS paths and MCP bridge observed. No UI cancellation, automatic skill use, saturated queue, every socket or packet, other client version, or other-tool traffic claim. Finite 50 ms RSS/FD samples can miss peaks. Experimental unsigned package; not an official candidate.",
+  "source_main_sha": "7173157e365e165f35405b6c9e2d47f45a5348e4"
+}

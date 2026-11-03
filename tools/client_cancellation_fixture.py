@@ -79,4 +79,9 @@ while True:
   last_tls_sni=list(tls_sni)
  if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
  if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
+ if (root/'reset-cancel').exists():
+  assert HTTP.cancel_closed.is_set(), 'cannot reset an open cancellation fixture'
+  HTTP.cancel_started.clear();HTTP.cancel_closed.clear()
+  (root/'started').unlink(missing_ok=True);(root/'closed').unlink(missing_ok=True)
+  (root/'reset-cancel').unlink();(root/'reset-complete').touch()
  time.sleep(.01)
