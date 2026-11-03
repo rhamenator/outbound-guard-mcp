@@ -1,0 +1,172 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode client-control-cancellation --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-03T17:47:01+00:00",
+  "fixture": "Route-free DNS and HTTP. Native client begins GET /cancel-drip; control API interruption is issued after fixture starts; approved /plain recovery, loopback denial and approved HEAD follow.",
+  "harness_sha256": "b32f25df74375d0c2e142e2dc4a9ee49bf9768ac6fe2196a6069810dd7638798",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Claude Code emitted one matching MCP cancellation notification and the server closed the socket promptly; Codex app-server turn/interrupt acknowledged the interruption but emitted no MCP cancellation notification in this run. Its pending fetch returned EGRESS_RESPONSE_TOO_SLOW, then the socket closed after about three seconds. This is a client control-path gap, not a successful wire cancellation.",
+    "The skill ZIP checksum was verified but this control-path mode did not load or invoke the skill. The clients ran on Ubuntu while the server ran in Debian 12 amd64.",
+    "Server /proc RSS and FD readings are finite 50 ms samples and can miss transient peaks. Container cgroup peaks include setup/helpers. No saturated queue, repeated cancellation, aggregate resource bound, Cursor, terminal/desktop UI cancellation, or traffic sent via other tools was tested.",
+    "Package is experimental and unsigned, not an approved official candidate; owner review and residual-risk acceptance remain open."
+  ],
+  "package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+  "prior_mode_regression": {
+    "checks": [
+      "checksum",
+      "clean_dpkg_install",
+      "no_upgrade",
+      "native_skill_and_guarded_calls",
+      "fixed_length_body_denial",
+      "chunked_body_denial",
+      "no_denied_body_text",
+      "approved_recovery",
+      "package_remove",
+      "residue"
+    ],
+    "client": "claude",
+    "client_control_result": null,
+    "fixture_mode": "response-body-limit",
+    "package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+    "result": "passed",
+    "scope": "Replayed after the harness summary-expression fix; one existing skill-based mode only."
+  },
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "matching_mcp_cancel_and_socket_close",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control": {
+        "binary_sha256": "2921997b4ddfc4a692432992e427b3b3e75840d005f2b4ec2c248d7ca2d8ede3",
+        "cancel_notifications": 1,
+        "cancelled_fetch_replied": false,
+        "client": "claude",
+        "client_control_acknowledged": true,
+        "control_path": "stream-json interrupt",
+        "fetches": 4,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": true,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_seconds": 0.061,
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "client_version": "2.1.301",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17547264,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3956,
+        "sample_interval_ms": 50,
+        "samples": 216,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "missing_mcp_cancel_server_timeout_and_socket_close",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control": {
+        "binary_sha256": "3e85a2a14519e40d021abbc688f76edcfcf0c370046c921f330caae9665b548e",
+        "cancel_notifications": 0,
+        "cancelled_fetch_replied": true,
+        "client": "codex",
+        "client_control_acknowledged": true,
+        "control_path": "app-server turn/interrupt",
+        "fetches": 4,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": false,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_RESPONSE_TOO_SLOW",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_seconds": 3.007,
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "client_version": "0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16588800,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3920,
+        "sample_interval_ms": 50,
+        "samples": 286,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "skill_zip_sha256_verified_but_not_loaded": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "d728f7d1bc7d09fda252ba2c6673876af36fc8ca"
+}

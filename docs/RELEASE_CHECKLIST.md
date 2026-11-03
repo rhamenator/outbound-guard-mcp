@@ -42,6 +42,8 @@ A [128 MiB container-quota replay](evidence/native-client-debian-resource-quota-
 
 An [opt-in server resource sampler](evidence/native-client-debian-server-samples-2026-11-03.json) now records finite `/proc` RSS and descriptor observations during package-native Claude/Codex slow-HTTP denials and a Claude body-limit replay. The measured maxima are samples that can miss brief peaks; aggregate concurrency and cancellation bounds remain open.
 
+A [package-installed native control-interruption replay](evidence/native-client-debian-control-cancellation-2026-11-03.json) observed a matching Claude MCP cancellation and prompt socket closure, while Codex acknowledged `turn/interrupt` without emitting MCP cancellation; its pending fetch closed only after the server's three-second read timeout. Both recovered and passed package removal/residue checks under a 128 MiB container quota. Repeated cancellation, queue saturation, UI control paths and exact-candidate qualification remain open.
+
 A [package-installed response header-limit replay](evidence/native-client-debian-header-limit-2026-10-31.json) passed native Claude/Codex excess-count, oversized-header and parser-limit denials with no denied body text and approved recovery. Arbitrary framing and aggregate resource bounds remain open.
 
 A [package-installed malformed MCP frame replay](evidence/native-client-debian-malformed-mcp-frame-2026-10-31.json) passed native Claude/Codex sessions with one bridge-injected parse error, no forbidden fixture DNS/HTTP, and two later approved calls. It does not establish arbitrary malformed-protocol coverage.
