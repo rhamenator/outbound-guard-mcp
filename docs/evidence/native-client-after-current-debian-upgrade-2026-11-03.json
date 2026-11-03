@@ -1,0 +1,204 @@
+{
+  "binary_identity_note": "The old and new package metadata report identical installed executable SHA-256 despite distinct package versions and source commits. This is a byte comparison, not a transfer of package lifecycle evidence.",
+  "ci_artifact_name": "experimental-candidate-linux-x86_64",
+  "ci_signing_status": "Trusted-main CI signing/verifier job passed; local gh 2.46.0 lacks attestation verify, so no local signature re-verification is claimed.",
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT NEW_DEB NEW_SHA256 NEW_SKILL_ZIP SKILL_SHA256 --old-package OLD_DEB --old-sha256 OLD_SHA256 --fixture-mode client-control-header-cancellation --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-03T19:37:07+00:00",
+  "harness_sha256": {
+    "client_cancellation_probe.py": "e39ff46508c4538c46dd9874d530e870289e81e2cea29dad1221cd1e35d4da60",
+    "debian_native_container_probe.py": "dfa4cf4784cc6445e768ac4f35970880b51db13c801f74c884a95fbf41386070",
+    "netns_adversarial_probe.py": "576fe21b9978b03cd8a39def96dc3c933925a3cc12c503e9b9862ebf29d4b4da"
+  },
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_server_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Each client ran on Ubuntu while the package-installed server ran in disposable Debian 12 amd64; this is one old-to-new experimental package upgrade path and does not test configuration migration or other platforms.",
+    "The new skill ZIP checksum was verified but the skill was not loaded or invoked. Native client control APIs were exercised, not desktop/terminal UI controls or automatic skill triggering.",
+    "Claude delivered matching MCP cancellation in the pre-header fixture; Codex acknowledged its interruption but emitted no MCP cancellation. Its fetch failed closed at the server idle-read deadline. The Codex client gap remains open.",
+    "Server /proc FD/RSS readings are finite 50 ms samples and can miss a brief open socket; container cgroup peaks include setup and helpers. No repeated cancellation, saturated queue, aggregate resource bound, other-tool traffic or Cursor behavior was tested.",
+    "The package is experimental and unsigned, not an owner-approved official pre-1.0 release candidate. Owner self-review and residual-risk acceptance remain open."
+  ],
+  "manifest_checksums_verified": true,
+  "new_package_sha256": "960e1dd5e2ec2d377289cfca066b4ce00f4d03f99e6ff82e7866735608b01dba",
+  "new_skill_zip_sha256_verified_but_not_loaded": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "old_package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "matching_mcp_cancel_and_socket_close",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control": {
+        "binary_sha256": "e85e547764a1fb3f3710a3c80a01d3a6f9feafbec245a515236962f59abd8c51",
+        "cancel_notifications": 1,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": false,
+        "client": "claude",
+        "client_control_acknowledged": true,
+        "control_path": "stream-json interrupt",
+        "fetches": 4,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": true,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_seconds": 0.04,
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "client_version": "2.1.301 (Claude Code)",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 27090944,
+        "pids_peak": 13,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+        "package_sha256": "960e1dd5e2ec2d377289cfca066b4ce00f4d03f99e6ff82e7866735608b01dba",
+        "revision": "49b333e9c7927a34de3c7ca10c407021e80c7442",
+        "version": "0.1.0~candidate.203+g49b333e9c792"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+        "package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+        "revision": "d728f7d1bc7d09fda252ba2c6673876af36fc8ca",
+        "version": "0.1.0~candidate.199+gd728f7d1bc7d"
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3896,
+        "sample_interval_ms": 50,
+        "samples": 256,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "missing_mcp_cancel_server_timeout_and_socket_close",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control": {
+        "binary_sha256": "61f243ee90ebca314fcd316b6521d32fdcbd7e5ba039e02ef855b1d747705f57",
+        "cancel_notifications": 0,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": true,
+        "client": "codex",
+        "client_control_acknowledged": true,
+        "control_path": "app-server turn/interrupt",
+        "fetches": 4,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": false,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_seconds": 3.011,
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "client_version": "codex-cli 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18563072,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+        "package_sha256": "960e1dd5e2ec2d377289cfca066b4ce00f4d03f99e6ff82e7866735608b01dba",
+        "revision": "49b333e9c7927a34de3c7ca10c407021e80c7442",
+        "version": "0.1.0~candidate.203+g49b333e9c792"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+        "package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+        "revision": "d728f7d1bc7d09fda252ba2c6673876af36fc8ca",
+        "version": "0.1.0~candidate.199+gd728f7d1bc7d"
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3940,
+        "sample_interval_ms": 50,
+        "samples": 369,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "sha256sums_sha256": "f48ffaa32154eaa562019155490e40d03c5cba77ce7105230f1c5f097a77fd4a",
+  "tested_main_source": "49b333e9c7927a34de3c7ca10c407021e80c7442",
+  "trusted_main_ci_run": 41699432784,
+  "trusted_main_codeql_run": 41699432999
+}
