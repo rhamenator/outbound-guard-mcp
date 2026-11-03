@@ -1,5 +1,11 @@
 # Real-client cancellation and queue-saturation evidence
 
+## Sampled server resources during native Debian package replays — 2026-11-03
+
+The [server-sampling record](evidence/native-client-debian-server-samples-2026-11-03.json) adds an opt-in `/proc` sampler to the disposable Debian native-client probe. It records server-only file descriptor and RSS samples about every 50 ms alongside container cgroup high-water marks. Native Claude Code 2.1.301 and Codex CLI 0.151.0 each passed approved GET, slow-drip denial, delayed-first-byte denial, and approved recovery through the exact experimental package under a 128 MiB container quota. Both slow replays sampled at most seven server descriptors; maximum sampled server RSS was 3,836 KiB for Claude and 3,984 KiB for Codex. A separate Claude fixed-length/chunked body-limit replay sampled three descriptors and 4,104 KiB maximum RSS. No run recorded a container OOM event; package removal and residue checks passed.
+
+These are finite observations. The sampler can miss brief peaks, and its shell helpers contribute to the container-wide cgroup readings. Sequential native-client calls do not prove aggregate concurrency or cancellation resource bounds. Cursor, automatic triggering, other OS and architecture combinations, and traffic through other tools remain outside this evidence. This is not release approval.
+
 ## Native Debian package body-limit replay under a 128 MiB container quota — 2026-11-03
 
 The [resource-quota record](evidence/native-client-debian-resource-quota-2026-11-03.json) reran the exact trusted-main experimental Debian package and skill ZIP through native Claude Code 2.1.301 and Codex CLI 0.151.0. Each client made an approved GET, two 70,000-byte body-limit GETs, and an approved recovery GET through the installed server in a route-free Debian 12 amd64 container. Both oversized responses returned `EGRESS_RESPONSE_LIMIT` without body text. Install, guarded calls, removal and residue checks passed. The container had a 128 MiB memory and swap limit and a 64 PID limit; its cgroup recorded memory peaks of 19,767,296 bytes for Claude's run and 13,742,080 bytes for Codex's run, with PID peaks of eight and seven and no OOM events.
