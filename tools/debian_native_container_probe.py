@@ -277,6 +277,10 @@ def main():
                         time.sleep(0.5)
                     else:
                         raise RuntimeError("owned Debian probe container remained after cleanup")
+    cancellation_checks = (["client_interrupt_acknowledged",
+                            "matching_mcp_cancel_and_socket_close" if control_result["matching_wire_cancellation"]
+                            else "missing_mcp_cancel_server_timeout_and_socket_close"]
+                           if control_result else [])
     print(json.dumps({"result": "passed", "client": args.client,
                       "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
                       "container_resource_observation": {
@@ -290,7 +294,7 @@ def main():
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
                                  "native_client_control_and_guarded_calls" if control_result else "native_skill_and_guarded_calls",
-                                 *({"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
+                                 *(cancellation_checks if control_result else {"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
                                     "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"],
                                     "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"],
@@ -307,10 +311,7 @@ def main():
                                                               "parser_header_limit_denial", "no_denied_body_text"],
                                     "malformed-mcp-frame": ["malformed_frame_parse_error", "no_forbidden_dns_or_http"],
                                     "json-injection": ["instruction_response_denial", "no_instruction_echo"],
-                                    "json-duplicate": ["duplicate_key_json_denial", "no_instruction_echo"],
-                                    "client-control-cancellation": ["client_interrupt_acknowledged",
-                                                                    "matching_mcp_cancel_and_socket_close" if control_result["matching_wire_cancellation"]
-                                                                    else "missing_mcp_cancel_server_timeout_and_socket_close"]}
+                                    "json-duplicate": ["duplicate_key_json_denial", "no_instruction_echo"]}
                                    [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
