@@ -38,6 +38,8 @@ A [package-installed synthetic argument replay](evidence/native-client-debian-ar
 
 A [package-installed response body-limit replay](evidence/native-client-debian-body-limit-2026-10-31.json) passed native Claude/Codex fixed-length and chunked 70,000-byte denials with no denied body text and approved recovery. Aggregate process resource exhaustion remains unproven by this finite replay.
 
+A [128 MiB container-quota replay](evidence/native-client-debian-resource-quota-2026-11-03.json) repeated those package-installed body-limit calls through native Claude/Codex, recorded container cgroup memory/PID peaks and zero OOM events, and passed removal/residue checks. It does not measure server-only RSS/FD peaks or close aggregate resource-exhaustion qualification.
+
 A [package-installed response header-limit replay](evidence/native-client-debian-header-limit-2026-10-31.json) passed native Claude/Codex excess-count, oversized-header and parser-limit denials with no denied body text and approved recovery. Arbitrary framing and aggregate resource bounds remain open.
 
 A [package-installed malformed MCP frame replay](evidence/native-client-debian-malformed-mcp-frame-2026-10-31.json) passed native Claude/Codex sessions with one bridge-injected parse error, no forbidden fixture DNS/HTTP, and two later approved calls. It does not establish arbitrary malformed-protocol coverage.

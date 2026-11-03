@@ -1,5 +1,11 @@
 # Real-client cancellation and queue-saturation evidence
 
+## Native Debian package body-limit replay under a 128 MiB container quota — 2026-11-03
+
+The [resource-quota record](evidence/native-client-debian-resource-quota-2026-11-03.json) reran the exact trusted-main experimental Debian package and skill ZIP through native Claude Code 2.1.301 and Codex CLI 0.151.0. Each client made an approved GET, two 70,000-byte body-limit GETs, and an approved recovery GET through the installed server in a route-free Debian 12 amd64 container. Both oversized responses returned `EGRESS_RESPONSE_LIMIT` without body text. Install, guarded calls, removal and residue checks passed. The container had a 128 MiB memory and swap limit and a 64 PID limit; its cgroup recorded memory peaks of 19,767,296 bytes for Claude's run and 13,742,080 bytes for Codex's run, with PID peaks of eight and seven and no OOM events.
+
+These are container-wide high-water marks for two finite runs, including package setup and helper processes. They do not measure server-only RSS or file descriptors, establish aggregate concurrency limits, cover Cursor or automatic skill triggering, or prove anything about traffic sent by other tools. The clients ran on Ubuntu while the server ran in Debian. This is experimental package evidence, not an approved release candidate.
+
 Status: experimental candidate observations, not release approval or universal client/UI certification.
 
 ## Non-ASCII URL exfiltration regression, 2026-10-29
