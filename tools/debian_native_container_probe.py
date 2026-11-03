@@ -29,6 +29,7 @@ expected_binary=__BINARY_SHA__
 expected_version=__VERSION__
 old_binary=__OLD_BINARY_SHA__
 old_version=__OLD_VERSION__
+sample_resources=__SAMPLE_RESOURCES__
 printf '%s\n' "$container" > "$state"
 old_mount=()
 if [[ -n $old_package ]]; then old_mount=(--mount "type=bind,src=$old_package,dst=/old.deb,readonly"); fi
@@ -53,9 +54,32 @@ if [[ -n ${OUTBOUND_GUARD_EXTRA_CA_CERT:-} ]]; then
   docker cp "$OUTBOUND_GUARD_EXTRA_CA_CERT" "$container:/tmp/fixture-ca.pem" >/dev/null
   cert_env=(--env OUTBOUND_GUARD_EXTRA_CA_CERT=/tmp/fixture-ca.pem)
 fi
+if [[ $sample_resources == 1 ]]; then
+  docker cp __MONITOR_PATH__ "$container:/tmp/resource-monitor.sh" >/dev/null
+  docker exec -d "$container" sh /tmp/resource-monitor.sh
+fi
 docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS="$OUTBOUND_GUARD_ALLOWED_HOSTS" \
   "${cert_env[@]}" \
   "$container" nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp
+'''
+
+RESOURCE_MONITOR = r'''#!/bin/sh
+max_fd=0
+max_rss_kib=0
+samples=0
+while [ ! -e /tmp/resource-monitor.stop ]; do
+  for pid in $(pidof outbound-guard-mcp 2>/dev/null); do
+    [ -r "/proc/$pid/status" ] || continue
+    fd=$(find "/proc/$pid/fd" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l)
+    rss_kib=$(awk '/^VmRSS:/ {print $2; exit}' "/proc/$pid/status" 2>/dev/null)
+    [ -n "$rss_kib" ] || continue
+    [ "$fd" -le "$max_fd" ] || max_fd=$fd
+    [ "$rss_kib" -le "$max_rss_kib" ] || max_rss_kib=$rss_kib
+    samples=$((samples + 1))
+  done
+  sleep 0.05
+done
+printf '%s %s %s\n' "$max_fd" "$max_rss_kib" "$samples" > /tmp/resource-monitor.summary
 '''
 
 
@@ -75,6 +99,8 @@ def main():
     parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
+    parser.add_argument("--sample-server-resources", action="store_true",
+                        help="Sample server file descriptors and RSS during native calls")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -100,6 +126,8 @@ def main():
         root = Path(temporary)
         root.chmod(0o700)
         wrapper = root / "bridge.sh"
+        monitor = root / "resource-monitor.sh"
+        monitor.write_text(RESOURCE_MONITOR)
         state = root / "container"
         source = BRIDGE
         for old, new in (("__PACKAGE__", shlex.quote(str(package))),
@@ -110,6 +138,8 @@ def main():
                          ("__OLD_BINARY_SHA__", shlex.quote(old_info["binary_sha256"]) if old_info else "''"),
                          ("__OLD_VERSION__", shlex.quote(old_info["version"]) if old_info else "''"),
                          ("__MEMORY_MIB__", str(args.container_memory_mib)),
+                         ("__SAMPLE_RESOURCES__", "1" if args.sample_server_resources else "0"),
+                         ("__MONITOR_PATH__", shlex.quote(str(monitor))),
                          ("__IMAGE__", shlex.quote(BUILDER_IMAGE))):
             source = source.replace(old, new)
         wrapper.write_text(source)
@@ -174,6 +204,24 @@ def main():
             assert state.exists(), "Debian container was not started"
             container = state.read_text().strip()
             assert container.startswith("outbound-native-"), "invalid container identity"
+            server_resources = None
+            if args.sample_server_resources:
+                subprocess.run(["docker", "exec", container, "touch", "/tmp/resource-monitor.stop"], check=True)
+                for _ in range(40):
+                    sample = subprocess.run(["docker", "exec", container, "cat", "/tmp/resource-monitor.summary"],
+                                            capture_output=True, text=True)
+                    if sample.returncode == 0:
+                        break
+                    time.sleep(0.05)
+                else:
+                    raise RuntimeError("server resource monitor did not finish")
+                max_fd, max_rss_kib, samples = map(int, sample.stdout.split())
+                assert samples > 0 and max_fd > 0 and max_rss_kib > 0, sample.stdout
+                if args.fixture_mode == "slow-http":
+                    assert max_fd > 3, "slow HTTP socket was not observed by resource sampler"
+                server_resources = {"sample_interval_ms": 50, "samples": samples,
+                                    "max_sampled_fd": max_fd, "max_sampled_rss_kib": max_rss_kib,
+                                    "scope": "Finite sampled server observations; sampling can miss transient peaks."}
             cgroup = subprocess.check_output(
                 ["docker", "exec", container, "sh", "-ec",
                  "cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.peak /sys/fs/cgroup/pids.peak; "
@@ -221,6 +269,7 @@ def main():
                           "memory_peak_bytes": memory_peak, "pids_peak": pids_peak,
                           "memory_events": memory_events,
                           "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."},
+                      "server_resource_observation": server_resources,
                       "image_id": image_id, "package": info, "old_package": old_info,
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
