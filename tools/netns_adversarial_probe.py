@@ -195,7 +195,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
         self.methods.append("GET")
         self.hits.append(self.path)
         self.record_sensitive_headers()
-        if self.path in ("/cancel-silent-headers", "/cancel-silent-body"):
+        if self.path in ("/cancel-silent-headers", "/cancel-silent-headers-long", "/cancel-silent-body"):
             if self.path == "/cancel-silent-body":
                 self.send_response(200)
                 self.send_header("Content-Type", "text/plain")
@@ -203,7 +203,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.flush()
             type(self).cancel_started.set()
-            self.connection.settimeout(4)
+            self.connection.settimeout(15 if self.path == "/cancel-silent-headers-long" else 4)
             try:
                 if self.connection.recv(1) == b"":
                     type(self).cancel_closed.set()

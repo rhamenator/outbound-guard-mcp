@@ -1,0 +1,196 @@
+{
+  "attempt_notes": [
+    "An initial Codex attempt reached the fixture-never-started deadline; no guarded HTTP call began, and its disposable namespace/container were cleaned. It is excluded from passing observations.",
+    "A later Codex run completed client/fixture checks but the parent harness expected EGRESS_RESPONSE_TIMEOUT; the actual EGRESS_NETWORK_FAILURE is the server transport idle-read classification. The expected rule was corrected and a full Codex package replay passed.",
+    "After a review fix to require closure before recording its duration, one Claude replay reached the client recovery controls but read the fixture path snapshot before the HEAD hit was written. The harness now waits for the bounded fixture snapshot, and both complete pre-header runs plus the body-phase regression passed."
+  ],
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode client-control-header-cancellation --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-03T18:55:05+00:00",
+  "fixture": "Route-free DNS/HTTP. Controlled /cancel-silent-headers-long holds the socket for up to 15 seconds while the client control API interrupts its pending guarded GET. Later approved GET, loopback denial and approved HEAD verify recovery.",
+  "harness_sha256": {
+    "client_cancellation_probe.py": "e39ff46508c4538c46dd9874d530e870289e81e2cea29dad1221cd1e35d4da60",
+    "debian_native_container_probe.py": "dfa4cf4784cc6445e768ac4f35970880b51db13c801f74c884a95fbf41386070",
+    "netns_adversarial_probe.py": "576fe21b9978b03cd8a39def96dc3c933925a3cc12c503e9b9862ebf29d4b4da"
+  },
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "installed_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "limitations": [
+    "Claude emitted matching MCP cancellation and suppressed the cancelled-call reply; Codex acknowledged turn/interrupt but emitted no MCP cancellation. Its guarded call failed closed after the server transport idle-read deadline, so this is a client control-path gap, not successful wire cancellation.",
+    "The skill ZIP checksum was verified but the skill was not loaded or invoked. Clients ran on Ubuntu while the server ran in Debian 12 amd64.",
+    "Server /proc FD/RSS readings are finite 50 ms samples and can miss transient peaks. Cgroup peaks include setup/helpers. The fixture did not test repeated cancellation, saturated input, aggregate resource bounds, UI controls, Cursor, automatic skill triggering, or traffic sent via other tools.",
+    "This is an experimental unsigned package, not an approved official candidate. Owner self-review and residual-risk acceptance remain open."
+  ],
+  "package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+  "prior_body_phase_regression": {
+    "cancel_phase": "body",
+    "checks": [
+      "checksum",
+      "clean_dpkg_install",
+      "no_upgrade",
+      "native_client_control_and_guarded_calls",
+      "client_interrupt_acknowledged",
+      "matching_mcp_cancel_and_socket_close",
+      "approved_recovery",
+      "package_remove",
+      "residue"
+    ],
+    "client": "claude",
+    "fixture_mode": "client-control-cancellation",
+    "fixture_paths": [
+      "/cancel-drip",
+      "/plain",
+      "/head-ok"
+    ],
+    "package_sha256": "4bc9812874582e2af52f5448b72adfb5820c83162553977a990b854c5f268d1b",
+    "result": "passed"
+  },
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "matching_mcp_cancel_and_socket_close",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control": {
+        "binary_sha256": "7ab55717003e0c311ba4a0433734a0385f3add867a990cb3a5f7aae4f3c448b5",
+        "cancel_notifications": 1,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": false,
+        "client": "claude",
+        "client_control_acknowledged": true,
+        "control_path": "stream-json interrupt",
+        "fetches": 4,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": true,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_seconds": 0.061,
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "client_version": "2.1.301 (Claude Code)",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16805888,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3932,
+        "sample_interval_ms": 50,
+        "samples": 288,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "missing_mcp_cancel_server_timeout_and_socket_close",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control": {
+        "binary_sha256": "2f5234a0a3b8513b63cf0b69bd7089860aa42dd53d54d4a3c1eb4516aee88721",
+        "cancel_notifications": 0,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": true,
+        "client": "codex",
+        "client_control_acknowledged": true,
+        "control_path": "app-server turn/interrupt",
+        "fetches": 4,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": false,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_seconds": 2.994,
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "client_version": "codex-cli 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17125376,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3928,
+        "sample_interval_ms": 50,
+        "samples": 290,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "skill_zip_sha256_verified_but_not_loaded": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "source_base": "895fe7741349c4b4bc24d92c3b7a01c649089931"
+}

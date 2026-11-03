@@ -96,7 +96,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -150,8 +150,11 @@ def main():
                           "OUTBOUND_GUARD_CLIENT_DNS_SSRF", "OUTBOUND_GUARD_CLIENT_REBIND",
                           "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
                           "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT", "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
-                          "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION", "OUTBOUND_GUARD_CLIENT_JSON_INJECTION"):
+                          "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION", "OUTBOUND_GUARD_CLIENT_JSON_INJECTION",
+                          "OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"):
             env.pop(mode_name, None)
+        if args.fixture_mode == "client-control-header-cancellation":
+            env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         mode_variable = {"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
              "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
@@ -173,7 +176,7 @@ def main():
             with (root / "harness.stdout").open("w+") as output:
                 command = ["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
                            args.client, str(wrapper)]
-                if args.fixture_mode != "client-control-cancellation":
+                if args.fixture_mode not in ("client-control-cancellation", "client-control-header-cancellation"):
                     command.append(str(skill))
                 process = subprocess.Popen(command, env=env, stdout=output,
                                            start_new_session=True)
@@ -207,15 +210,20 @@ def main():
                 if returncode:
                     raise subprocess.CalledProcessError(returncode, process.args)
                 control_result = None
-                if args.fixture_mode == "client-control-cancellation":
+                if args.fixture_mode in ("client-control-cancellation", "client-control-header-cancellation"):
                     control_result = json.loads(harness_output.splitlines()[-1])
+                    assert control_result["cancel_phase"] == ("headers" if args.fixture_mode == "client-control-header-cancellation" else "body")
                     assert control_result["live_client"] and control_result["client_control_acknowledged"]
                     assert control_result["socket_closed"] and control_result["recovery_allowed"]
                     if control_result["matching_wire_cancellation"]:
                         assert not control_result["cancelled_fetch_replied"]
                     else:
                         assert control_result["cancelled_fetch_replied"]
-                        assert control_result["rules"][0] == "EGRESS_RESPONSE_TOO_SLOW"
+                        expected_rule = ("EGRESS_NETWORK_FAILURE" if args.fixture_mode == "client-control-header-cancellation"
+                                         else "EGRESS_RESPONSE_TOO_SLOW")
+                        assert control_result["rules"][0] == expected_rule
+                        if args.fixture_mode == "client-control-header-cancellation":
+                            assert control_result["socket_closed_after_seconds"] < 8
             assert state.exists(), "Debian container was not started"
             container = state.read_text().strip()
             assert container.startswith("outbound-native-"), "invalid container identity"
