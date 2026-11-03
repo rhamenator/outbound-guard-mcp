@@ -96,7 +96,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -152,7 +152,7 @@ def main():
                           "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT", "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
                           "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION", "OUTBOUND_GUARD_CLIENT_JSON_INJECTION"):
             env.pop(mode_name, None)
-        env[{"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
+        mode_variable = {"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
              "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
              "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS",
@@ -164,14 +164,18 @@ def main():
              "response-header-limit": "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
              "malformed-mcp-frame": "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION",
              "json-injection": "OUTBOUND_GUARD_CLIENT_JSON_INJECTION",
-             "json-duplicate": "OUTBOUND_GUARD_CLIENT_JSON_INJECTION"}[args.fixture_mode]] = (
-                 "duplicate" if args.fixture_mode == "json-duplicate" else "1")
+             "json-duplicate": "OUTBOUND_GUARD_CLIENT_JSON_INJECTION"}.get(args.fixture_mode)
+        if mode_variable:
+            env[mode_variable] = "duplicate" if args.fixture_mode == "json-duplicate" else "1"
         process = None
         success = False
         try:
             with (root / "harness.stdout").open("w+") as output:
-                process = subprocess.Popen(["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
-                                            args.client, str(wrapper), str(skill)], env=env, stdout=output,
+                command = ["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
+                           args.client, str(wrapper)]
+                if args.fixture_mode != "client-control-cancellation":
+                    command.append(str(skill))
+                process = subprocess.Popen(command, env=env, stdout=output,
                                            start_new_session=True)
                 try:
                     returncode = process.wait(timeout=timeout_seconds)
@@ -198,9 +202,20 @@ def main():
                                 break
                     raise RuntimeError("native client probe timed out; fixture cleanup attempted")
                 output.seek(0)
-                print(output.read(), end="")
+                harness_output = output.read()
+                print(harness_output, end="")
                 if returncode:
                     raise subprocess.CalledProcessError(returncode, process.args)
+                control_result = None
+                if args.fixture_mode == "client-control-cancellation":
+                    control_result = json.loads(harness_output.splitlines()[-1])
+                    assert control_result["live_client"] and control_result["client_control_acknowledged"]
+                    assert control_result["socket_closed"] and control_result["recovery_allowed"]
+                    if control_result["matching_wire_cancellation"]:
+                        assert not control_result["cancelled_fetch_replied"]
+                    else:
+                        assert control_result["cancelled_fetch_replied"]
+                        assert control_result["rules"][0] == "EGRESS_RESPONSE_TOO_SLOW"
             assert state.exists(), "Debian container was not started"
             container = state.read_text().strip()
             assert container.startswith("outbound-native-"), "invalid container identity"
@@ -270,10 +285,11 @@ def main():
                           "memory_events": memory_events,
                           "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."},
                       "server_resource_observation": server_resources,
+                      "client_control_result": control_result,
                       "image_id": image_id, "package": info, "old_package": old_info,
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
-                                 "native_skill_and_guarded_calls",
+                                 "native_client_control_and_guarded_calls" if control_result else "native_skill_and_guarded_calls",
                                  *({"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
                                     "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"],
@@ -291,7 +307,10 @@ def main():
                                                               "parser_header_limit_denial", "no_denied_body_text"],
                                     "malformed-mcp-frame": ["malformed_frame_parse_error", "no_forbidden_dns_or_http"],
                                     "json-injection": ["instruction_response_denial", "no_instruction_echo"],
-                                    "json-duplicate": ["duplicate_key_json_denial", "no_instruction_echo"]}
+                                    "json-duplicate": ["duplicate_key_json_denial", "no_instruction_echo"],
+                                    "client-control-cancellation": ["client_interrupt_acknowledged",
+                                                                    "matching_mcp_cancel_and_socket_close" if control_result["matching_wire_cancellation"]
+                                                                    else "missing_mcp_cancel_server_timeout_and_socket_close"]}
                                    [args.fixture_mode]),
                                  "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
