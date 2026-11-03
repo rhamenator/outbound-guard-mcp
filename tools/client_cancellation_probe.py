@@ -169,6 +169,8 @@ config=root/'mcp.json';config.write_text(json.dumps({'mcpServers':{'outbound_gua
 (root/'.cursor/mcp.json').write_text(config.read_text())
 print('ROOT='+str(root),flush=True)
 cancel_path='/cancel-silent-headers-long' if cancel_phase=='headers' else '/cancel-drip'
+cancel_cycles=int(os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES','1'))
+assert cancel_cycles in (1,2), 'unsupported cancellation cycle count'
 prompt=f'Use ONLY the outbound_guard guarded_fetch MCP tool to GET http://allowed.test{cancel_path} once. Do not use any other tools or retry. Wait for its actual result.'
 clienthome=root/'codex';clienthome.mkdir(mode=0o700)
 auth=pathlib.Path.home()/'.codex/auth.json'
@@ -585,6 +587,56 @@ try:
   lines=(root/'wire.jsonl').read_text().splitlines()
   if any(json.loads(line).get('rule')=='EGRESS_ALLOWED' for line in lines):break
   time.sleep(.02)
+ else:raise AssertionError('first recovery did not succeed')
+ close_times=[closed_after]
+ if cancel_cycles==2:
+  assert name in ('claude','codex'), 'repeated control test supports Claude and Codex'
+  if name=='codex':
+   deadline=time.monotonic()+40
+   while time.monotonic()<deadline:
+    messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()]
+    if any(m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==recovery_turn for m in messages):break
+    time.sleep(.02)
+   else:raise AssertionError('first recovery turn did not complete')
+  (root/'reset-cancel').touch()
+  deadline=time.monotonic()+5
+  while not (root/'reset-complete').exists():
+   assert time.monotonic()<deadline, 'fixture reset did not complete'
+   time.sleep(.01)
+  (root/'reset-complete').unlink()
+  if name=='claude':send({'type':'user','message':{'role':'user','content':prompt}})
+  else:
+   send({'id':6,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':prompt}]}})
+   second_turn=response(6)['turn']['id']
+  deadline=time.monotonic()+80
+  while not (root/'started').exists():
+   assert p.poll() is None and time.monotonic()<deadline, 'second fixture never started'
+   time.sleep(.01)
+  stop=time.monotonic()
+  if name=='claude':send({'type':'control_request','request_id':'interrupt-probe-2','request':{'subtype':'interrupt'}})
+  else:
+   send({'id':7,'method':'turn/interrupt','params':{'threadId':tid,'turnId':second_turn}});response(7)
+  deadline=time.monotonic()+8
+  while not (root/'closed').exists():
+   assert time.monotonic()<deadline, 'second fixture socket remained open after interruption'
+   time.sleep(.02)
+  close_times.append(round(time.monotonic()-stop,3))
+  if name=='codex':
+   deadline=time.monotonic()+10
+   while time.monotonic()<deadline:
+    messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()]
+    if any(m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==second_turn for m in messages):break
+    time.sleep(.02)
+  if name=='claude':send({'type':'user','message':{'role':'user','content':recovery}})
+  else:
+   send({'id':8,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':recovery}]}})
+   recovery_turn=response(8)['turn']['id']
+  deadline=time.monotonic()+40
+  while time.monotonic()<deadline:
+   lines=(root/'wire.jsonl').read_text().splitlines()
+   if len([e for e in map(json.loads,lines) if e.get('rule')=='EGRESS_ALLOWED'])==2:break
+   time.sleep(.02)
+  else:raise AssertionError('second recovery did not succeed')
  smoke='Use ONLY outbound_guard guarded_fetch. First GET http://127.0.0.1/ once; then HEAD http://allowed.test/head-ok once. No other tools or retries. Report both actual results.'
  if name=='cursor':
   response(5)
@@ -598,27 +650,29 @@ try:
    if any(m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==recovery_turn for m in messages):break
    time.sleep(.02)
   else:raise AssertionError('recovery turn did not complete')
-  send({'id':6,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':smoke}]}});response(6)
+  smoke_id=9 if cancel_cycles==2 else 6
+  send({'id':smoke_id,'method':'turn/start','params':{'threadId':tid,'input':[{'type':'text','text':smoke}]}});response(smoke_id)
  deadline=time.monotonic()+40
  while time.monotonic()<deadline:
   observed=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
-  if len([e for e in observed if e.get('rule')=='EGRESS_ALLOWED'])==2:break
+  if len([e for e in observed if e.get('rule')=='EGRESS_ALLOWED'])==cancel_cycles+1:break
   time.sleep(.02)
  events=[json.loads(s) for s in (root/'wire.jsonl').read_text().splitlines()]
  cancels=[e for e in events if e.get('method')=='notifications/cancelled']
  fetches=[e for e in events if e.get('method')=='tools/call']
- matching=bool(cancels and cancels[0]['requestId']==fetches[0]['id'])
- cancelled_reply=any(e['direction']=='out' and e.get('id')==fetches[0]['id'] for e in events)
+ cancelled_ids=[fetches[0]['id']]+([fetches[2]['id']] if cancel_cycles==2 else [])
+ matching=len(cancels)==cancel_cycles and all(c['requestId']==request_id for c,request_id in zip(cancels,cancelled_ids))
+ cancelled_reply=any(e['direction']=='out' and e.get('id') in cancelled_ids for e in events)
  if matching:assert not cancelled_reply, 'server replied after matching cancellation'
  if not any(e.get('rule')=='EGRESS_ALLOWED' for e in events):
   errors=[m.get('params',{}).get('error',{}).get('codexErrorInfo') for m in [json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()] if m.get('method')=='error']
   print(json.dumps({'client_error_classes':errors}),flush=True)
  assert any(e.get('rule')=='EGRESS_ALLOWED' for e in events), 'recovery did not succeed'
  if name in ('claude','codex','cursor'):
-  assert len(fetches)==4 and any(e.get('rule')=='EGRESS_INVALID_HOST' for e in events)
-  assert fetches[-1]['http_method']=='HEAD' and [e.get('status_code') for e in events if e.get('rule')=='EGRESS_ALLOWED']==[200,200]
+  assert len(fetches)==2*cancel_cycles+2 and any(e.get('rule')=='EGRESS_INVALID_HOST' for e in events)
+  assert fetches[-1]['http_method']=='HEAD' and [e.get('status_code') for e in events if e.get('rule')=='EGRESS_ALLOWED']==[200]*(cancel_cycles+1)
  assert (root/'closed').exists() and p.poll() is None
- expected_paths=[cancel_path,'/plain','/head-ok']
+ expected_paths=[cancel_path,'/plain']*cancel_cycles+['/head-ok']
  for _ in range(200):
   fixture_paths=json.loads((root/'hits.json').read_text())
   if fixture_paths==expected_paths:break
@@ -632,8 +686,12 @@ try:
  else:
   control_ack=any(m.get('id')==3 and m.get('result',{}).get('stopReason')=='cancelled' for m in messages)
  assert control_ack, 'client did not acknowledge interruption'
+ if cancel_cycles==2:
+  if name=='claude':assert any(m.get('type')=='control_response' and m.get('response',{}).get('request_id')=='interrupt-probe-2' and m['response'].get('subtype')=='success' for m in messages), 'second client interruption not acknowledged'
+  else:assert any(m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==second_turn and m['params']['turn'].get('status')=='interrupted' for m in messages), 'second client interruption not acknowledged'
  report={'client':name,'binary_sha256':hashlib.sha256(pathlib.Path(binary).read_bytes()).hexdigest(),
          'cancel_phase':cancel_phase,
+         'cancel_cycles':cancel_cycles,'socket_closed_after_each_seconds':close_times,
          'control_path':{'claude':'stream-json interrupt','codex':'app-server turn/interrupt','cursor':'ACP session/cancel'}[name],
          'socket_closed':True,'live_client':True,'client_control_acknowledged':control_ack,'matching_wire_cancellation':matching,
          'cancelled_fetch_replied':cancelled_reply,'cancel_notifications':len(cancels),
