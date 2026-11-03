@@ -16,6 +16,8 @@ The [remaining-gap review](RELEASE_GAPS.md) separates next engineering/verificat
 
 The [native client after Debian upgrade replay](evidence/native-client-after-debian-upgrade-2026-10-30.json) adds changed-binary package upgrade followed by Claude/Codex guarded calls, removal, and residue checks. It covers one older experimental version path and leaves configuration migration and exact-candidate qualification open.
 
+An [exact-main package upgrade and native control replay](evidence/native-client-after-current-debian-upgrade-2026-11-03.json) now verifies `d728f7d` to `49b333e` Debian package ordering, distinct package hashes, identical installed executable bytes, checksum-verified trusted-main artifacts, Claude/Codex guarded pre-header control calls, recovery, removal and residue under a 128 MiB quota. The trusted-main signing/verifier job passed, but the local GitHub CLI did not independently re-verify its attestation. This remains an experimental path; Codex's missing MCP cancellation, configuration migration, other platforms and exact owner-approved candidate qualification remain open.
+
 The [installed-byte upgrade replay](evidence/debian-upgrade-installed-bytes-2026-10-30.json) now verifies the executable hash inside disposable Debian containers before and after both recent-prior and changed-binary upgrades. Neither tested package ships a configuration file, so this does not establish migration behavior for future configurations.
 
 A [native container failure-cleanup replay](evidence/native-container-failure-cleanup-2026-10-31.json) verifies owned Docker and namespace cleanup on a client failure and forced deadline. An attempted package-installed slow-HTTP replay made no MCP calls, so it does not extend slow-drip coverage.

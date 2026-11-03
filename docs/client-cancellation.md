@@ -1,5 +1,13 @@
 # Real-client cancellation and queue-saturation evidence
 
+## Native pre-header control after current Debian package upgrade — 2026-11-03
+
+The [exact-main package upgrade replay](evidence/native-client-after-current-debian-upgrade-2026-11-03.json) installed the prior experimental Debian 12 amd64 package from source `d728f7d1bc7d`, upgraded to the trusted-main package from `49b333e9c792`, verified the installed executable bytes, and ran the native pre-header control fixture through Claude Code 2.1.301 and Codex CLI 0.151.0. Both package versions contain the same server executable SHA-256; their package versions and hashes differ. The new artifact's `SHA256SUMS` passed local checksum verification, and its exact-main CI, independent rebuild, CodeQL, and signing/verifier job passed. The local GitHub CLI could not independently re-verify the attestation.
+
+Claude delivered a matching MCP cancellation, suppressed the cancelled-call reply and closed the fixture socket 0.040 seconds after interruption. Codex acknowledged `turn/interrupt` without an MCP cancellation; the installed server returned `EGRESS_NETWORK_FAILURE` at its idle-read deadline and closed the socket after 3.011 seconds. Both clients passed approved GET recovery, loopback denial and approved HEAD, followed by package removal and residue checks under a 128 MiB container quota with zero OOM events. Finite 50 ms server samples observed at most three descriptors for Claude and seven for Codex, with maximum sampled RSS of 3,896 and 3,940 KiB respectively. The three-descriptor Claude sample can miss its briefly open network socket.
+
+This is one experimental upgrade path, with native clients on Ubuntu and the server inside Debian. It does not test configuration migration, an official candidate, UI cancellation, automatic skill triggering, Cursor, repeated cancellation, aggregate resource bounds or traffic sent through other tools. The Codex client notification gap and owner release decision remain open.
+
 ## Native pre-header interruption against installed Debian package — 2026-11-03
 
 The [package-installed pre-header replay](evidence/native-client-debian-header-cancellation-2026-11-03.json) held a controlled HTTP socket without sending response headers for up to 15 seconds. Native Claude Code 2.1.301 and Codex CLI 0.151.0 each issued a guarded GET through the experimental Debian 12 amd64 package under a 128 MiB container quota. The harness interrupted each client's control API after the fixture accepted the request, then checked socket closure, approved GET recovery, loopback denial, approved HEAD, clean package removal and residue. The fixture recorded exactly those three approved HTTP paths. No container OOM occurred.
