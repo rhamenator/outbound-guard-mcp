@@ -1,13 +1,14 @@
 {
   "attempt_notes": [
     "An initial Codex attempt reached the fixture-never-started deadline; no guarded HTTP call began, and its disposable namespace/container were cleaned. It is excluded from passing observations.",
-    "A later Codex run completed client/fixture checks but the parent harness expected EGRESS_RESPONSE_TIMEOUT; the actual EGRESS_NETWORK_FAILURE is the server transport idle-read classification. The expected rule was corrected and a full Codex package replay passed."
+    "A later Codex run completed client/fixture checks but the parent harness expected EGRESS_RESPONSE_TIMEOUT; the actual EGRESS_NETWORK_FAILURE is the server transport idle-read classification. The expected rule was corrected and a full Codex package replay passed.",
+    "After a review fix to require closure before recording its duration, one Claude replay reached the client recovery controls but read the fixture path snapshot before the HEAD hit was written. The harness now waits for the bounded fixture snapshot, and both complete pre-header runs plus the body-phase regression passed."
   ],
   "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode client-control-header-cancellation --container-memory-mib 128 --sample-server-resources",
-  "date_utc": "2026-11-03T18:47:52+00:00",
+  "date_utc": "2026-11-03T18:55:05+00:00",
   "fixture": "Route-free DNS/HTTP. Controlled /cancel-silent-headers-long holds the socket for up to 15 seconds while the client control API interrupts its pending guarded GET. Later approved GET, loopback denial and approved HEAD verify recovery.",
   "harness_sha256": {
-    "client_cancellation_probe.py": "29c68a98f9a57fc27b7abfc2ec608aca739618baba4b509c8dc168c0391a0f74",
+    "client_cancellation_probe.py": "e39ff46508c4538c46dd9874d530e870289e81e2cea29dad1221cd1e35d4da60",
     "debian_native_container_probe.py": "dfa4cf4784cc6445e768ac4f35970880b51db13c801f74c884a95fbf41386070",
     "netns_adversarial_probe.py": "576fe21b9978b03cd8a39def96dc3c933925a3cc12c503e9b9862ebf29d4b4da"
   },
@@ -57,7 +58,7 @@
         "residue"
       ],
       "client_control": {
-        "binary_sha256": "9cec25d3bd782c5a916ebc53c96d462a29c91d0a5a1f975f44a8f5f359f44962",
+        "binary_sha256": "7ab55717003e0c311ba4a0433734a0385f3add867a990cb3a5f7aae4f3c448b5",
         "cancel_notifications": 1,
         "cancel_phase": "headers",
         "cancelled_fetch_replied": false,
@@ -104,15 +105,15 @@
           "sock_throttled": 0
         },
         "memory_limit_mib": 128,
-        "memory_peak_bytes": 16809984,
+        "memory_peak_bytes": 16805888,
         "pids_peak": 9,
         "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
       },
       "server_resource_observation": {
         "max_sampled_fd": 7,
-        "max_sampled_rss_kib": 3864,
+        "max_sampled_rss_kib": 3932,
         "sample_interval_ms": 50,
-        "samples": 217,
+        "samples": 288,
         "scope": "Finite sampled server observations; sampling can miss transient peaks."
       }
     },
@@ -129,7 +130,7 @@
         "residue"
       ],
       "client_control": {
-        "binary_sha256": "2829e7b802ca0adccfe39609155178eac83581afed820e723f0887b545b002df",
+        "binary_sha256": "2f5234a0a3b8513b63cf0b69bd7089860aa42dd53d54d4a3c1eb4516aee88721",
         "cancel_notifications": 0,
         "cancel_phase": "headers",
         "cancelled_fetch_replied": true,
@@ -159,7 +160,7 @@
         ],
         "scope": "client control API, not desktop or terminal UI; no saturated input queue",
         "socket_closed": true,
-        "socket_closed_after_seconds": 3.014,
+        "socket_closed_after_seconds": 2.994,
         "status_codes": [
           200,
           200
@@ -177,15 +178,15 @@
           "sock_throttled": 0
         },
         "memory_limit_mib": 128,
-        "memory_peak_bytes": 17076224,
+        "memory_peak_bytes": 17125376,
         "pids_peak": 9,
         "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
       },
       "server_resource_observation": {
         "max_sampled_fd": 7,
-        "max_sampled_rss_kib": 3952,
+        "max_sampled_rss_kib": 3928,
         "sample_interval_ms": 50,
-        "samples": 236,
+        "samples": 290,
         "scope": "Finite sampled server observations; sampling can miss transient peaks."
       }
     }

@@ -561,9 +561,10 @@ try:
  elif name=='cursor':send({'jsonrpc':'2.0','method':'session/cancel','params':{'sessionId':sid}})
  else:
   send({'id':4,'method':'turn/interrupt','params':{'threadId':tid,'turnId':turn}});response(4)
- for _ in range(200):
+ for _ in range(400):
   if (root/'closed').exists():break
   time.sleep(.02)
+ else:raise AssertionError('fixture socket remained open eight seconds after client interruption')
  closed_after=round(time.monotonic()-stop,3)
  time.sleep(.2)
  if name=='codex':
@@ -617,8 +618,12 @@ try:
   assert len(fetches)==4 and any(e.get('rule')=='EGRESS_INVALID_HOST' for e in events)
   assert fetches[-1]['http_method']=='HEAD' and [e.get('status_code') for e in events if e.get('rule')=='EGRESS_ALLOWED']==[200,200]
  assert (root/'closed').exists() and p.poll() is None
- fixture_paths=json.loads((root/'hits.json').read_text())
- assert fixture_paths==[cancel_path,'/plain','/head-ok'], fixture_paths
+ expected_paths=[cancel_path,'/plain','/head-ok']
+ for _ in range(200):
+  fixture_paths=json.loads((root/'hits.json').read_text())
+  if fixture_paths==expected_paths:break
+  time.sleep(.02)
+ else:raise AssertionError(f'fixture paths did not settle: {fixture_paths}')
  messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
  if name=='claude':
   control_ack=any(m.get('type')=='control_response' and m.get('response',{}).get('request_id')=='interrupt-probe' and m['response'].get('subtype')=='success' for m in messages)
