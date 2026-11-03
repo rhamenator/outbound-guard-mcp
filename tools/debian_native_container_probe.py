@@ -34,7 +34,7 @@ old_mount=()
 if [[ -n $old_package ]]; then old_mount=(--mount "type=bind,src=$old_package,dst=/old.deb,readonly"); fi
 docker run -d --rm --pull never --network none --dns 127.0.0.1 \
   --cap-add SYS_ADMIN --security-opt no-new-privileges \
-  --memory 512m --memory-swap 512m --pids-limit 64 --cpus 1 \
+  --memory __MEMORY_MIB__m --memory-swap __MEMORY_MIB__m --pids-limit 64 --cpus 1 \
   --mount "type=bind,src=/run/netns/$namespace,dst=/run/fixture-netns,readonly" \
   --mount "type=bind,src=$package,dst=/candidate.deb,readonly" \
   "${old_mount[@]}" \
@@ -73,6 +73,8 @@ def main():
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
     parser.add_argument("--fixture-mode", choices=("tls", "slow-http", "malformed-http", "redirect-encoded", "dns-ssrf", "dns-rebind", "synthetic-exfil", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate"), default="tls")
+    parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
+                        help="Debian server container memory and swap limit (default: 512 MiB)")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -107,6 +109,7 @@ def main():
                          ("__VERSION__", shlex.quote(info["version"])),
                          ("__OLD_BINARY_SHA__", shlex.quote(old_info["binary_sha256"]) if old_info else "''"),
                          ("__OLD_VERSION__", shlex.quote(old_info["version"]) if old_info else "''"),
+                         ("__MEMORY_MIB__", str(args.container_memory_mib)),
                          ("__IMAGE__", shlex.quote(BUILDER_IMAGE))):
             source = source.replace(old, new)
         wrapper.write_text(source)
@@ -171,6 +174,17 @@ def main():
             assert state.exists(), "Debian container was not started"
             container = state.read_text().strip()
             assert container.startswith("outbound-native-"), "invalid container identity"
+            cgroup = subprocess.check_output(
+                ["docker", "exec", container, "sh", "-ec",
+                 "cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.peak /sys/fs/cgroup/pids.peak; "
+                 "cat /sys/fs/cgroup/memory.events"], text=True).splitlines()
+            memory_max, memory_peak, pids_peak = map(int, cgroup[:3])
+            memory_events = dict(line.split() for line in cgroup[3:])
+            memory_events = {key: int(value) for key, value in memory_events.items()}
+            assert memory_max == args.container_memory_mib * 1024 * 1024
+            assert 0 < memory_peak < memory_max, (memory_peak, memory_max)
+            assert 0 < pids_peak <= 64, pids_peak
+            assert memory_events["oom"] == 0 and memory_events["oom_kill"] == 0, memory_events
             subprocess.run(["docker", "exec", container, "sh", "-ec",
                             "pidof outbound-guard-mcp | xargs -r kill -TERM || true"], check=True)
             subprocess.run(["docker", "exec", container, "dpkg", "-r", "outbound-guard-mcp"],
@@ -202,6 +216,11 @@ def main():
                         raise RuntimeError("owned Debian probe container remained after cleanup")
     print(json.dumps({"result": "passed", "client": args.client,
                       "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+                      "container_resource_observation": {
+                          "memory_limit_mib": args.container_memory_mib,
+                          "memory_peak_bytes": memory_peak, "pids_peak": pids_peak,
+                          "memory_events": memory_events,
+                          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."},
                       "image_id": image_id, "package": info, "old_package": old_info,
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
