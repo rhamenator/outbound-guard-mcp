@@ -33,6 +33,8 @@ Set OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 for delayed-first-byte and slow-drip
 HTTP denials followed by an approved recovery GET.
 Set OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 for an HTTP 101 denial and recovery,
 or =interim for a 103 Early Hints header flood denial and recovery.
+Set OUTBOUND_GUARD_CLIENT_CANCEL_PHASE=headers to interrupt a guarded fetch
+before response headers instead of during a slow response body.
 Only one opt-in mode may be selected.
 """
 import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashlib,atexit,pwd,signal
@@ -60,6 +62,9 @@ upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim')
 interim_mode=upgrade_variant=='interim'
+cancel_phase=os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE','body')
+assert cancel_phase in ('body','headers'), 'unsupported cancellation phase'
+assert cancel_phase=='body' or not skill_zip, 'header cancellation uses the client control workflow'
 assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,slow_http_mode,upgrade_mode))<=1, 'choose one opt-in skill replay mode'
 assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
@@ -163,7 +168,8 @@ config=root/'mcp.json';config.write_text(json.dumps({'mcpServers':{'outbound_gua
 (root/'.cursor').mkdir(exist_ok=True)
 (root/'.cursor/mcp.json').write_text(config.read_text())
 print('ROOT='+str(root),flush=True)
-prompt='Use ONLY the outbound_guard guarded_fetch MCP tool to GET http://allowed.test/cancel-drip once. Do not use any other tools or retry. Wait for its actual result.'
+cancel_path='/cancel-silent-headers-long' if cancel_phase=='headers' else '/cancel-drip'
+prompt=f'Use ONLY the outbound_guard guarded_fetch MCP tool to GET http://allowed.test{cancel_path} once. Do not use any other tools or retry. Wait for its actual result.'
 clienthome=root/'codex';clienthome.mkdir(mode=0o700)
 auth=pathlib.Path.home()/'.codex/auth.json'
 if auth.exists():(clienthome/'auth.json').symlink_to(auth)
@@ -611,6 +617,8 @@ try:
   assert len(fetches)==4 and any(e.get('rule')=='EGRESS_INVALID_HOST' for e in events)
   assert fetches[-1]['http_method']=='HEAD' and [e.get('status_code') for e in events if e.get('rule')=='EGRESS_ALLOWED']==[200,200]
  assert (root/'closed').exists() and p.poll() is None
+ fixture_paths=json.loads((root/'hits.json').read_text())
+ assert fixture_paths==[cancel_path,'/plain','/head-ok'], fixture_paths
  messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
  if name=='claude':
   control_ack=any(m.get('type')=='control_response' and m.get('response',{}).get('request_id')=='interrupt-probe' and m['response'].get('subtype')=='success' for m in messages)
@@ -620,9 +628,11 @@ try:
   control_ack=any(m.get('id')==3 and m.get('result',{}).get('stopReason')=='cancelled' for m in messages)
  assert control_ack, 'client did not acknowledge interruption'
  report={'client':name,'binary_sha256':hashlib.sha256(pathlib.Path(binary).read_bytes()).hexdigest(),
+         'cancel_phase':cancel_phase,
          'control_path':{'claude':'stream-json interrupt','codex':'app-server turn/interrupt','cursor':'ACP session/cancel'}[name],
          'socket_closed':True,'live_client':True,'client_control_acknowledged':control_ack,'matching_wire_cancellation':matching,
          'cancelled_fetch_replied':cancelled_reply,'cancel_notifications':len(cancels),
+         'fixture_paths':fixture_paths,
          'http_methods':[e['http_method'] for e in fetches],
          'status_codes':[e['status_code'] for e in events if 'status_code' in e],
          'fetches':len(fetches),'socket_closed_after_seconds':closed_after,

@@ -1,5 +1,13 @@
 # Real-client cancellation and queue-saturation evidence
 
+## Native pre-header interruption against installed Debian package — 2026-11-03
+
+The [package-installed pre-header replay](evidence/native-client-debian-header-cancellation-2026-11-03.json) held a controlled HTTP socket without sending response headers for up to 15 seconds. Native Claude Code 2.1.301 and Codex CLI 0.151.0 each issued a guarded GET through the experimental Debian 12 amd64 package under a 128 MiB container quota. The harness interrupted each client's control API after the fixture accepted the request, then checked socket closure, approved GET recovery, loopback denial, approved HEAD, clean package removal and residue. The fixture recorded exactly those three approved HTTP paths. No container OOM occurred.
+
+Claude delivered one matching MCP cancellation, suppressed the cancelled-call reply, and the fixture observed socket closure 0.061 seconds after interruption. Codex acknowledged `turn/interrupt` but emitted no MCP cancellation; the server's transport idle-read deadline closed the socket after 3.014 seconds and returned `EGRESS_NETWORK_FAILURE`. Its recovery and denial controls passed. The finite 50 ms server sampler saw at most seven descriptors and maximum RSS of 3,864 KiB for Claude and 3,952 KiB for Codex. A full Claude body-phase control replay passed after adding this mode. One initial Codex attempt never started a fixture request; a later complete run exposed an incorrect harness expectation for the idle-read rule, which was fixed before the passing replay.
+
+The Codex control-path gap remains open. This mode verified the skill ZIP checksum without loading the skill. The samples can miss resource peaks, and this single pre-header phase does not establish repeated cancellation, queue saturation, UI behavior, automatic skill triggering, other client versions, or protection for traffic sent through other tools. It does not approve an official candidate.
+
 ## Native client-control interruption against installed Debian package — 2026-11-03
 
 The [package-installed control-interruption replay](evidence/native-client-debian-control-cancellation-2026-11-03.json) ran the experimental Debian 12 amd64 package under a 128 MiB container quota in a route-free DNS/HTTP fixture. Native Claude Code 2.1.301 and Codex CLI 0.151.0 each started a guarded `GET /cancel-drip`; the harness issued the client's control API interruption after the fixture accepted it, then checked socket closure, an approved recovery GET, loopback denial and an approved HEAD. The package installed and removed without residue in both sessions. This mode verified the skill ZIP checksum but did not load or invoke the skill.
