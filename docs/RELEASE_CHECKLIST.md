@@ -26,6 +26,8 @@ A [later package-installed slow-HTTP replay](evidence/native-client-debian-slow-
 
 A [package-installed malformed-HTTP replay](evidence/native-client-debian-malformed-http-2026-10-31.json) passed native Claude/Codex bad-chunk-size and truncated-chunk denial followed by an approved recovery GET, plus package removal and residue. It covers two controlled encodings, not general malformed-protocol resistance.
 
+A [current package-installed HTTP 101/103 replay](evidence/native-client-debian-http-interim-upgrade-2026-11-04.json) adds explicit Claude/Codex skill calls for protocol-upgrade denial and aggregate interim-header wire-limit denial, each between approved GETs. Clean installation, removal and residue passed under a 128 MiB container quota. These two finite responses do not establish general parser safety, accepted upgrade handling or an official candidate.
+
 A [package-installed redirect and encoded-response replay](evidence/native-client-debian-redirect-encoded-2026-10-31.json) passed native Claude/Codex 302 denial, gzip denial and approved recovery. Redirect following and accepted decompression remain unimplemented, so this is evidence for the current stricter denial policy only.
 
 A [redacted URL-class diagnostic](evidence/native-client-url-class-diagnostics-2026-10-31.json) now distinguishes exact controlled fixture URLs from unknown client inputs in future native replay failures without retaining raw URLs. A passing package-native Codex control verified the labels. It does not explain the earlier intermittent `EGRESS_INVALID_URL`.
