@@ -1,0 +1,597 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "1339622cd8127019145d1b834bd63471f7e6b7f3b45e686d96542fe33d1f9f54",
+  "client_versions": {
+    "claude": "2.1.301",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-04",
+  "limitations": "Four finite explicit native skill sessions against one active proxy endpoint. The one recorded proxy flow per run is the curl positive control; no guarded call used that proxy in these sessions. The client ran on Ubuntu, the unsigned experimental server package inside a route-free Debian 12 amd64 container. No universal packet/socket absence, arbitrary proxy variants, all secret forms, other clients/platforms, automatic skill triggering, or other-tool traffic claim. Finite 50 ms FD/RSS samples can miss peaks; cgroup quota is not a server-only bound. Not an official release candidate.",
+  "proxy_settings": "HTTP_PROXY/http_proxy, HTTPS_PROXY/https_proxy and ALL_PROXY/all_proxy point at 127.0.0.1:3128 inside the route-free fixture namespace; NO_PROXY/no_proxy are present and empty. A curl positive control reaches the proxy before each native run. The Debian bridge forwards all eight values to docker exec, verifies them inside the container, then verifies them again in the shell that execs nsenter and the installed server.",
+  "proxy_tool": "mitmdump 8.1.1",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode tls-active-proxy|synthetic-exfil-active-proxy --container-memory-mib 128 --sample-server-resources",
+  "runs": {
+    "synthetic-exfil-active-proxy_claude": {
+      "native_client": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "183ad2f785af5351b59a62d5f8713044d179da0ea30681c3b1f03c69082a45b8",
+        "builtin_tools": [
+          "Skill"
+        ],
+        "client": "claude",
+        "compression_loop_a_queried": null,
+        "controlled_json_instruction_seen": null,
+        "dns_mode": false,
+        "exfil_dns_queried": false,
+        "exfil_mode": true,
+        "explicit_skill_input_accepted": null,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain",
+          "/head-ok",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "header_limit_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "interim_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_SECRET_DETECTED",
+          "EGRESS_INVALID_URL",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": [
+          "project"
+        ],
+        "skill_tool_result_success": true,
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+        "slow_http_mode": false,
+        "status_codes": [
+          200,
+          200,
+          200
+        ],
+        "synthetic_marker_echo": false,
+        "tls_handshake_a_queries": null,
+        "tls_mode": false,
+        "tls_sni": null,
+        "upgrade_mode": false,
+        "url_classes": [
+          "other",
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "loopback_denial",
+          "secret_path_denial",
+          "unicode_lookalike_denial",
+          "no_exfil_dns_or_marker_echo",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 16474112,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "synthetic-exfil-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+          "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+          "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+          "version": "0.1.0~candidate.205+gba1583cd6319"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 4012,
+          "sample_interval_ms": 50,
+          "samples": 636,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15"
+      }
+    },
+    "synthetic-exfil-active-proxy_codex": {
+      "native_client": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "22523f951a6527d52d6848f04c024489a3728a08f6fd2d317c240369ba36dd60",
+        "builtin_tools": null,
+        "client": "codex",
+        "compression_loop_a_queried": null,
+        "controlled_json_instruction_seen": null,
+        "dns_mode": false,
+        "exfil_dns_queried": false,
+        "exfil_mode": true,
+        "explicit_skill_input_accepted": true,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain",
+          "/head-ok",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "header_limit_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "interim_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_SECRET_DETECTED",
+          "EGRESS_INVALID_URL",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": null,
+        "skill_tool_result_success": null,
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+        "slow_http_mode": false,
+        "status_codes": [
+          200,
+          200,
+          200
+        ],
+        "synthetic_marker_echo": false,
+        "tls_handshake_a_queries": null,
+        "tls_mode": false,
+        "tls_sni": null,
+        "upgrade_mode": false,
+        "url_classes": [
+          "other",
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "loopback_denial",
+          "secret_path_denial",
+          "unicode_lookalike_denial",
+          "no_exfil_dns_or_marker_echo",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 15761408,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "synthetic-exfil-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+          "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+          "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+          "version": "0.1.0~candidate.205+gba1583cd6319"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3992,
+          "sample_interval_ms": 50,
+          "samples": 259,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15"
+      }
+    },
+    "tls-active-proxy_claude": {
+      "native_client": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "28e748d611800ebe6be2b57b8e94ed7571229fe2e3307cb17b4a8a7a7a592eb4",
+        "builtin_tools": [
+          "Skill"
+        ],
+        "client": "claude",
+        "compression_loop_a_queried": null,
+        "controlled_json_instruction_seen": null,
+        "dns_mode": false,
+        "exfil_dns_queried": null,
+        "exfil_mode": false,
+        "explicit_skill_input_accepted": null,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "header_limit_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "interim_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": [
+          "project"
+        ],
+        "skill_tool_result_success": true,
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+        "slow_http_mode": false,
+        "status_codes": [
+          200
+        ],
+        "synthetic_marker_echo": null,
+        "tls_handshake_a_queries": 2,
+        "tls_mode": true,
+        "tls_sni": [
+          [
+            "11.0.0.2",
+            "tls-handshake.test"
+          ]
+        ],
+        "upgrade_mode": false,
+        "url_classes": [
+          "tls_fixture",
+          "tls_fixture",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "tls_hostname_denial",
+          "private_dns_flip_denial",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 16613376,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "tls-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+          "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+          "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+          "version": "0.1.0~candidate.205+gba1583cd6319"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 4768,
+          "sample_interval_ms": 50,
+          "samples": 364,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15"
+      }
+    },
+    "tls-active-proxy_codex": {
+      "native_client": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "7736fab871b3234f08b046dae531fb3fface6d964ef181b209320b3887e7563a",
+        "builtin_tools": null,
+        "client": "codex",
+        "compression_loop_a_queried": null,
+        "controlled_json_instruction_seen": null,
+        "dns_mode": false,
+        "exfil_dns_queried": null,
+        "exfil_mode": false,
+        "explicit_skill_input_accepted": true,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "header_limit_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "b3522dd55dfe3b05e472e12ec214376ab2c5e4bdae7e43abce88a93f5bad469c",
+        "interim_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": null,
+        "skill_tool_result_success": null,
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+        "slow_http_mode": false,
+        "status_codes": [
+          200
+        ],
+        "synthetic_marker_echo": null,
+        "tls_handshake_a_queries": 2,
+        "tls_mode": true,
+        "tls_sni": [
+          [
+            "11.0.0.2",
+            "tls-handshake.test"
+          ]
+        ],
+        "upgrade_mode": false,
+        "url_classes": [
+          "tls_fixture",
+          "tls_fixture",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "tls_hostname_denial",
+          "private_dns_flip_denial",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 16588800,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "tls-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+          "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+          "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+          "version": "0.1.0~candidate.205+gba1583cd6319"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 4748,
+          "sample_interval_ms": 50,
+          "samples": 211,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15"
+      }
+    }
+  },
+  "source_main_sha": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+  "trusted_main_ci_run": 41716755430
+}
