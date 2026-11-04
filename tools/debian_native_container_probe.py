@@ -54,13 +54,42 @@ if [[ -n ${OUTBOUND_GUARD_EXTRA_CA_CERT:-} ]]; then
   docker cp "$OUTBOUND_GUARD_EXTRA_CA_CERT" "$container:/tmp/fixture-ca.pem" >/dev/null
   cert_env=(--env OUTBOUND_GUARD_EXTRA_CA_CERT=/tmp/fixture-ca.pem)
 fi
+proxy_env=()
+if [[ -n ${HTTP_PROXY:-} ]]; then
+  [[ $HTTP_PROXY == http://127.0.0.1:3128 && ${http_proxy:-} == "$HTTP_PROXY" ]]
+  [[ ${HTTPS_PROXY:-} == "$HTTP_PROXY" && ${https_proxy:-} == "$HTTP_PROXY" ]]
+  [[ ${ALL_PROXY:-} == "$HTTP_PROXY" && ${all_proxy:-} == "$HTTP_PROXY" ]]
+  [[ ${NO_PROXY+x} && -z $NO_PROXY && ${no_proxy+x} && -z $no_proxy ]]
+  proxy_env=(--env "HTTP_PROXY=$HTTP_PROXY" --env "http_proxy=$http_proxy"
+             --env "HTTPS_PROXY=$HTTPS_PROXY" --env "https_proxy=$https_proxy"
+             --env "ALL_PROXY=$ALL_PROXY" --env "all_proxy=$all_proxy"
+             --env NO_PROXY= --env no_proxy=)
+  docker exec "${proxy_env[@]}" "$container" sh -ec '
+    test "$HTTP_PROXY" = http://127.0.0.1:3128
+    test "$http_proxy" = "$HTTP_PROXY" && test "$HTTPS_PROXY" = "$HTTP_PROXY"
+    test "$https_proxy" = "$HTTP_PROXY" && test "$ALL_PROXY" = "$HTTP_PROXY"
+    test "$all_proxy" = "$HTTP_PROXY"
+    test "${NO_PROXY+x}" = x && test -z "$NO_PROXY"
+    test "${no_proxy+x}" = x && test -z "$no_proxy"'
+  printf 'verified\n' > "$state.proxy-verified"
+fi
 if [[ $sample_resources == 1 ]]; then
   docker cp __MONITOR_PATH__ "$container:/tmp/resource-monitor.sh" >/dev/null
   docker exec -d "$container" sh /tmp/resource-monitor.sh
 fi
 docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS="$OUTBOUND_GUARD_ALLOWED_HOSTS" \
-  "${cert_env[@]}" \
-  "$container" nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp
+  "${cert_env[@]}" "${proxy_env[@]}" \
+  "$container" sh -ec '
+    if [ -n "${HTTP_PROXY:-}" ]; then
+      test "$HTTP_PROXY" = http://127.0.0.1:3128
+      test "$http_proxy" = "$HTTP_PROXY" && test "$HTTPS_PROXY" = "$HTTP_PROXY"
+      test "$https_proxy" = "$HTTP_PROXY" && test "$ALL_PROXY" = "$HTTP_PROXY"
+      test "$all_proxy" = "$HTTP_PROXY"
+      test "${NO_PROXY+x}" = x && test -z "$NO_PROXY"
+      test "${no_proxy+x}" = x && test -z "$no_proxy"
+      printf "proxy environment verified inside container\\n" >&2
+    fi
+    exec nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp'
 '''
 
 RESOURCE_MONITOR = r'''#!/bin/sh
@@ -219,6 +248,9 @@ def main():
                 print(harness_output, end="")
                 if returncode:
                     raise subprocess.CalledProcessError(returncode, process.args)
+                if args.fixture_mode in ("tls-active-proxy", "synthetic-exfil-active-proxy"):
+                    assert (root / "container.proxy-verified").read_text() == "verified\n", \
+                        "proxy variables were not verified inside the Debian container"
                 control_result = None
                 if args.fixture_mode in ("client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"):
                     control_result = json.loads(harness_output.splitlines()[-1])
@@ -321,6 +353,7 @@ def main():
                           "memory_events": memory_events,
                           "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."},
                       "server_resource_observation": server_resources,
+                      "proxy_environment_verified_in_container": args.fixture_mode in ("tls-active-proxy", "synthetic-exfil-active-proxy"),
                       "client_control_result": control_result,
                       "image_id": image_id, "package": info, "old_package": old_info,
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
