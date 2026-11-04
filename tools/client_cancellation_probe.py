@@ -12,6 +12,7 @@ DNS denials.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
 Set OUTBOUND_GUARD_CLIENT_MALFORMED=1 for malformed HTTP chunk framing.
+Set OUTBOUND_GUARD_CLIENT_FRAMING=1 for conflicting response framing metadata.
 Set OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 for fixed-length and chunked body caps.
 Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
 before an otherwise valid native-client tool call and observe recovery.
@@ -45,6 +46,7 @@ dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
+framing_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')=='1'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
 argument_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION')=='1'
@@ -65,8 +67,8 @@ interim_mode=upgrade_variant=='interim'
 cancel_phase=os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE','body')
 assert cancel_phase in ('body','headers'), 'unsupported cancellation phase'
 assert cancel_phase=='body' or not skill_zip, 'header cancellation uses the client control workflow'
-assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,slow_http_mode,upgrade_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,slow_http_mode,upgrade_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
 unicode_marker='ｇｈｐ＿'+'Ａ'*20 if exfil_mode else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
@@ -251,6 +253,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these five calls in order: GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/chunked-bad-size ; GET http://allowed.test/chunked-truncated ; GET http://allowed.test/plain . The middle two GET responses have deliberately malformed HTTP chunk framing. The operator approved allowed.test. Make every call once even when an earlier call fails. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_READ_FAILURE','EGRESS_READ_FAILURE','EGRESS_ALLOWED']
    expected_methods=['GET','HEAD','GET','GET','GET']
+  if framing_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/conflict-framing ; GET http://allowed.test/duplicate-length ; GET http://allowed.test/stacked-transfer-coding ; GET http://allowed.test/duplicate-transfer-coding ; GET http://allowed.test/plain . The four middle responses deliberately contain conflicting or unsupported HTTP framing metadata. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report the actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
+   expected_methods=['GET']*6
   if response_limit_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/large ; GET http://allowed.test/chunked-large ; GET http://allowed.test/plain . The middle two responses have 70000-byte bodies, one fixed-length and one chunked. The operator approved allowed.test. Make every call once even if an earlier call fails. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_RESPONSE_LIMIT','EGRESS_RESPONSE_LIMIT','EGRESS_ALLOWED']
@@ -366,16 +372,16 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) and name=='claude':
+  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode:
+  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call']
   if [e['http_method'] for e in fetches]!=expected_methods:
@@ -383,7 +389,8 @@ if skill_zip:
     'rules':[e['rule'] for e in events if 'rule' in e]}}),flush=True)
   assert [e['http_method'] for e in fetches]==expected_methods
   expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if (attack_mode or dns_mode or exfil_mode or malformed_mode or rebind_mode) else [200,200])
-  assert [e['status_code'] for e in events if 'status_code' in e]==expected_statuses
+  if not framing_mode:
+   assert [e['status_code'] for e in events if 'status_code' in e]==expected_statuses
   if attack_mode:
    expected_hits=['/plain','/head-ok','/redirect','/gzip-bomb','/plain']
    for _ in range(100):
@@ -449,6 +456,16 @@ if skill_zip:
     if len(hits)==5:break
     time.sleep(.01)
    assert hits==['/plain','/head-ok','/chunked-bad-size','/chunked-truncated','/plain'], hits
+  if framing_mode:
+   observed_rules=[e['rule'] for e in events if 'rule' in e]
+   assert observed_rules==expected_rules, observed_rules
+   assert [e['status_code'] for e in events if 'status_code' in e]==[200,200]
+   assert [e.get('body_text_present') for e in events if e.get('rule') in {'EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING'}]==[False]*4
+   for _ in range(100):
+    hits=json.loads((root/'hits.json').read_text())
+    if len(hits)==6:break
+    time.sleep(.01)
+   assert hits==['/plain','/conflict-framing','/duplicate-length','/stacked-transfer-coding','/duplicate-transfer-coding','/plain'], hits
   if response_limit_mode:
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
@@ -515,8 +532,8 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) else None,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) else None,
    'mutant_parse_error_seen':True if frame_mode else None,
    'injected_argument_denials':2 if argument_mode else None,
    'injected_argument_marker_echo':False if argument_mode else None,

@@ -125,7 +125,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "redirect-encoded", "http-upgrade", "http-interim-flood", "dns-ssrf", "dns-rebind", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "redirect-encoded", "http-upgrade", "http-interim-flood", "dns-ssrf", "dns-rebind", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -175,7 +175,7 @@ def main():
         wrapper.chmod(0o700)
         env = os.environ.copy()
         for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
-                          "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_TRAPS",
+                          "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_FRAMING", "OUTBOUND_GUARD_CLIENT_TRAPS",
                           "OUTBOUND_GUARD_CLIENT_DNS_SSRF", "OUTBOUND_GUARD_CLIENT_REBIND",
                           "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
                           "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT", "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
@@ -193,6 +193,7 @@ def main():
              "tls-active-proxy": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
              "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
+             "framing-http": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS",
              "http-upgrade": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "http-interim-flood": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
@@ -362,6 +363,7 @@ def main():
                                  *(cancellation_checks if control_result else {"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
                                     "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"],
+                                    "framing-http": ["conflicting_length_transfer_denial", "duplicate_length_denial", "stacked_transfer_denial", "duplicate_transfer_denial"],
                                     "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"],
                                     "http-upgrade": ["http_101_upgrade_denial"],
                                     "http-interim-flood": ["aggregate_103_wire_budget_denial"],
