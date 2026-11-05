@@ -296,6 +296,8 @@ def summarize_packet_capture():
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
  rebind_a_queries=fields('dns.flags.response == 0 && dns.qry.name == "rebind.test" && dns.qry.type == 1','dns.qry.name') if rebind_mode else []
  if rebind_mode:assert len(rebind_a_queries)==2, rebind_a_queries
+ rebind_a_answers=fields('dns.flags.response == 1 && dns.qry.name == "rebind.test" && dns.a','dns.a') if rebind_mode else []
+ if rebind_mode:assert rebind_a_answers==[['11.0.0.1'],['127.0.0.1']], rebind_a_answers
  exfil_queries=fields('dns.flags.response == 0 && dns.qry.name == "exfil.test"','dns.qry.name') if exfil_mode else []
  if exfil_mode:assert not exfil_queries, exfil_queries
  redirect_queries=fields('dns.flags.response == 0 && dns.qry.name == "private.test"','dns.qry.name') if attack_mode else []
@@ -308,6 +310,7 @@ def summarize_packet_capture():
          'tcp_syn_count':len(syn_destinations),'tcp_syn_destinations':['11.0.0.1:80'],
          'dns_query_count':len(dns_destinations),'dns_query_destinations':['127.0.0.1:53'],
          'rebind_a_query_count':len(rebind_a_queries) if rebind_mode else None,
+         'rebind_a_answers':[answer[0] for answer in rebind_a_answers] if rebind_mode else None,
          'exfil_dns_query_count':len(exfil_queries) if exfil_mode else None,
          'redirect_private_dns_query_count':len(redirect_queries) if attack_mode else None,
          'packet_count':len(packets),'ip_destination_entries':len(ip_destinations),
