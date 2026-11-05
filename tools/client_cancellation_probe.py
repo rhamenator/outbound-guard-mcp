@@ -14,6 +14,7 @@ Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding repla
 Set OUTBOUND_GUARD_CLIENT_MALFORMED=1 for malformed HTTP chunk framing.
 Set OUTBOUND_GUARD_CLIENT_FRAMING=1 for conflicting response framing metadata.
 Set OUTBOUND_GUARD_CLIENT_FRAMING=comma for comma-separated length and transfer-coding denials.
+Set OUTBOUND_GUARD_CLIENT_FRAMING=coding for seeded unsupported transfer-coding samples.
 Set OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 for fixed-length and chunked body caps.
 Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
 before an otherwise valid native-client tool call and observe recovery.
@@ -48,9 +49,10 @@ exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
-assert framing_variant in (None,'1','comma'), 'unsupported HTTP framing replay mode'
-framing_mode=framing_variant in ('1','comma')
+assert framing_variant in (None,'1','comma','coding'), 'unsupported HTTP framing replay mode'
+framing_mode=framing_variant in ('1','comma','coding')
 comma_framing_mode=framing_variant=='comma'
+coding_framing_mode=framing_variant=='coding'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
 argument_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION')=='1'
@@ -261,6 +263,9 @@ if skill_zip:
    if comma_framing_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these five calls in order: GET http://allowed.test/plain ; GET http://allowed.test/comma-length-equal ; GET http://allowed.test/comma-length-conflict ; GET http://allowed.test/repeated-chunked-coding ; GET http://allowed.test/plain . The middle responses contain comma-separated Content-Length or repeated chunked transfer coding. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
+   elif coding_framing_mode:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these five calls in order: GET http://allowed.test/plain ; GET http://allowed.test/coding-mutant-0 ; GET http://allowed.test/coding-mutant-3 ; GET http://allowed.test/coding-mutant-5 ; GET http://allowed.test/plain . The three middle responses carry seeded unsupported Transfer-Encoding values. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
+    expected_rules=['EGRESS_ALLOWED','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
    else:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/conflict-framing ; GET http://allowed.test/duplicate-length ; GET http://allowed.test/stacked-transfer-coding ; GET http://allowed.test/duplicate-transfer-coding ; GET http://allowed.test/plain . The four middle responses deliberately contain conflicting or unsupported HTTP framing metadata. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report the actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
@@ -471,6 +476,8 @@ if skill_zip:
    assert [e.get('body_text_present') for e in events if e.get('rule') in {'EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING'}]==[False]*(len(expected_rules)-2)
    expected_hits=(['/plain','/comma-length-equal','/comma-length-conflict','/repeated-chunked-coding','/plain']
                   if comma_framing_mode else
+                  ['/plain','/coding-mutant-0','/coding-mutant-3','/coding-mutant-5','/plain']
+                  if coding_framing_mode else
                   ['/plain','/conflict-framing','/duplicate-length','/stacked-transfer-coding','/duplicate-transfer-coding','/plain'])
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
