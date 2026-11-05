@@ -39,6 +39,8 @@ or =interim for a 103 Early Hints header flood denial and recovery,
 or =interim-repeat for four sequential wire-budget denials and recovery.
 Set OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE=1 for mislabeled hidden HTML
 denials, ordinary angle-text acceptance, and approved recovery.
+Set OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION=1 to let the local bridge inject
+bounded queue pressure before native guarded calls, then check recovery.
 Set OUTBOUND_GUARD_CLIENT_CANCEL_PHASE=headers to interrupt a guarded fetch
 before response headers instead of during a slow response body.
 Only one opt-in mode may be selected.
@@ -76,11 +78,12 @@ interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
+saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
 cancel_phase=os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE','body')
 assert cancel_phase in ('body','headers'), 'unsupported cancellation phase'
 assert cancel_phase=='body' or not skill_zip, 'header cancellation uses the client control workflow'
-assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,slow_http_mode,upgrade_mode,html_quarantine_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,slow_http_mode,upgrade_mode,html_quarantine_mode,saturation_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
 unicode_marker='ｇｈｐ＿'+'Ａ'*20 if exfil_mode else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
@@ -175,6 +178,7 @@ if exfil_mode:bridge.append('allowed.test,exfil.test')
 if rebind_mode:bridge.append('allowed.test,rebind.test')
 if frame_mode:bridge.extend(['allowed.test,private.test','mutate'])
 if argument_mode:bridge.extend(['allowed.test','inject-arguments'])
+if saturation_mode:bridge.extend(['allowed.test','queue-saturate'])
 if fallback_mode:bridge.append('allowed.test,fallback-pin.test')
 if tls_mode:bridge.append('allowed.test,tls-handshake.test')
 if active_proxy_mode:bridge.append('active-proxy')
@@ -401,18 +405,18 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode) and name=='claude':
+  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode:
+  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
-  fetches=[e for e in events if e.get('method')=='tools/call']
+  fetches=[e for e in events if e.get('method')=='tools/call' and not (saturation_mode and str(e.get('id','')).startswith('saturation-'))]
   if [e['http_method'] for e in fetches]!=expected_methods:
    print(json.dumps({'probe_diagnostic':{'http_methods':[e['http_method'] for e in fetches],
     'rules':[e['rule'] for e in events if 'rule' in e]}}),flush=True)
@@ -544,6 +548,24 @@ if skill_zip:
    assert set(all_dns_names)<=set(('allowed.test','1.0.0.11.in-addr.arpa')), all_dns_names
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/plain'], hits
+  if saturation_mode:
+   markers=[e for e in events if 'event' in e]
+   assert [e['event'] for e in markers]==['saturation_started','saturation_completed'], events
+   saturation_seconds=round(markers[1]['t']-markers[0]['t'],3)
+   assert saturation_seconds<5, saturation_seconds
+   synthetic=[e for e in events if str(e.get('id','')).startswith('saturation-')]
+   synthetic_replies=[e for e in synthetic if e.get('direction')=='out']
+   assert len(synthetic_replies)==9 and {e['id'] for e in synthetic_replies}=={f'saturation-queued-{index}' for index in range(9)}, synthetic
+   busy=next(e for e in synthetic if e.get('direction')=='out' and e.get('id')=='saturation-queued-8')
+   assert busy.get('protocol_error_code')==-32000 and busy.get('protocol_rule')=='MCP_INPUT_BUSY', busy
+   assert not any(e.get('direction')=='out' and e.get('id')=='saturation-fetch' for e in synthetic), 'cancelled synthetic fetch replied'
+   assert [e.get('requestId') for e in events if e.get('method')=='notifications/cancelled']==['saturation-fetch']
+   expected_hits=['/cancel-drip','/plain','/head-ok']
+   for _ in range(100):
+    hits=json.loads((root/'hits.json').read_text())
+    if hits==expected_hits:break
+    time.sleep(.01)
+   assert hits==expected_hits, hits
   if fallback_mode:
    for _ in range(100):
     fallback_a_queries=json.loads((root/'fallback.json').read_text())
@@ -582,8 +604,11 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'html_quarantine_mode':html_quarantine_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode) else None,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
+   'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
+    'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,
+    'bounded_recovery_seconds':saturation_seconds,'injected_not_native':True} if saturation_mode else None,
    'mutant_parse_error_seen':True if frame_mode else None,
    'injected_argument_denials':2 if argument_mode else None,
    'injected_argument_marker_echo':False if argument_mode else None,

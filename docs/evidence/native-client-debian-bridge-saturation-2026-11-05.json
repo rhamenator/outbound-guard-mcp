@@ -1,0 +1,198 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "cf457a2c5dfd66116e7baa9950dad279698ce1582806795e15378231f41c856c",
+  "client_versions": {
+    "claude": "2.1.301",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-05",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "tools/client_cancellation_probe.py": "e1059c1efb05b21fa3c8f48552586504d1e6a698dba935282f0db10633b13b99",
+    "tools/client_wire_bridge.py": "eb852a667d731d113f8688c2d87078d79ca25c853cdec68098fb6755f4c0a90e",
+    "tools/debian_native_container_probe.py": "c546344b25c594d5601c037e7b4ef16f6e5b7e5f31fb1f1a56af8161c89a3074",
+    "tools/netns_adversarial_probe.py": "eb3a0bb13b072815b1150419c46e1736acde7edde3e3572ea7d97a81aaab8e8a"
+  },
+  "limitations": "One bounded bridge-injected queue saturation per native client session. The bridge, not Claude or Codex, generated a held /cancel-drip fetch, eight 60,000-byte tools/list frames, a ninth busy fetch and its cancellation. Native clients then made explicit skill calls on the same installed server process and received a loopback denial, approved GET and approved HEAD; this does not prove clients themselves generate saturated queues. The finite fixture verifies MCP_INPUT_BUSY, priority cancellation, socket closure and recovery; it does not prove arbitrary concurrent load, no forbidden packet outside the fixture, or aggregate memory/FD bounds. A 50 ms server sampler may miss peaks; container cgroup peaks include setup/helpers. Native clients ran on Ubuntu while the unsigned experimental package ran in disposable Debian 12 amd64 containers. No automatic skill trigger test, other-client or other-tool coverage, or official candidate qualification. Owner self-review and residual-risk acceptance remain outstanding; no independent human review is claimed.",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode queue-saturation --container-memory-mib 128 --sample-server-resources",
+  "runs": {
+    "claude": {
+      "native_client": {
+        "bridge_saturation": {
+          "bounded_recovery_seconds": 0.034,
+          "busy_rule": "MCP_INPUT_BUSY",
+          "cancel_notification_seen": true,
+          "cancelled_fetch_replied": false,
+          "injected_not_native": true,
+          "queued_replies": 9,
+          "socket_closed": true
+        },
+        "client": "claude",
+        "fixture_hits": [
+          "/cancel-drip",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "bridge_injected_busy_denial",
+          "priority_cancellation_and_socket_close",
+          "native_client_guarded_recovery",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 19202048,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "queue-saturation",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 4664,
+          "sample_interval_ms": 50,
+          "samples": 371,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "36d08deeea1b70d6ea94ce3760c67ec97acc705c254ade9061460026aeb39cfb"
+    },
+    "codex": {
+      "native_client": {
+        "bridge_saturation": {
+          "bounded_recovery_seconds": 0.033,
+          "busy_rule": "MCP_INPUT_BUSY",
+          "cancel_notification_seen": true,
+          "cancelled_fetch_replied": false,
+          "injected_not_native": true,
+          "queued_replies": 9,
+          "socket_closed": true
+        },
+        "client": "codex",
+        "fixture_hits": [
+          "/cancel-drip",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "status_codes": [
+          200,
+          200
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "bridge_injected_busy_denial",
+          "priority_cancellation_and_socket_close",
+          "native_client_guarded_recovery",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 18649088,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "queue-saturation",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 7,
+          "max_sampled_rss_kib": 4524,
+          "sample_interval_ms": 50,
+          "samples": 249,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "3323b3bd32ca39cd8e45623d4a8011d4043620e49b79920f026253593095bd65"
+    }
+  },
+  "source_revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+  "trusted_main_ci_run": 42022132178
+}

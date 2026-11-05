@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "dns-ssrf", "dns-rebind", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-rebind", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -196,7 +196,7 @@ def main():
                           "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
                           "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT", "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
                           "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION", "OUTBOUND_GUARD_CLIENT_JSON_INJECTION",
-                          "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE", "OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE", "OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY", "OUTBOUND_GUARD_CLIENT_CANCEL_PHASE",
+                          "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE", "OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE", "OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION", "OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY", "OUTBOUND_GUARD_CLIENT_CANCEL_PHASE",
                           "OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"):
             env.pop(mode_name, None)
         if args.fixture_mode in ("tls-active-proxy", "synthetic-exfil-active-proxy"):
@@ -218,6 +218,7 @@ def main():
              "http-interim-flood": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "http-interim-repeat": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "html-quarantine": "OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE",
+             "queue-saturation": "OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION",
              "dns-ssrf": "OUTBOUND_GUARD_CLIENT_DNS_SSRF",
              "dns-rebind": "OUTBOUND_GUARD_CLIENT_REBIND",
              "synthetic-exfil": "OUTBOUND_GUARD_CLIENT_EXFIL",
@@ -402,6 +403,7 @@ def main():
                                     "http-interim-flood": ["aggregate_103_wire_budget_denial"],
                                     "http-interim-repeat": ["four_sequential_103_wire_budget_denials", "approved_recovery_after_repeated_denial"],
                                     "html-quarantine": ["mislabeled_hidden_html_denial", "mislabeled_root_html_denial", "mislabeled_formfeed_html_denial", "ordinary_angle_text_allowed"],
+                                    "queue-saturation": ["bridge_injected_busy_denial", "priority_cancellation_and_socket_close", "native_client_guarded_recovery"],
                                     "dns-ssrf": ["loopback_denial", "private_dns_denial", "alias_private_denial",
                                                  "mixed_dns_denial", "metadata_dns_denial", "resolver_failure_denial"],
                                     "tls-active-proxy": ["tls_hostname_denial", "private_dns_flip_denial", "active_proxy_positive_control_only"],
