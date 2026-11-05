@@ -53,6 +53,8 @@ Approved DNS names are resolved as absolute names so local search domains cannot
 
 Use method HEAD for a guarded status check without retrieving a representation body. Expect body_text to be empty, and do not treat HEAD success as permission for GET or evidence that content is safe. The result does not expose arbitrary response headers. HEAD still applies DNS, header/framing, encoding, redirect and timeout policies; its response media type need not be text/JSON because no body is returned.
 
+Protocol-switching responses are not supported. A final informational status, an `Upgrade` response header, or a `Connection` header containing the `upgrade` token returns `EGRESS_PROTOCOL_UPGRADE_DENIED`, including if the server labels the response HTTP 200. Ask the operator for an ordinary final HTTP response; do not reconnect through another tool to bypass this denial.
+
 This version does not support authenticated sessions or cookie persistence. Do not expect Set-Cookie, authentication challenges or inherited API-key environment variables to authenticate a later call. A SAFE result with HTTP 401 means the egress policy passed; report the authentication failure and ask the operator for an approved credential-free endpoint. Do not insert credentials in URLs or try unsupported headers/body arguments.
 
 GET response Content-Type must be `text/plain` or `application/json`, with no parameters or one optional `charset=utf-8` declaration (case insensitive, optionally double quoted). Other, duplicate, conflicting or malformed parameters return `EGRESS_UNSUPPORTED_CONTENT` without body text. HEAD retains its documented media-type exemption.

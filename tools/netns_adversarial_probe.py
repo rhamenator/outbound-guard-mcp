@@ -362,6 +362,18 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
             return
+        if self.path in ("/upgrade-header-200", "/connection-upgrade-200"):
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            if self.path == "/upgrade-header-200":
+                self.send_header("Upgrade", "websocket")
+            else:
+                self.send_header("Connection", "keep-alive, UpGrAdE")
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"ok")
+            return
         if self.path == "/interim-header-flood":
             # Individually small 103 responses must share one transport read budget.
             self.protocol_version = "HTTP/1.1"
@@ -2102,6 +2114,8 @@ def main(binary, cancellation_probe):
         framing_results["interim-header-flood"] = interim_decision["rule"]
         for path, accepted_rules in (
             ("switch-protocols", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
+            ("upgrade-header-200", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
+            ("connection-upgrade-200", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("comma-length-equal", {"EGRESS_INVALID_FRAMING"}),

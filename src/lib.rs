@@ -939,10 +939,22 @@ async fn guarded_http_fetch(
         )
         .value();
     }
-    if response.status().is_informational() {
+    if response.status().is_informational()
+        || response.headers().contains_key(header::UPGRADE)
+        || response
+            .headers()
+            .get_all(header::CONNECTION)
+            .iter()
+            .any(|value| {
+                value
+                    .as_bytes()
+                    .split(|byte| *byte == b',')
+                    .any(|token| token.trim_ascii().eq_ignore_ascii_case(b"upgrade"))
+            })
+    {
         return Denial::new(
             "EGRESS_PROTOCOL_UPGRADE_DENIED",
-            "Use a final HTTP response without a protocol upgrade.",
+            "Use a final HTTP response without protocol upgrade headers.",
         )
         .value();
     }
