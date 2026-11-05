@@ -1,5 +1,11 @@
 # Real-client cancellation and queue-saturation evidence
 
+## Installed Debian package mislabeled HTML quarantine — 2026-11-05
+
+The [native package replay](evidence/native-client-debian-html-quarantine-2026-11-05.json) used the checksum-verified experimental Debian 12 amd64 package from trusted-main CI `42022132178` (`b214b1c0d378`). Native Claude Code 2.1.301 and Codex CLI 0.151.0 each explicitly loaded the skill and made six guarded GETs through a controlled route-free HTTP/DNS fixture. Both clients received an approved plain-text response, three `EGRESS_HTML_MISLABELED` denials without body text for a hidden link, a hidden root `div`, and a form-feed `script` tag mislabeled as `text/plain`, then an approved ordinary angle-text sentence and an approved recovery. The fixture recorded exactly these six paths and no hidden-link target request. Both disposable 128 MiB package installations, removals and residue checks passed without OOM.
+
+The three HTML shapes and one ordinary-text control are finite examples, not an exhaustive tokenizer or prompt-injection proof. Native clients ran on Ubuntu while the installed server ran in Debian. The skill was explicitly invoked; automatic triggering, other clients, other-tool traffic and an official candidate remain outside this replay. Finite 50 ms resource samples may miss peaks. The package is unsigned and experimental; owner self-review and residual-risk acceptance remain outstanding, and no independent human review is claimed.
+
 ## Installed Debian package HTTP 200 upgrade-header denials — 2026-11-05
 
 The [native package replay](evidence/native-client-debian-http-upgrade-headers-2026-11-05.json) used the checksum-verified experimental Debian 12 amd64 package from trusted-main CI `42022132178` (`b214b1c0d378`). Native Claude Code 2.1.301 and Codex CLI 0.151.0 each explicitly loaded the skill and made five guarded GETs against a controlled route-free HTTP/DNS fixture. Both received an approved response, `EGRESS_PROTOCOL_UPGRADE_DENIED` for HTTP 101, the same denial for HTTP 200 with `Upgrade: websocket`, the same denial for HTTP 200 with a mixed-case `Connection: upgrade` token, and an approved recovery. The three denials contained no response body text. Both 128 MiB disposable package installs, removals and residue checks passed without OOM.
