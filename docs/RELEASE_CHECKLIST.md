@@ -36,7 +36,7 @@ A [seeded Content-Length property corpus](evidence/content-length-property-corpu
 
 A [seeded Transfer-Encoding property corpus](evidence/transfer-coding-property-corpus-2026-11-05.json) exercises 24 unsupported coding values through the same route-free guarded-fetch path. Each returned `EGRESS_UNSUPPORTED_TRANSFER_CODING` without body text. This is a finite local fixture matrix, not coverage-guided parser fuzzing or new client/package qualification.
 
-An [unsupported-coding early-close probe](evidence/unsupported-transfer-coding-early-close-2026-11-05.json) holds an incomplete response body after unsupported Transfer-Encoding headers. The guarded call returned the exact denial promptly, omitted body text, and the fixture observed socket closure. This is one finite local transport path, not a bound on all shutdown or client paths.
+An [unsupported-coding early-close probe](evidence/unsupported-transfer-coding-early-close-2026-11-05.json) holds an incomplete response body after unsupported Transfer-Encoding headers. The guarded call returned the exact denial promptly, omitted body text, and the fixture observed socket closure while the MCP process remained alive; an approved GET recovered in that same process. This is one finite local transport path, not a bound on all shutdown or client paths.
 
 A [current package-installed HTTP 101/103 replay](evidence/native-client-debian-http-interim-upgrade-2026-11-04.json) adds explicit Claude/Codex skill calls for protocol-upgrade denial and aggregate interim-header wire-limit denial, each between approved GETs. Clean installation, removal and residue passed under a 128 MiB container quota. These two finite responses do not establish general parser safety, accepted upgrade handling or an official candidate.
 

@@ -761,6 +761,56 @@ def call(binary, host, path, scheme="http", extra_ca=None):
     return call_sequence(binary, [(host, path, scheme)], extra_ca=extra_ca)[0]
 
 
+def test_unsupported_coding_early_close(binary):
+    """Observe response-socket cleanup while the MCP process stays alive."""
+    env = dict(os.environ, OUTBOUND_GUARD_ALLOWED_HOSTS="allowed.test")
+    env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+    HTTP.unsupported_coding_closed.clear()
+    before_hits = len(HTTP.hits)
+    child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, env=env)
+    def send(id_, method, params):
+        child.stdin.write(json.dumps({"jsonrpc": "2.0", "id": id_, "method": method,
+                                      "params": params}) + "\n")
+        child.stdin.flush()
+        assert select.select([child.stdout], [], [], 5)[0], (id_, "response deadline")
+        response = json.loads(child.stdout.readline())
+        assert response["id"] == id_, response
+        return response["result"]
+    try:
+        initialize = send("init", "initialize", {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "early-close-probe", "version": "1"}})
+        assert initialize["protocolVersion"] == "2025-06-18", initialize
+        child.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
+        child.stdin.flush()
+        started = time.monotonic()
+        decision = send("denied", "tools/call", {"name": "guarded_fetch", "arguments": {
+            "url": "http://allowed.test/unsupported-coding-drip"}})["structuredContent"]
+        elapsed = time.monotonic() - started
+        assert decision["rule"] == "EGRESS_UNSUPPORTED_TRANSFER_CODING", decision
+        assert "body_text" not in decision and elapsed < 2, (decision, elapsed)
+        assert HTTP.unsupported_coding_closed.wait(2), "response socket stayed open"
+        assert child.poll() is None, "MCP process exited before socket-closure check"
+        recovery = send("recovery", "tools/call", {"name": "guarded_fetch", "arguments": {
+            "url": "http://allowed.test/plain"}})["structuredContent"]
+        assert recovery["rule"] == "EGRESS_ALLOWED" and recovery["body_text"] == "fixture-ok"
+        assert HTTP.hits[before_hits:] == ["/unsupported-coding-drip", "/plain"]
+        child.stdin.close()
+        assert child.wait(timeout=5) == 0
+        assert not child.stderr.read()
+        print(f"Unsupported transfer-coding slow body: exact denial in {elapsed:.2f}s, "
+              "socket closed before live-process recovery")
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        if not child.stdin.closed:
+            child.stdin.close()
+        child.stdout.close()
+        child.stderr.close()
+
+
 def call_sequence(binary, targets, extra_ca=None, resource_probe=False):
     arguments = [{"url": f"{scheme}://{host}/{path}", "max_return_bytes": 65536}
                  for host, path, scheme in targets]
@@ -2097,15 +2147,7 @@ def main(binary, cancellation_probe):
         coding_sha256 = hashlib.sha256("\n".join(INVALID_TRANSFER_CODING_CORPUS).encode()).hexdigest()
         print(f"Transfer-Encoding property corpus: seed=347925108; cases={len(INVALID_TRANSFER_CODING_CORPUS)}; "
               f"sha256={coding_sha256}; denials={coding_mutant_rules}")
-        HTTP.unsupported_coding_closed.clear()
-        started = time.monotonic()
-        drip_decision = call(binary, "allowed.test", "unsupported-coding-drip")
-        elapsed = time.monotonic() - started
-        assert drip_decision["rule"] == "EGRESS_UNSUPPORTED_TRANSFER_CODING", drip_decision
-        assert "body_text" not in drip_decision and elapsed < 2, (drip_decision, elapsed)
-        assert HTTP.hits[-1] == "/unsupported-coding-drip"
-        assert HTTP.unsupported_coding_closed.wait(2), "unsupported transfer coding kept response socket open"
-        print(f"Unsupported transfer-coding slow body: exact denial in {elapsed:.2f}s, no body text, socket closed")
+        test_unsupported_coding_early_close(binary)
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
                            ("drip", "EGRESS_RESPONSE_TOO_SLOW"),
                            ("late-eof", "EGRESS_RESPONSE_TIMEOUT"),
