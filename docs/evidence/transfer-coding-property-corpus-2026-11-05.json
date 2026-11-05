@@ -1,0 +1,47 @@
+{
+  "corpus_sha256": "deb877c462e6b5f6dff274006dd390278e0bd47b3def6494b6d8497d4c203c59",
+  "date_utc": "2026-11-05T03:40:25.329877+00:00",
+  "denial_counts": {
+    "EGRESS_UNSUPPORTED_TRANSFER_CODING": 24
+  },
+  "generator": "32-bit LCG: state=(1664525*state+1013904223) mod 2^32; suffix=(state mod 100000)+1; six unsupported forms by index mod 6.",
+  "harness_sha256": "aa2ed8238053279166d359482f1796672a542150501a0ecff662c1d1177df1eb",
+  "limitations": [
+    "Finite deterministic matrix, not coverage-guided HTTP parser fuzzing or proof for arbitrary transfer-coding syntax.",
+    "One local binary and route-free fixture; no new native client or package qualification.",
+    "No claim of packet-wide absence or coverage of traffic through other tools."
+  ],
+  "netns_log_sha256": "44f15bc06df890698eecf20b2ec21e8b69b60cb62ed9ebba613567858353ab38",
+  "ordered_transfer_encoding_values": [
+    "gzip72580, chunked",
+    "chunked, gzip47271",
+    "chunked, chunked5294",
+    "chunked;param=70025",
+    "x11976",
+    "chunked36027",
+    "gzip22610, chunked",
+    "chunked, gzip53053",
+    "chunked, chunked13004",
+    "chunked;param=9935",
+    "x83286",
+    "chunked32401",
+    "gzip52368, chunked",
+    "chunked, gzip50019",
+    "chunked, chunked78970",
+    "chunked;param=65669",
+    "x40532",
+    "chunked15863",
+    "gzip98846, chunked",
+    "chunked, gzip95705",
+    "chunked, chunked21688",
+    "chunked;param=4363",
+    "x57474",
+    "chunked38701"
+  ],
+  "python_version": "3.14.4",
+  "result": "Full route-free adversarial suite passed; each unsupported Transfer-Encoding field produced exact EGRESS_UNSUPPORTED_TRANSFER_CODING, no body_text, and matching HTTP fixture hit. Approved chunked and ordinary response controls passed.",
+  "seed": 347925108,
+  "source_base_sha": "d501fe91426064104ed1fb4260e547325ef2ff06",
+  "test_command": "bash tools/netns_adversarial_probe.sh",
+  "test_tool": "Python standard-library raw HTTP/DNS fixture; Rust server binary invoked over MCP stdio inside route-free namespace"
+}

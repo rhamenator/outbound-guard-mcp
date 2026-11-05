@@ -55,6 +55,24 @@ def invalid_length_corpus():
 
 INVALID_LENGTH_CORPUS = invalid_length_corpus()
 
+
+def invalid_transfer_coding_corpus():
+    """Seeded Transfer-Encoding values other than the one supported coding."""
+    state = 347925108
+    values = []
+    for index in range(24):
+        state = (1664525 * state + 1013904223) & 0xffffffff
+        suffix = state % 100000 + 1
+        values.append((f"gzip{suffix}, chunked", f"chunked, gzip{suffix}",
+                       f"chunked, chunked{suffix}", f"chunked;param={suffix}",
+                       f"x{suffix}", f"chunked{suffix}")[index % 6])
+    assert len(values) == len(set(values))
+    assert all(value.lower() != "chunked" for value in values)
+    return tuple(values)
+
+
+INVALID_TRANSFER_CODING_CORPUS = invalid_transfer_coding_corpus()
+
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
@@ -224,6 +242,18 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", INVALID_LENGTH_CORPUS[index])
             self.end_headers()
             self.wfile.write(b"ok")
+            return
+        if self.path.startswith("/coding-mutant-"):
+            index = int(self.path.removeprefix("/coding-mutant-"))
+            if not 0 <= index < len(INVALID_TRANSFER_CODING_CORPUS):
+                self.send_error(404)
+                return
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", INVALID_TRANSFER_CODING_CORPUS[index])
+            self.end_headers()
+            self.wfile.write(b"2\r\nok\r\n0\r\n\r\n")
             return
         if self.path in ("/cancel-silent-headers", "/cancel-silent-headers-long", "/cancel-silent-body"):
             if self.path == "/cancel-silent-body":
@@ -2041,6 +2071,17 @@ def main(binary, cancellation_probe):
         corpus_sha256 = hashlib.sha256("\n".join(INVALID_LENGTH_CORPUS).encode()).hexdigest()
         print(f"Content-Length property corpus: seed=306373022; cases={len(INVALID_LENGTH_CORPUS)}; "
               f"sha256={corpus_sha256}; denials={length_mutant_rules}")
+        coding_mutant_rules = {}
+        for index, value in enumerate(INVALID_TRANSFER_CODING_CORPUS):
+            path = f"coding-mutant-{index}"
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == "EGRESS_UNSUPPORTED_TRANSFER_CODING", (index, value, decision)
+            assert "body_text" not in decision, (index, decision)
+            assert HTTP.hits[-1] == f"/{path}"
+            coding_mutant_rules[decision["rule"]] = coding_mutant_rules.get(decision["rule"], 0) + 1
+        coding_sha256 = hashlib.sha256("\n".join(INVALID_TRANSFER_CODING_CORPUS).encode()).hexdigest()
+        print(f"Transfer-Encoding property corpus: seed=347925108; cases={len(INVALID_TRANSFER_CODING_CORPUS)}; "
+              f"sha256={coding_sha256}; denials={coding_mutant_rules}")
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
                            ("drip", "EGRESS_RESPONSE_TOO_SLOW"),
                            ("late-eof", "EGRESS_RESPONSE_TIMEOUT"),
