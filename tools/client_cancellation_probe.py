@@ -13,6 +13,7 @@ Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
 Set OUTBOUND_GUARD_CLIENT_MALFORMED=1 for malformed HTTP chunk framing.
 Set OUTBOUND_GUARD_CLIENT_FRAMING=1 for conflicting response framing metadata.
+Set OUTBOUND_GUARD_CLIENT_FRAMING=comma for comma-separated length and transfer-coding denials.
 Set OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 for fixed-length and chunked body caps.
 Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
 before an otherwise valid native-client tool call and observe recovery.
@@ -46,7 +47,10 @@ dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
-framing_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')=='1'
+framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
+assert framing_variant in (None,'1','comma'), 'unsupported HTTP framing replay mode'
+framing_mode=framing_variant in ('1','comma')
+comma_framing_mode=framing_variant=='comma'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
 argument_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION')=='1'
@@ -254,9 +258,13 @@ if skill_zip:
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_READ_FAILURE','EGRESS_READ_FAILURE','EGRESS_ALLOWED']
    expected_methods=['GET','HEAD','GET','GET','GET']
   if framing_mode:
-   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/conflict-framing ; GET http://allowed.test/duplicate-length ; GET http://allowed.test/stacked-transfer-coding ; GET http://allowed.test/duplicate-transfer-coding ; GET http://allowed.test/plain . The four middle responses deliberately contain conflicting or unsupported HTTP framing metadata. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report the actual results.'
-   expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
-   expected_methods=['GET']*6
+   if comma_framing_mode:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these five calls in order: GET http://allowed.test/plain ; GET http://allowed.test/comma-length-equal ; GET http://allowed.test/comma-length-conflict ; GET http://allowed.test/repeated-chunked-coding ; GET http://allowed.test/plain . The middle responses contain comma-separated Content-Length or repeated chunked transfer coding. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
+    expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
+   else:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/conflict-framing ; GET http://allowed.test/duplicate-length ; GET http://allowed.test/stacked-transfer-coding ; GET http://allowed.test/duplicate-transfer-coding ; GET http://allowed.test/plain . The four middle responses deliberately contain conflicting or unsupported HTTP framing metadata. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report the actual results.'
+    expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
+   expected_methods=['GET']*len(expected_rules)
   if response_limit_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/large ; GET http://allowed.test/chunked-large ; GET http://allowed.test/plain . The middle two responses have 70000-byte bodies, one fixed-length and one chunked. The operator approved allowed.test. Make every call once even if an earlier call fails. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_RESPONSE_LIMIT','EGRESS_RESPONSE_LIMIT','EGRESS_ALLOWED']
@@ -460,12 +468,15 @@ if skill_zip:
    observed_rules=[e['rule'] for e in events if 'rule' in e]
    assert observed_rules==expected_rules, observed_rules
    assert [e['status_code'] for e in events if 'status_code' in e]==[200,200]
-   assert [e.get('body_text_present') for e in events if e.get('rule') in {'EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING'}]==[False]*4
+   assert [e.get('body_text_present') for e in events if e.get('rule') in {'EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING'}]==[False]*(len(expected_rules)-2)
+   expected_hits=(['/plain','/comma-length-equal','/comma-length-conflict','/repeated-chunked-coding','/plain']
+                  if comma_framing_mode else
+                  ['/plain','/conflict-framing','/duplicate-length','/stacked-transfer-coding','/duplicate-transfer-coding','/plain'])
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
-    if len(hits)==6:break
+    if len(hits)==len(expected_hits):break
     time.sleep(.01)
-   assert hits==['/plain','/conflict-framing','/duplicate-length','/stacked-transfer-coding','/duplicate-transfer-coding','/plain'], hits
+   assert hits==expected_hits, hits
   if response_limit_mode:
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
@@ -532,7 +543,7 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,
    'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or slow_http_mode or upgrade_mode) else None,
    'mutant_parse_error_seen':True if frame_mode else None,
    'injected_argument_denials':2 if argument_mode else None,

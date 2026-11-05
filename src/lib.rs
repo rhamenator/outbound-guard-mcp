@@ -970,6 +970,25 @@ async fn guarded_http_fetch(
     }
     if response
         .headers()
+        .get(header::CONTENT_LENGTH)
+        .is_some_and(|value| {
+            value.as_bytes().is_empty()
+                || !value.as_bytes().iter().all(u8::is_ascii_digit)
+                || value
+                    .to_str()
+                    .ok()
+                    .and_then(|value| value.parse::<u64>().ok())
+                    .is_none()
+        })
+    {
+        return Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a response with one decimal Content-Length value.",
+        )
+        .value();
+    }
+    if response
+        .headers()
         .get_all(header::TRANSFER_ENCODING)
         .iter()
         .count()

@@ -1,0 +1,85 @@
+{
+  "base_source_sha": "e2e1584b8642fe9106f96938bef73bd0300828b3",
+  "date_utc": "2026-11-05T00:44:09.019486+00:00",
+  "fix": "Reject every response Content-Length field that is not a single parseable u64 decimal value before body return. Keep existing duplicate-field and Content-Length plus Transfer-Encoding denials.",
+  "fixture": "Route-free controlled HTTP responses: equal and conflicting comma-separated Content-Length, signed +2 Content-Length, overflowing 40-digit Content-Length, and repeated chunked transfer coding. Exact denial codes and absent denied body text. Native sessions covered the three comma/repeated-coding cases with approved GETs before and after.",
+  "harness_sha256": {
+    "client_cancellation_probe.py": "e6fb13710f7ee2fe6c41ca17f6c3fd8b54b16d40434f378af2c527cf288184ea",
+    "netns_adversarial_probe.py": "41e60b4ad002a924c62f8953ea1c76df822b28222e07a91b33707e8832444ab8"
+  },
+  "limitations": [
+    "Native clients used a local current-source binary and a verified clean skill ZIP; package-installed replay of the eventual exact candidate remains open.",
+    "Five finite controlled header forms in the route-free probe and three in native sessions; no claim of universal parser safety or packet-wide absence.",
+    "Explicit skill inputs do not establish automatic triggering, UI cancellation, or coverage of traffic through other tools.",
+    "The pre-fix equal-comma response was allowed, but no external secret or private destination was involved."
+  ],
+  "local_probe": "Full route-free netns adversarial suite passed after the fix with exact EGRESS_INVALID_FRAMING for equal/conflicting comma lengths, signed length and overflowing length; EGRESS_UNSUPPORTED_TRANSFER_CODING for repeated chunked coding.",
+  "native_clients": {
+    "claude": {
+      "binary_sha256": "53e0d9df916dc544c768329ffe8a6614c7ecb234a80b3040ef99359c5c4b5e37",
+      "fixture_hits": [
+        "/plain",
+        "/comma-length-equal",
+        "/comma-length-conflict",
+        "/repeated-chunked-coding",
+        "/plain"
+      ],
+      "methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_ALLOWED"
+      ],
+      "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "2.1.301"
+    },
+    "codex": {
+      "binary_sha256": "53e0d9df916dc544c768329ffe8a6614c7ecb234a80b3040ef99359c5c4b5e37",
+      "fixture_hits": [
+        "/plain",
+        "/comma-length-equal",
+        "/comma-length-conflict",
+        "/repeated-chunked-coding",
+        "/plain"
+      ],
+      "methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_INVALID_FRAMING",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_ALLOWED"
+      ],
+      "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "0.151.0"
+    }
+  },
+  "netns_log_sha256": "ea6b9c16e7f8e12eadfdf8e9fc2b52a088d25177107a84b2ad2ebb9b47e0337c",
+  "pre_fix_observation": "Under the new route-free equal-comma Content-Length fixture, the base binary returned EGRESS_ALLOWED with body_text ok for Content-Length: 2, 2. The initial adversarial probe failed on that assertion."
+}
