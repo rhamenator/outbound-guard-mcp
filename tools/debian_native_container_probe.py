@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-rebind", "dns-rebind-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "slow-http-packet", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-rebind", "dns-rebind-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -205,11 +205,12 @@ def main():
             env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         if args.fixture_mode == "client-control-repeated-cancellation":
             env["OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"] = "2"
-        if args.fixture_mode in ("dns-ssrf-packet", "dns-rebind-packet", "synthetic-exfil-packet", "redirect-encoded-packet"):
+        if args.fixture_mode in ("dns-ssrf-packet", "dns-rebind-packet", "synthetic-exfil-packet", "redirect-encoded-packet", "slow-http-packet"):
             env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
         mode_variable = {"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "tls-active-proxy": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "slow-http": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
+             "slow-http-packet": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
              "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
              "framing-http": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-comma": "OUTBOUND_GUARD_CLIENT_FRAMING",
@@ -332,7 +333,7 @@ def main():
                     raise RuntimeError("server resource monitor did not finish")
                 max_fd, max_rss_kib, samples = map(int, sample.stdout.split())
                 assert samples > 0 and max_fd > 0 and max_rss_kib > 0, sample.stdout
-                if args.fixture_mode == "slow-http":
+                if args.fixture_mode in ("slow-http", "slow-http-packet"):
                     assert max_fd > 3, "slow HTTP socket was not observed by resource sampler"
                 server_resources = {"sample_interval_ms": 50, "samples": samples,
                                     "max_sampled_fd": max_fd, "max_sampled_rss_kib": max_rss_kib,
@@ -399,6 +400,8 @@ def main():
                                  "native_client_control_and_guarded_calls" if control_result else "native_skill_and_guarded_calls",
                                  *(cancellation_checks if control_result else {"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
+                                    "slow-http-packet": ["slow_drip_denial", "delayed_first_byte_denial",
+                                                         "timed_out_tcp_streams_closed", "fixture_namespace_tcp_syn_capture"],
                                     "malformed-http": ["bad_chunk_size_denial", "truncated_chunk_denial"],
                                     "framing-http": ["conflicting_length_transfer_denial", "duplicate_length_denial", "stacked_transfer_denial", "duplicate_transfer_denial"],
                                     "framing-http-comma": ["equal_comma_length_denial", "conflicting_comma_length_denial", "repeated_chunked_coding_denial"],

@@ -9,7 +9,7 @@ With SKILL_ZIP, set OUTBOUND_GUARD_CLIENT_TRAPS=1 to add controlled redirect
 and compressed-body denials to the explicit native skill workflow.
 Set OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 for private, mixed-answer and metadata
 DNS denials.
-Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF, rebinding, synthetic exfiltration, or redirect/encoding mode to check
+Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF, rebinding, synthetic exfiltration, redirect/encoding, or slow HTTP mode to check
 TCP connection attempts and DNS query destinations in the fixture namespace.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
@@ -55,7 +55,6 @@ dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 packet_capture_requested=os.environ.get('OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE')=='1'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
-assert not packet_capture_requested or (dns_mode or rebind_mode or exfil_mode or attack_mode), 'packet capture requires a DNS SSRF, rebinding, exfiltration, or redirect/encoding replay'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
 assert framing_variant in (None,'1','comma','coding'), 'unsupported HTTP framing replay mode'
@@ -75,6 +74,7 @@ tls_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1'
 active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
+assert not packet_capture_requested or (dns_mode or rebind_mode or exfil_mode or attack_mode or slow_http_mode), 'packet capture requires a DNS SSRF, rebinding, exfiltration, redirect/encoding, or slow HTTP replay'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim','interim-repeat','headers'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','headers')
@@ -302,6 +302,17 @@ def summarize_packet_capture():
  if exfil_mode:assert not exfil_queries, exfil_queries
  redirect_queries=fields('dns.flags.response == 0 && dns.qry.name == "private.test"','dns.qry.name') if attack_mode else []
  if attack_mode:assert not redirect_queries, redirect_queries
+ timed_out_streams_closed=None
+ if slow_http_mode:
+  requests=fields('http.request','http.request.uri','tcp.stream')
+  timed_out_streams_closed={}
+  for path in ('/drip','/delayed'):
+   streams={stream for uri,stream in requests if uri==path}
+   assert len(streams)==1, (path,streams)
+   stream=next(iter(streams))
+   closed=fields(f'tcp.stream == {stream} && tcp.dstport == 80 && (tcp.flags.fin == 1 || tcp.flags.reset == 1)','frame.number')
+   assert closed, (path,stream)
+   timed_out_streams_closed[path]=True
  ip_packets=fields('ip || ipv6','ip.dst','ipv6.dst')
  ip_destinations=[address for ipv4,ipv6 in ip_packets for address in (ipv4 or ipv6).split(',') if address]
  assert ip_destinations and set(ip_destinations)<={'127.0.0.1','11.0.0.1'}, ip_destinations
@@ -313,6 +324,7 @@ def summarize_packet_capture():
          'rebind_a_answers':[answer[0] for answer in rebind_a_answers] if rebind_mode else None,
          'exfil_dns_query_count':len(exfil_queries) if exfil_mode else None,
          'redirect_private_dns_query_count':len(redirect_queries) if attack_mode else None,
+         'timed_out_streams_client_closed':timed_out_streams_closed,
          'packet_count':len(packets),'ip_destination_entries':len(ip_destinations),
          'ip_destinations':sorted(set(ip_destinations)),'unexpected_ip_destinations':0,
          'unexpected_tcp_connection_attempts':0,
