@@ -74,6 +74,8 @@ HTTP total-deadline evidence now uses cancellable async I/O and a stricter late-
 
 [Configured parser and stream-budget evidence](adversarial-netns.md#configured-http-parser-and-stream-budgets) covers header boundaries, excessive chunk framing, trailers and serialized-request preflight. These are application-stream caps, not bounds on kernel buffers, retransmissions, resolver allocations or CPU. Independent release gates and human review remain open.
 
+The [seeded Transfer-Encoding value corpus](adversarial-netns.md#seeded-transfer-encoding-value-corpus--2026-11-05) exercises `guarded_http_fetch`'s exact chunked-only check with 24 unsupported values over controlled HTTP and the real MCP call path. All 24 returned `EGRESS_UNSUPPORTED_TRANSFER_CODING` without body text. It is finite local parser evidence; arbitrary coding syntax, native clients, packages and traffic through other tools remain outside this test.
+
 
 Modern stateless stdio metadata/discovery and legacy compatibility are now exercised by [revision-specific wire and official-client checks](protocol-conformance.md). Historical modern refusal is not the current behavior. The client matrix and independent conformance/release review remain open; the transport is still stdio only.
 
