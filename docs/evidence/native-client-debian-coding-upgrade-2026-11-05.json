@@ -1,0 +1,173 @@
+{
+  "artifact_checksums_verified": true,
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT NEW_DEB NEW_SHA256 NEW_SKILL_ZIP SKILL_SHA256 --old-package OLD_DEB --old-sha256 OLD_SHA256 --fixture-mode framing-http-coding --container-memory-mib 128 --sample-server-resources",
+  "container_image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "date_utc": "2026-11-05T06:39:20.100033+00:00",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "tools/client_cancellation_probe.py": "c71258e720e3862538d1fbc593b3a5748fafeb8c574e8aba7d47d3dfdb898cf4",
+    "tools/debian_native_container_probe.py": "e0d49f3167a7c933fe550a19656d02b87256f853d4441fb83861a2b156a1a1e7",
+    "tools/netns_adversarial_probe.py": "a138189116a8fa19c137728c3c8f9505877558ad24f034bcdac99b9d0edbe293"
+  },
+  "limitations": [
+    "Successive experimental package versions 213 to 214, not immediately preceding official release candidates. The server executable bytes were identical; this tests dpkg version/upgrade behavior and post-upgrade guarded calls, not binary migration behavior.",
+    "No configuration migration or persistent-state upgrade was exercised.",
+    "The package is unsigned and experimental; exact owner-approved candidate, other platforms, Cursor, automatic skill triggering and traffic through other tools remain untested.",
+    "Container resource samples can miss transient server peaks and cgroup high-water marks include helper processes.",
+    "Independent human review was not obtained for this milestone; it is optional for Outbound Guard."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "native_skill_and_guarded_calls",
+        "seeded_stacked_coding_denial",
+        "seeded_parameterized_coding_denial",
+        "seeded_unknown_coding_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18739200,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/coding-mutant-0",
+        "/coding-mutant-3",
+        "/coding-mutant-5",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "log_sha256": "36a22737fe3c32552e481dc026e1cede6fcab45662d04012c0836fbf9a96fcde",
+      "native_skill_discovered": null,
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "native_turn_completed": null,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3972,
+        "sample_interval_ms": 50,
+        "samples": 528,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "2.1.301 (Claude Code)"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "native_skill_and_guarded_calls",
+        "seeded_stacked_coding_denial",
+        "seeded_parameterized_coding_denial",
+        "seeded_unknown_coding_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 19648512,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/coding-mutant-0",
+        "/coding-mutant-3",
+        "/coding-mutant-5",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "log_sha256": "d2706cb574bbce46830a45039584a285c5e6ff21bdb5945ba9c8c62cecb9dc8a",
+      "native_skill_discovered": true,
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "native_turn_completed": true,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3896,
+        "sample_interval_ms": 50,
+        "samples": 288,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "status_codes": [
+        200,
+        200
+      ],
+      "version": "codex-cli 0.151.0"
+    }
+  },
+  "new_package_name": "outbound-guard-mcp_0.1.0~candidate.214+g3964edcd7ef0_amd64.deb",
+  "new_package_sha256": "10cf46e46b2a1a342d40b34373d9bd7763a3e8e5fbae765237c3726a1ffaeb74",
+  "new_package_version": "0.1.0~candidate.214+g3964edcd7ef0",
+  "new_server_binary_sha256": "9acdfcde9b6faf919c92f4f304d331db4fd4dddb9544b0d0dcef30ae8fae4dc2",
+  "new_skill_zip_name": "outbound-guard-skill-3964edcd7ef0.zip",
+  "new_skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "new_source_main_sha": "3964edcd7ef043f9a7a56561d2bbb92fa4f41880",
+  "new_trusted_main_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/41976588071",
+  "old_package_name": "outbound-guard-mcp_0.1.0~candidate.213+ga630103c5cf9_amd64.deb",
+  "old_package_sha256": "8049365e459c5ee5fb81ab6d4bc9bbcbc50bdf48872dc5304954c37d7a177a28",
+  "old_package_version": "0.1.0~candidate.213+ga630103c5cf9",
+  "old_server_binary_sha256": "9acdfcde9b6faf919c92f4f304d331db4fd4dddb9544b0d0dcef30ae8fae4dc2",
+  "old_source_main_sha": "a630103c5cf92c21325644d5bef5b19508a7ded4",
+  "old_trusted_main_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/41970865389",
+  "result": "Both native-client sessions passed clean old-package installation, upgrade to the new package, installed version/binary-byte checks, three exact unsupported-coding denials between approved GETs, package removal and residue checks in separate Debian 12 amd64 128 MiB containers. No cgroup OOM event.",
+  "same_server_binary_bytes_before_and_after_upgrade": true
+}
