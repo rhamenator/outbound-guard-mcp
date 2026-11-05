@@ -6,6 +6,7 @@ No stable release is approved by this changelog. Candidate archives identify the
 
 ### Security
 
+- Deny HTTP 200 responses carrying `Upgrade` or a `Connection: upgrade` token before returning body text. A controlled prior binary returned the synthetic body for one such response; the route-free regression now requires `EGRESS_PROTOCOL_UPGRADE_DENIED` for both isolated header shapes.
 - Patch `rustls-webpki` to0.103.16 and `webpki-roots` to1.0.10 for RUSTSEC-2026-0382/0381 (CVE-2026-111943). Older experimental archives contain the affected versions and must be rebuilt; their previous passing tests/signatures do not establish current dependency safety.
 - Add a fresh full-lock RustSec audit to CI and require it before trusted-main provenance signing. No advisory exemptions; yanked-package checking is separately excluded and documented.
 
