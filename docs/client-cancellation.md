@@ -1,5 +1,11 @@
 # Real-client cancellation and queue-saturation evidence
 
+## Installed Debian package HTTP 200 upgrade-header denials — 2026-11-05
+
+The [native package replay](evidence/native-client-debian-http-upgrade-headers-2026-11-05.json) used the checksum-verified experimental Debian 12 amd64 package from trusted-main CI `42022132178` (`b214b1c0d378`). Native Claude Code 2.1.301 and Codex CLI 0.151.0 each explicitly loaded the skill and made five guarded GETs against a controlled route-free HTTP/DNS fixture. Both received an approved response, `EGRESS_PROTOCOL_UPGRADE_DENIED` for HTTP 101, the same denial for HTTP 200 with `Upgrade: websocket`, the same denial for HTTP 200 with a mixed-case `Connection: upgrade` token, and an approved recovery. The three denials contained no response body text. Both 128 MiB disposable package installs, removals and residue checks passed without OOM.
+
+These are three finite protocol shapes. The clients ran on Ubuntu while the installed server ran in Debian. The skill was explicitly invoked; this does not establish automatic triggering, exhaustive parser safety, behavior of other clients or protection of traffic sent through other tools. Finite 50 ms resource samples may miss peaks. The package is unsigned and experimental; owner self-review and residual-risk acceptance remain outstanding, and no independent human review is claimed.
+
 ## Installed Debian package with an active ambient proxy — 2026-11-04
 
 The [active-proxy native package replay](evidence/native-client-debian-active-proxy-2026-11-04.json) ran four explicit Claude Code 2.1.301 and Codex CLI 0.151.0 skill workflows through the checksum-verified experimental Debian 12 amd64 package from trusted-main CI `41716755430`. Inside each route-free fixture namespace, `mitmdump 8.1.1` listened on `127.0.0.1:3128`. Uppercase and lowercase `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY` pointed there in the installed server's environment. A curl positive control reached the fixture through that proxy and produced one recorded flow before each native workflow.
