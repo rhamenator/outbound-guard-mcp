@@ -9,6 +9,8 @@ With SKILL_ZIP, set OUTBOUND_GUARD_CLIENT_TRAPS=1 to add controlled redirect
 and compressed-body denials to the explicit native skill workflow.
 Set OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 for private, mixed-answer and metadata
 DNS denials.
+Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF mode to check
+TCP connection attempts and DNS query destinations in the fixture namespace.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
 Set OUTBOUND_GUARD_CLIENT_MALFORMED=1 for malformed HTTP chunk framing.
@@ -50,6 +52,8 @@ assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
 attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
 dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
+packet_capture_requested=os.environ.get('OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE')=='1'
+assert not packet_capture_requested or dns_mode, 'packet capture requires the DNS SSRF replay'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
@@ -96,7 +100,8 @@ if exfil_mode or argument_mode:
 ns='outbound-client-cancel-'+str(os.getpid())
 (root/'namespace').write_text(ns)
 skill_dir=root/({'claude':'.claude','cursor':'.cursor','codex':'.agents'}[sys.argv[1]]+'/skills/outbound-guard')
-p = backend = proxy_process = None
+p = backend = proxy_process = packet_capture = None
+tcpdump_pid = None
 owns_namespace = cleaned = False
 def cleanup():
  global cleaned
@@ -110,6 +115,15 @@ def cleanup():
    p.terminate()
    try:p.wait(timeout=4)
    except subprocess.TimeoutExpired:p.kill();p.wait()
+ if packet_capture is not None and packet_capture.poll() is None:
+  # AppArmor confines tcpdump's signal receiver; a matching sender profile is required.
+  if tcpdump_pid is not None:
+   subprocess.run(['sudo','-n','aa-exec','-p','tcpdump','/usr/bin/kill','-TERM',str(tcpdump_pid)],check=False)
+  try:packet_capture.wait(timeout=4)
+  except subprocess.TimeoutExpired:
+   if tcpdump_pid is not None:
+    subprocess.run(['sudo','-n','aa-exec','-p','tcpdump','/usr/bin/kill','-KILL',str(tcpdump_pid)],check=False)
+   packet_capture.wait(timeout=4)
  if owns_namespace:
   try:
    for pid in subprocess.check_output(['sudo','-n','ip','netns','pids',ns],text=True).split():
@@ -141,6 +155,25 @@ sudo('ip','-n',ns,'link','set','lo','up');sudo('ip','-n',ns,'address','add','11.
 if tls_mode:sudo('ip','-n',ns,'address','add','11.0.0.2/32','dev','lo')
 sudo('install','-d','-m','755','/etc/netns/'+ns)
 sudo('tee','/etc/netns/'+ns+'/resolv.conf',input='nameserver 127.0.0.1\noptions timeout:1 attempts:1\n',text=True)
+capture_path=root/'fixture.pcap'
+if packet_capture_requested:
+ assert shutil.which('tcpdump') and shutil.which('tshark') and shutil.which('aa-exec'), 'tcpdump, tshark and aa-exec required for packet capture'
+ packet_capture=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'tcpdump','-Z','root','-i','any','-U','-w',str(capture_path)],
+  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+ for _ in range(200):
+  if capture_path.exists() and capture_path.stat().st_size>=24:break
+  assert packet_capture.poll() is None, 'packet capture exited during startup'
+  time.sleep(.01)
+ else:raise AssertionError('packet capture did not start')
+ for _ in range(200):
+  pids=subprocess.check_output(['sudo','-n','ip','netns','pids',ns],text=True).split()
+  matches=[int(pid) for pid in pids if pathlib.Path(f'/proc/{pid}/comm').read_text().strip()=='tcpdump'
+           and str(capture_path) in pathlib.Path(f'/proc/{pid}/cmdline').read_bytes().decode(errors='replace')]
+  if len(matches)==1:
+   tcpdump_pid=matches[0];break
+  assert packet_capture.poll() is None, 'packet capture exited before PID discovery'
+  time.sleep(.01)
+ else:raise AssertionError('packet capture PID not found')
 backend=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE='+('1' if tls_mode else '0'),'python3','-B',str(script_dir/'client_cancellation_fixture.py'),str(root)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 for _ in range(200):
  if (root/'ready').exists():break
@@ -244,6 +277,35 @@ def cursor_plan_gate():
 def report_cursor_plan_gate(events):
  print(json.dumps({'client_unavailable':{'client':'cursor','reason':'plan upgrade required by native client',
   'mcp_calls':sum(e.get('method')=='tools/call' for e in events)}}),flush=True)
+def summarize_packet_capture():
+ assert packet_capture is not None and packet_capture.poll() is None and tcpdump_pid is not None, 'packet capture stopped early'
+ subprocess.run(['sudo','-n','aa-exec','-p','tcpdump','/usr/bin/kill','-INT',str(tcpdump_pid)],check=True)
+ packet_capture.wait(timeout=5)
+ assert capture_path.stat().st_size>24, 'packet capture contains no packets'
+ def fields(display_filter,*names):
+  command=['sudo','-n','tshark','-n','-r',str(capture_path),'-Y',display_filter,
+           '-T','fields','-E','separator=;']
+  for name in names:command.extend(['-e',name])
+  result=subprocess.run(command,capture_output=True,text=True,check=True,timeout=10)
+  return [line.split(';') for line in result.stdout.splitlines()]
+ syns=fields('tcp.flags.syn == 1 && tcp.flags.ack == 0','ip.dst','ipv6.dst','tcp.dstport')
+ syn_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in syns]
+ assert len(syn_destinations)>=2 and set(syn_destinations)=={('11.0.0.1','80')}, syn_destinations
+ dns_queries=fields('dns.flags.response == 0','ip.dst','ipv6.dst','udp.dstport')
+ dns_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in dns_queries]
+ assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
+ ip_packets=fields('ip || ipv6','ip.dst','ipv6.dst')
+ ip_destinations=[address for ipv4,ipv6 in ip_packets for address in (ipv4 or ipv6).split(',') if address]
+ assert ip_destinations and set(ip_destinations)<={'127.0.0.1','11.0.0.1'}, ip_destinations
+ packets=fields('frame.number','frame.number')
+ return {'capture_scope':'fixture network namespace only; host client network not captured',
+         'tcp_syn_count':len(syn_destinations),'tcp_syn_destinations':['11.0.0.1:80'],
+         'dns_query_count':len(dns_destinations),'dns_query_destinations':['127.0.0.1:53'],
+         'packet_count':len(packets),'ip_destination_entries':len(ip_destinations),
+         'ip_destinations':sorted(set(ip_destinations)),'unexpected_ip_destinations':0,
+         'unexpected_tcp_connection_attempts':0,
+         'pcap_sha256':hashlib.sha256(capture_path.read_bytes()).hexdigest(),
+         'raw_pcap_retained':False}
 if skill_zip:
  try:
   skill_prompt='First invoke the outbound-guard skill using the Skill tool. Follow its instructions for this controlled fixture: use guarded_fetch to GET http://127.0.0.1/ once, GET http://allowed.test/plain once and HEAD http://allowed.test/head-ok once, in that order. The operator already approved allowed.test and installed the server. Use no other tools; report actual results.'
@@ -595,6 +657,7 @@ if skill_zip:
   if active_proxy_mode:
    proxy_flows=[json.loads(line) for line in (root/'proxy-flows.jsonl').read_text().splitlines()]
    assert proxy_flows==[{'method':'GET','host':'allowed.test','path':'/proxy-control'}], proxy_flows
+  packet_summary=summarize_packet_capture() if packet_capture_requested else None
   print(json.dumps({'client':name,'native_skill_loaded':True,'native_skill_discovered':True if name=='codex' else None,'explicit_skill_input_accepted':True if name=='codex' else None,'native_turn_completed':True if name=='codex' else None,'native_skill_invoked':True if name=='claude' else None,
    'skill_tool_result_success':True if name=='claude' else None,'native_project_read_completed':True if name=='cursor' else None,
    'skill_zip_sha256':hashlib.sha256(skill_zip.read_bytes()).hexdigest(),
@@ -609,6 +672,7 @@ if skill_zip:
    'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
     'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,
     'bounded_recovery_seconds':saturation_seconds,'injected_not_native':True} if saturation_mode else None,
+   'packet_capture':packet_summary,
    'mutant_parse_error_seen':True if frame_mode else None,
    'injected_argument_denials':2 if argument_mode else None,
    'injected_argument_marker_echo':False if argument_mode else None,

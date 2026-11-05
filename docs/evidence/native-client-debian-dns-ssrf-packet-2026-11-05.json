@@ -1,0 +1,270 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "cf457a2c5dfd66116e7baa9950dad279698ce1582806795e15378231f41c856c",
+  "client_versions": {
+    "claude": "2.1.301",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-05",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "tools/client_cancellation_probe.py": "a7effb831294486906199185441c46b22eff8f2180632aeb0c00ca1911ebf895",
+    "tools/client_wire_bridge.py": "eb852a667d731d113f8688c2d87078d79ca25c853cdec68098fb6755f4c0a90e",
+    "tools/debian_native_container_probe.py": "bcaef7daa56fc51c12e634580a867a9d447fce6332713bd948c2f59b5aa94e89",
+    "tools/netns_adversarial_probe.py": "eb3a0bb13b072815b1150419c46e1736acde7edde3e3572ea7d97a81aaab8e8a"
+  },
+  "limitations": "Capture is confined to the disposable route-free fixture namespace, not host-client traffic. The finite installed-package replay cannot prove absence of forbidden sockets under arbitrary inputs, timing or resolver implementations. The raw pcap was hashed and deleted at cleanup, so independent reinspection of original packets is unavailable; rerun the probe to reproduce. Requires tcpdump, tshark, aa-exec, passwordless namespace setup, Docker, the verified experimental package/skill ZIP and authenticated clients. Native clients ran on Ubuntu while unsigned package ran in Debian 12 containers. Resource samples may miss peaks. No automatic skill trigger, Cursor, other-tool traffic, official exact-candidate qualification, owner self-review or residual-risk acceptance is claimed; no independent human review was obtained.",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-ssrf-packet --container-memory-mib 128 --sample-server-resources",
+  "runs": {
+    "claude": {
+      "native_client": {
+        "alias_cname_a_queried": true,
+        "client": "claude",
+        "compression_loop_a_queried": true,
+        "fixture_hits": [
+          "/plain",
+          "/head-ok",
+          "/plain"
+        ],
+        "forbidden_dns_names": [
+          "alias-private.test",
+          "loop-dns.test",
+          "metadata.test",
+          "mixed.test",
+          "private.test"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "packet_capture": {
+          "capture_scope": "fixture network namespace only; host client network not captured",
+          "dns_query_count": 17,
+          "dns_query_destinations": [
+            "127.0.0.1:53"
+          ],
+          "ip_destination_entries": 70,
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "packet_count": 69,
+          "pcap_sha256": "91b5aae8ac3165ddacd506da5e5f0c41c3d94cf35bcc024f8f869ea47d292096",
+          "raw_pcap_retained": false,
+          "tcp_syn_count": 3,
+          "tcp_syn_destinations": [
+            "11.0.0.1:80"
+          ],
+          "unexpected_ip_destinations": 0,
+          "unexpected_tcp_connection_attempts": 0
+        },
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_DNS_FAILURE",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "loopback_denial",
+          "private_dns_denial",
+          "alias_private_denial",
+          "mixed_dns_denial",
+          "metadata_dns_denial",
+          "resolver_failure_denial",
+          "fixture_namespace_tcp_syn_capture",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17608704,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "dns-ssrf-packet",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": false,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 4008,
+          "sample_interval_ms": 50,
+          "samples": 457,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "60ade78e69f0dcd30aea1900eba16303b31d7cb7336339eb8ac6b4032f003d74"
+    },
+    "codex": {
+      "native_client": {
+        "alias_cname_a_queried": true,
+        "client": "codex",
+        "compression_loop_a_queried": true,
+        "fixture_hits": [
+          "/plain",
+          "/head-ok",
+          "/plain"
+        ],
+        "forbidden_dns_names": [
+          "alias-private.test",
+          "loop-dns.test",
+          "metadata.test",
+          "mixed.test",
+          "private.test"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "packet_capture": {
+          "capture_scope": "fixture network namespace only; host client network not captured",
+          "dns_query_count": 17,
+          "dns_query_destinations": [
+            "127.0.0.1:53"
+          ],
+          "ip_destination_entries": 71,
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "packet_count": 70,
+          "pcap_sha256": "1bca7a50e88ea1e2f28ee2eac0b6430ac9beb84a9fe4730e18c8a80c2d7cc3e3",
+          "raw_pcap_retained": false,
+          "tcp_syn_count": 3,
+          "tcp_syn_destinations": [
+            "11.0.0.1:80"
+          ],
+          "unexpected_ip_destinations": 0,
+          "unexpected_tcp_connection_attempts": 0
+        },
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_DNS_FAILURE",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "loopback_denial",
+          "private_dns_denial",
+          "alias_private_denial",
+          "mixed_dns_denial",
+          "metadata_dns_denial",
+          "resolver_failure_denial",
+          "fixture_namespace_tcp_syn_capture",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17162240,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "dns-ssrf-packet",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": false,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3948,
+          "sample_interval_ms": 50,
+          "samples": 352,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "fcbd0bddc0a9e5a270a30cd780b0996d735fea99d0f9a291e3ee736c3aeb14db"
+    }
+  },
+  "source_revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+  "trusted_main_ci_run": 42022132178
+}
