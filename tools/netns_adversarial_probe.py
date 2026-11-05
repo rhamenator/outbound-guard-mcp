@@ -36,6 +36,25 @@ MIME_CASES = [
     ("application/json; charset = utf-8", True),
 ]
 
+
+def invalid_length_corpus():
+    """Seeded non-decimal Content-Length values from an independent byte grammar."""
+    state = 306373022
+    values = []
+    for index in range(32):
+        state = (1664525 * state + 1013904223) & 0xffffffff
+        number = state % 100000 + 1
+        values.append((f"{number},{number}", f"{number}, {number + 1}",
+                       f"+{number}", f"{number}x")[index % 4])
+    values.extend(("9" * 20, "9" * 40))  # Both exceed u64::MAX.
+    assert len(values) == len(set(values))
+    assert all(not (value.isascii() and value.isdecimal() and
+                    int(value) <= 2**64 - 1) for value in values)
+    return tuple(values)
+
+
+INVALID_LENGTH_CORPUS = invalid_length_corpus()
+
 PUBLIC_FIXTURE = "11.0.0.1"  # Locally assigned only in the disposable namespace.
 RECORDS = {
     "allowed.test": [PUBLIC_FIXTURE],
@@ -195,6 +214,17 @@ class HTTP(http.server.BaseHTTPRequestHandler):
         self.methods.append("GET")
         self.hits.append(self.path)
         self.record_sensitive_headers()
+        if self.path.startswith("/length-mutant-"):
+            index = int(self.path.removeprefix("/length-mutant-"))
+            if not 0 <= index < len(INVALID_LENGTH_CORPUS):
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", INVALID_LENGTH_CORPUS[index])
+            self.end_headers()
+            self.wfile.write(b"ok")
+            return
         if self.path in ("/cancel-silent-headers", "/cancel-silent-headers-long", "/cancel-silent-body"):
             if self.path == "/cancel-silent-body":
                 self.send_response(200)
@@ -2000,6 +2030,17 @@ def main(binary, cancellation_probe):
             assert "body_text" not in decision, (path, decision)
             assert HTTP.hits[-1] == f"/{path}"
             framing_results[path] = decision["rule"]
+        length_mutant_rules = {}
+        for index, value in enumerate(INVALID_LENGTH_CORPUS):
+            path = f"length-mutant-{index}"
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == "EGRESS_INVALID_FRAMING", (index, value, decision)
+            assert "body_text" not in decision, (index, decision)
+            assert HTTP.hits[-1] == f"/{path}"
+            length_mutant_rules[decision["rule"]] = length_mutant_rules.get(decision["rule"], 0) + 1
+        corpus_sha256 = hashlib.sha256("\n".join(INVALID_LENGTH_CORPUS).encode()).hexdigest()
+        print(f"Content-Length property corpus: seed=306373022; cases={len(INVALID_LENGTH_CORPUS)}; "
+              f"sha256={corpus_sha256}; denials={length_mutant_rules}")
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
                            ("drip", "EGRESS_RESPONSE_TOO_SLOW"),
                            ("late-eof", "EGRESS_RESPONSE_TIMEOUT"),
