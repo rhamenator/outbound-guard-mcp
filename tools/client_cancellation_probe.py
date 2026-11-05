@@ -9,7 +9,7 @@ With SKILL_ZIP, set OUTBOUND_GUARD_CLIENT_TRAPS=1 to add controlled redirect
 and compressed-body denials to the explicit native skill workflow.
 Set OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 for private, mixed-answer and metadata
 DNS denials.
-Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF or rebinding mode to check
+Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF, rebinding, or synthetic exfiltration mode to check
 TCP connection attempts and DNS query destinations in the fixture namespace.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
@@ -55,7 +55,7 @@ dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 packet_capture_requested=os.environ.get('OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE')=='1'
 exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
-assert not packet_capture_requested or (dns_mode or rebind_mode), 'packet capture requires a DNS SSRF or rebinding replay'
+assert not packet_capture_requested or (dns_mode or rebind_mode or exfil_mode), 'packet capture requires a DNS SSRF, rebinding, or exfiltration replay'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
 assert framing_variant in (None,'1','comma','coding'), 'unsupported HTTP framing replay mode'
@@ -296,6 +296,8 @@ def summarize_packet_capture():
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
  rebind_a_queries=fields('dns.flags.response == 0 && dns.qry.name == "rebind.test" && dns.qry.type == 1','dns.qry.name') if rebind_mode else []
  if rebind_mode:assert len(rebind_a_queries)==2, rebind_a_queries
+ exfil_queries=fields('dns.flags.response == 0 && dns.qry.name == "exfil.test"','dns.qry.name') if exfil_mode else []
+ if exfil_mode:assert not exfil_queries, exfil_queries
  ip_packets=fields('ip || ipv6','ip.dst','ipv6.dst')
  ip_destinations=[address for ipv4,ipv6 in ip_packets for address in (ipv4 or ipv6).split(',') if address]
  assert ip_destinations and set(ip_destinations)<={'127.0.0.1','11.0.0.1'}, ip_destinations
@@ -304,6 +306,7 @@ def summarize_packet_capture():
          'tcp_syn_count':len(syn_destinations),'tcp_syn_destinations':['11.0.0.1:80'],
          'dns_query_count':len(dns_destinations),'dns_query_destinations':['127.0.0.1:53'],
          'rebind_a_query_count':len(rebind_a_queries) if rebind_mode else None,
+         'exfil_dns_query_count':len(exfil_queries) if exfil_mode else None,
          'packet_count':len(packets),'ip_destination_entries':len(ip_destinations),
          'ip_destinations':sorted(set(ip_destinations)),'unexpected_ip_destinations':0,
          'unexpected_tcp_connection_attempts':0,

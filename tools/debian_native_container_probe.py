@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-rebind", "dns-rebind-packet", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-rebind", "dns-rebind-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -205,7 +205,7 @@ def main():
             env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         if args.fixture_mode == "client-control-repeated-cancellation":
             env["OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"] = "2"
-        if args.fixture_mode in ("dns-ssrf-packet", "dns-rebind-packet"):
+        if args.fixture_mode in ("dns-ssrf-packet", "dns-rebind-packet", "synthetic-exfil-packet"):
             env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
         mode_variable = {"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "tls-active-proxy": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
@@ -226,6 +226,7 @@ def main():
              "dns-rebind": "OUTBOUND_GUARD_CLIENT_REBIND",
              "dns-rebind-packet": "OUTBOUND_GUARD_CLIENT_REBIND",
              "synthetic-exfil": "OUTBOUND_GUARD_CLIENT_EXFIL",
+             "synthetic-exfil-packet": "OUTBOUND_GUARD_CLIENT_EXFIL",
              "synthetic-exfil-active-proxy": "OUTBOUND_GUARD_CLIENT_EXFIL",
              "argument-injection": "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
              "response-body-limit": "OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT",
@@ -418,6 +419,9 @@ def main():
                                     "dns-rebind-packet": ["first_public_answer_allowed", "second_private_answer_denied", "fixture_namespace_tcp_syn_capture"],
                                     "synthetic-exfil": ["loopback_denial", "secret_path_denial",
                                                         "unicode_lookalike_denial", "no_exfil_dns_or_marker_echo"],
+                                    "synthetic-exfil-packet": ["loopback_denial", "secret_path_denial",
+                                                               "unicode_lookalike_denial", "no_exfil_dns_or_marker_echo",
+                                                               "fixture_namespace_tcp_syn_capture"],
                                     "synthetic-exfil-active-proxy": ["loopback_denial", "secret_path_denial",
                                                                      "unicode_lookalike_denial", "no_exfil_dns_or_marker_echo",
                                                                      "active_proxy_positive_control_only"],
