@@ -1,0 +1,228 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "cf457a2c5dfd66116e7baa9950dad279698ce1582806795e15378231f41c856c",
+  "client_versions": {
+    "claude": "2.1.301",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-05",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "tools/client_cancellation_probe.py": "eb8a955f7c2621ac9e8994d80f0e26b9e42a0753b6ad0824cb64b99e8fa36cb1",
+    "tools/client_wire_bridge.py": "eb852a667d731d113f8688c2d87078d79ca25c853cdec68098fb6755f4c0a90e",
+    "tools/debian_native_container_probe.py": "ca569def324a95b752537237dcb2250d88ff1f63da43b3e5f1f24659b0cc3b3c",
+    "tools/netns_adversarial_probe.py": "eb3a0bb13b072815b1150419c46e1736acde7edde3e3572ea7d97a81aaab8e8a"
+  },
+  "limitations": "Finite post-install DNS rebinding replay with fixture-namespace capture only; no host-client or other-tool traffic captured. Raw pcaps were hashed then deleted, so the original packets cannot be independently reinspected. Reproduction needs tcpdump, tshark, aa-exec, passwordless namespace setup, Docker, verified experimental package/skill ZIP and authenticated native clients. Native clients ran on Ubuntu, installed unsigned package in disposable Debian 12 containers. No arbitrary race/resolver proof, Cursor, automatic skill trigger, official candidate, full platform matrix or owner acceptance. Resource samples may miss peaks. No independent human review obtained; four AI Scraping Defense repositories need separate evidence.",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-rebind-packet --container-memory-mib 128 --sample-server-resources",
+  "runs": {
+    "claude": {
+      "native_client": {
+        "client": "claude",
+        "fixture_hits": [
+          "/plain",
+          "/plain",
+          "/plain"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "packet_capture": {
+          "capture_scope": "fixture network namespace only; host client network not captured",
+          "dns_query_count": 9,
+          "dns_query_destinations": [
+            "127.0.0.1:53"
+          ],
+          "ip_destination_entries": 57,
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "packet_count": 56,
+          "pcap_sha256": "d7029330b70e9b08564ac72cbcbdb3678760292d862907662db51c6face044f2",
+          "raw_pcap_retained": false,
+          "rebind_a_query_count": 2,
+          "tcp_syn_count": 3,
+          "tcp_syn_destinations": [
+            "11.0.0.1:80"
+          ],
+          "unexpected_ip_destinations": 0,
+          "unexpected_tcp_connection_attempts": 0
+        },
+        "rebind_a_queries": 2,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "first_public_answer_allowed",
+          "second_private_answer_denied",
+          "fixture_namespace_tcp_syn_capture",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17731584,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "dns-rebind-packet",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": false,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3900,
+          "sample_interval_ms": 50,
+          "samples": 492,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "a00af7f6b049955a43e31710cec1a6815086251bffee37a52a2e52159d5dd54d"
+    },
+    "codex": {
+      "native_client": {
+        "client": "codex",
+        "fixture_hits": [
+          "/plain",
+          "/plain",
+          "/plain"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "packet_capture": {
+          "capture_scope": "fixture network namespace only; host client network not captured",
+          "dns_query_count": 9,
+          "dns_query_destinations": [
+            "127.0.0.1:53"
+          ],
+          "ip_destination_entries": 57,
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "packet_count": 56,
+          "pcap_sha256": "6999778137dcd2cb8473dbd9d49ca3f74499c84c745516c144dc43b0c3fb95ba",
+          "raw_pcap_retained": false,
+          "rebind_a_query_count": 2,
+          "tcp_syn_count": 3,
+          "tcp_syn_destinations": [
+            "11.0.0.1:80"
+          ],
+          "unexpected_ip_destinations": 0,
+          "unexpected_tcp_connection_attempts": 0
+        },
+        "rebind_a_queries": 2,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence"
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "first_public_answer_allowed",
+          "second_private_answer_denied",
+          "fixture_namespace_tcp_syn_capture",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 16388096,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "dns-rebind-packet",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": false,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3932,
+          "sample_interval_ms": 50,
+          "samples": 241,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "8b54f0e6a7b1f59117514d36a9d722975334ede9e1930b3f4bf12bb2bb307beb"
+    }
+  },
+  "source_revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+  "trusted_main_ci_run": 42022132178
+}
