@@ -35,7 +35,8 @@ exfiltration replay to run an active mitmdump trap with a positive control.
 Set OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 for delayed-first-byte and slow-drip
 HTTP denials followed by an approved recovery GET.
 Set OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 for an HTTP 101 denial and recovery,
-or =interim for a 103 Early Hints header flood denial and recovery.
+or =interim for a 103 Early Hints header flood denial and recovery,
+or =interim-repeat for four sequential wire-budget denials and recovery.
 Set OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE=1 for mislabeled hidden HTML
 denials, ordinary angle-text acceptance, and approved recovery.
 Set OUTBOUND_GUARD_CLIENT_CANCEL_PHASE=headers to interrupt a guarded fetch
@@ -69,9 +70,10 @@ active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
-assert upgrade_variant in (None,'1','interim','headers'), 'unsupported HTTP upgrade replay mode'
-upgrade_mode=upgrade_variant in ('1','interim','headers')
-interim_mode=upgrade_variant=='interim'
+assert upgrade_variant in (None,'1','interim','interim-repeat','headers'), 'unsupported HTTP upgrade replay mode'
+upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','headers')
+interim_mode=upgrade_variant in ('interim','interim-repeat')
+interim_repeat_mode=upgrade_variant=='interim-repeat'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 cancel_phase=os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE','body')
@@ -291,7 +293,10 @@ if skill_zip:
    expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_ALLOWED']
    expected_methods=['GET']*5
   if upgrade_mode:
-   if interim_mode:
+   if interim_repeat_mode:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/plain . Each middle response attempts 150 HTTP 103 Early Hints header blocks. The operator approved allowed.test. Make every call once even when earlier calls fail. Do not retry or use any other tool. Report the actual results.'
+    expected_rules=['EGRESS_ALLOWED']+['EGRESS_RESPONSE_WIRE_LIMIT']*4+['EGRESS_ALLOWED']
+   elif interim_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/plain . The middle response attempts many HTTP 103 Early Hints header blocks. The operator approved allowed.test. Make each call once even when the middle call is denied. Do not retry or use any other tool. Report the actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_RESPONSE_WIRE_LIMIT','EGRESS_ALLOWED']
    elif upgrade_headers_mode:
@@ -463,13 +468,17 @@ if skill_zip:
    denied=[e for e in events if e.get('rule')=='EGRESS_INVALID_FRAMING']
    assert len(denied)==3 and all(e.get('body_text_present') is False for e in denied), denied
   if upgrade_mode:
-   hits=json.loads((root/'hits.json').read_text())
-   expected_hits=(['/plain','/interim-header-flood','/plain'] if interim_mode else
+   expected_hits=(['/plain']+['/interim-header-flood']*4+['/plain'] if interim_repeat_mode else
+                  ['/plain','/interim-header-flood','/plain'] if interim_mode else
                   ['/plain','/switch-protocols','/upgrade-header-200','/connection-upgrade-200','/plain'] if upgrade_headers_mode else
                   ['/plain','/switch-protocols','/plain'])
+   for _ in range(100):
+    hits=json.loads((root/'hits.json').read_text())
+    if hits==expected_hits:break
+    time.sleep(.01)
    assert hits==expected_hits, hits
    denied=[e for e in events if e.get('rule')==('EGRESS_RESPONSE_WIRE_LIMIT' if interim_mode else 'EGRESS_PROTOCOL_UPGRADE_DENIED')]
-   assert len(denied)==(3 if upgrade_headers_mode else 1) and all(e.get('body_text_present') is False for e in denied), denied
+   assert len(denied)==(4 if interim_repeat_mode else 3 if upgrade_headers_mode else 1) and all(e.get('body_text_present') is False for e in denied), denied
   if html_quarantine_mode:
    expected_hits=['/plain','/html-mislabeled','/html-root-div','/html-formfeed','/plain-angle-text','/plain']
    for _ in range(100):
