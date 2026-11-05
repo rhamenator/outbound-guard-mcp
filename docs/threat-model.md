@@ -76,6 +76,8 @@ HTTP total-deadline evidence now uses cancellable async I/O and a stricter late-
 
 The [seeded Transfer-Encoding value corpus](adversarial-netns.md#seeded-transfer-encoding-value-corpus--2026-11-05) exercises `guarded_http_fetch`'s exact chunked-only check with 24 unsupported values over controlled HTTP and the real MCP call path. All 24 returned `EGRESS_UNSUPPORTED_TRANSFER_CODING` without body text. It is finite local parser evidence; arbitrary coding syntax, native clients, packages and traffic through other tools remain outside this test.
 
+The [installed native-client replay](client-cancellation.md#seeded-transfer-coding-samples-in-native-installed-clients--2026-11-05) separately exercises three selected corpus values through Claude and Codex explicit skill calls against checksum-verified Debian package bytes. It does not transfer the 24-case result to every native-client path or to other tools.
+
 The [unfinished-body transfer-coding probe](adversarial-netns.md#unsupported-transfer-coding-with-an-unfinished-body--2026-11-05) confirms one unsupported header is denied before a held response body completes, the fixture observes socket closure while the MCP process remains alive, and an approved call then succeeds in that same process. This narrows the resource-exhaustion claim to that measured path; aggregate sockets, kernel buffering, and other client transport behavior remain open.
 
 
