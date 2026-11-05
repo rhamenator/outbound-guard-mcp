@@ -192,6 +192,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
     sensitive_headers = []
     cancel_started = threading.Event()
     cancel_closed = threading.Event()
+    unsupported_coding_closed = threading.Event()
 
     def log_message(self, *_args):
         pass
@@ -254,6 +255,20 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.send_header("Transfer-Encoding", INVALID_TRANSFER_CODING_CORPUS[index])
             self.end_headers()
             self.wfile.write(b"2\r\nok\r\n0\r\n\r\n")
+            return
+        if self.path == "/unsupported-coding-drip":
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "gzip999, chunked")
+            self.end_headers()
+            try:
+                self.wfile.write(b"2\r\nx")
+                self.wfile.flush()
+                if select.select([self.connection], [], [], 2)[0] and not self.connection.recv(1):
+                    type(self).unsupported_coding_closed.set()
+            except (BrokenPipeError, ConnectionResetError):
+                type(self).unsupported_coding_closed.set()
             return
         if self.path in ("/cancel-silent-headers", "/cancel-silent-headers-long", "/cancel-silent-body"):
             if self.path == "/cancel-silent-body":
@@ -2082,6 +2097,15 @@ def main(binary, cancellation_probe):
         coding_sha256 = hashlib.sha256("\n".join(INVALID_TRANSFER_CODING_CORPUS).encode()).hexdigest()
         print(f"Transfer-Encoding property corpus: seed=347925108; cases={len(INVALID_TRANSFER_CODING_CORPUS)}; "
               f"sha256={coding_sha256}; denials={coding_mutant_rules}")
+        HTTP.unsupported_coding_closed.clear()
+        started = time.monotonic()
+        drip_decision = call(binary, "allowed.test", "unsupported-coding-drip")
+        elapsed = time.monotonic() - started
+        assert drip_decision["rule"] == "EGRESS_UNSUPPORTED_TRANSFER_CODING", drip_decision
+        assert "body_text" not in drip_decision and elapsed < 2, (drip_decision, elapsed)
+        assert HTTP.hits[-1] == "/unsupported-coding-drip"
+        assert HTTP.unsupported_coding_closed.wait(2), "unsupported transfer coding kept response socket open"
+        print(f"Unsupported transfer-coding slow body: exact denial in {elapsed:.2f}s, no body text, socket closed")
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
                            ("drip", "EGRESS_RESPONSE_TOO_SLOW"),
                            ("late-eof", "EGRESS_RESPONSE_TIMEOUT"),
