@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "http-upgrade", "http-interim-flood", "dns-ssrf", "dns-rebind", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "malformed-http", "framing-http", "framing-http-comma", "framing-http-coding", "redirect-encoded", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "dns-ssrf", "dns-rebind", "synthetic-exfil", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-header-limit", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -214,6 +214,7 @@ def main():
              "framing-http-coding": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS",
              "http-upgrade": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
+             "http-upgrade-headers": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "http-interim-flood": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "dns-ssrf": "OUTBOUND_GUARD_CLIENT_DNS_SSRF",
              "dns-rebind": "OUTBOUND_GUARD_CLIENT_REBIND",
@@ -230,6 +231,8 @@ def main():
                                   "coding" if args.fixture_mode == "framing-http-coding" else
                                   "duplicate" if args.fixture_mode == "json-duplicate" else
                                   "interim" if args.fixture_mode == "http-interim-flood" else "1")
+            if args.fixture_mode == "http-upgrade-headers":
+                env[mode_variable] = "headers"
         process = None
         success = False
         try:
@@ -391,6 +394,7 @@ def main():
                                     "framing-http-coding": ["seeded_stacked_coding_denial", "seeded_parameterized_coding_denial", "seeded_unknown_coding_denial"],
                                     "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"],
                                     "http-upgrade": ["http_101_upgrade_denial"],
+                                    "http-upgrade-headers": ["http_101_upgrade_denial", "http_200_upgrade_header_denial", "http_200_connection_upgrade_denial"],
                                     "http-interim-flood": ["aggregate_103_wire_budget_denial"],
                                     "dns-ssrf": ["loopback_denial", "private_dns_denial", "alias_private_denial",
                                                  "mixed_dns_denial", "metadata_dns_denial", "resolver_failure_denial"],

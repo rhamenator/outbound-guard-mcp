@@ -1,0 +1,205 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "cf457a2c5dfd66116e7baa9950dad279698ce1582806795e15378231f41c856c",
+  "client_versions": {
+    "claude": "2.1.301",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-05",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "tools/client_cancellation_probe.py": "7bcd68b7d1fae904a20b71081f1065bc9ee071c7a163a2af83c523808d765e4a",
+    "tools/debian_native_container_probe.py": "428231e1c07fb22aa9627fe941218462f29f7e3634a66a6ad13c09d3da77c3c6",
+    "tools/netns_adversarial_probe.py": "eb3a0bb13b072815b1150419c46e1736acde7edde3e3572ea7d97a81aaab8e8a"
+  },
+  "limitations": "Two finite explicit skill workflows. Native clients ran on Ubuntu; the unsigned experimental Debian 12 amd64 package ran in a disposable route-free container. HTTP 101 and two HTTP 200 Upgrade header shapes only; no accepted protocol upgrade, exhaustive parser, socket/packet tracing or automatic skill triggering. 50 ms server sampling may miss peaks, and container cgroup peaks include setup/helper processes. No claim for other clients, platforms, official candidates, or traffic sent through other tools. Owner self-review and residual-risk acceptance remain outstanding; no independent human review is claimed.",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode http-upgrade-headers --container-memory-mib 128 --sample-server-resources",
+  "runs": {
+    "claude": {
+      "native_client": {
+        "client": "claude",
+        "fixture_hits": [
+          "/plain",
+          "/switch-protocols",
+          "/upgrade-header-200",
+          "/connection-upgrade-200",
+          "/plain"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "status_codes": [
+          200,
+          200
+        ],
+        "url_classes": [
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "http_101_upgrade_denial",
+          "http_200_upgrade_header_denial",
+          "http_200_connection_upgrade_denial",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 18702336,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "http-upgrade-headers",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 7,
+          "max_sampled_rss_kib": 3904,
+          "sample_interval_ms": 50,
+          "samples": 280,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "d84f033b9e62f6fc3c1ac10f2677915cd6e51517e9fa42dd405fb6de693a9702"
+    },
+    "codex": {
+      "native_client": {
+        "client": "codex",
+        "fixture_hits": [
+          "/plain",
+          "/switch-protocols",
+          "/upgrade-header-200",
+          "/connection-upgrade-200",
+          "/plain"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_PROTOCOL_UPGRADE_DENIED",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "status_codes": [
+          200,
+          200
+        ],
+        "url_classes": [
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "http_101_upgrade_denial",
+          "http_200_upgrade_header_denial",
+          "http_200_connection_upgrade_denial",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17825792,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "http-upgrade-headers",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+          "package_sha256": "bcf6aeac52caaecc0f9cc3dd8ded1302c89ca6e6bc560de72665843056992314",
+          "revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+          "version": "0.1.0~candidate.220+gb214b1c0d378"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3976,
+          "sample_interval_ms": 50,
+          "samples": 218,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+      },
+      "raw_log_sha256": "e85ec1b300679d09fd38bd2bfffff3dd4457fd1e4e5ae3588956c644d54640f8"
+    }
+  },
+  "source_revision": "b214b1c0d378eba887a8aec89e06c7b777f92528",
+  "trusted_main_ci_run": 42022132178
+}
