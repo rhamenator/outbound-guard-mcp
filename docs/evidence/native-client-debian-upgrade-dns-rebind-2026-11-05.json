@@ -1,0 +1,148 @@
+{
+  "artifact_checksums_verified": true,
+  "changed_server_binary_verified": true,
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT NEW_DEB NEW_SHA256 NEW_SKILL_ZIP SKILL_SHA256 --old-package OLD_DEB --old-sha256 OLD_SHA256 --fixture-mode dns-rebind --container-memory-mib 128 --sample-server-resources",
+  "container_image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "date_utc": "2026-11-05T09:36:38.074810+00:00",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "tools/client_cancellation_probe.py": "c71258e720e3862538d1fbc593b3a5748fafeb8c574e8aba7d47d3dfdb898cf4",
+    "tools/client_wire_bridge.py": "eddc6214a290aacab6eafd698c1d117d4b2b04411950296095c2fdcb67b8e354",
+    "tools/debian_native_container_probe.py": "604e461dcad3c814f45e9398b411e94df089d7a0172ae973b4b537142d442c48"
+  },
+  "limitations": [
+    "The old package ran a direct MCP initialize and loopback-denial smoke before upgrade; it was not called by a native client before upgrade in this run.",
+    "Versions 205 and 214 are unsigned experimental packages, not successive official release candidates. Local artifact checksums were verified; local replay did not independently verify provenance signatures.",
+    "The DNS fixture observes two A lookups and three allowed HTTP hits; it does not provide packet-wide proof of no forbidden connection or cover other resolver implementations, networks or all rebinding timings.",
+    "Configuration migration, other supported platforms, Cursor, automatic triggering, UI cancellation and traffic through other tools remain outside this replay. Independent human review was not obtained (optional for Outbound Guard)."
+  ],
+  "native_clients": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "first_public_answer_allowed",
+        "second_private_answer_denied",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 20905984,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/plain",
+        "/plain"
+      ],
+      "log_sha256": "843b1b664117c537e9cec79922f29a8192a62dde6dd573651d7c13129c675a41",
+      "native_skill_discovered": null,
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "native_turn_completed": null,
+      "rebind_a_queries": 2,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 4000,
+        "sample_interval_ms": 50,
+        "samples": 388,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "version": "2.1.301 (Claude Code)"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "first_public_answer_allowed",
+        "second_private_answer_denied",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 20127744,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/plain",
+        "/plain"
+      ],
+      "log_sha256": "0eab246caecae6ff5aead843603e490a9bc0658a2552ee3ac547bd8e579d33c0",
+      "native_skill_discovered": true,
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "native_turn_completed": true,
+      "rebind_a_queries": 2,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3892,
+        "sample_interval_ms": 50,
+        "samples": 185,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "version": "codex-cli 0.151.0"
+    }
+  },
+  "new_package_name": "outbound-guard-mcp_0.1.0~candidate.214+g3964edcd7ef0_amd64.deb",
+  "new_package_sha256": "10cf46e46b2a1a342d40b34373d9bd7763a3e8e5fbae765237c3726a1ffaeb74",
+  "new_package_version": "0.1.0~candidate.214+g3964edcd7ef0",
+  "new_server_binary_sha256": "9acdfcde9b6faf919c92f4f304d331db4fd4dddb9544b0d0dcef30ae8fae4dc2",
+  "new_skill_zip_name": "outbound-guard-skill-3964edcd7ef0.zip",
+  "new_skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "new_source_main_sha": "3964edcd7ef043f9a7a56561d2bbb92fa4f41880",
+  "new_trusted_main_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/41976588071",
+  "old_package_name": "outbound-guard-mcp_0.1.0~candidate.205+gba1583cd6319_amd64.deb",
+  "old_package_preupgrade_mcp_smoke": "Inside each upgrade container, before dpkg upgraded the package, check installed version and executable SHA-256, launch the old executable, negotiate MCP initialize, and assert guarded_fetch denied a loopback URL with EGRESS_INVALID_HOST. After upgrade check new version/executable SHA-256 and make five native-client guarded calls.",
+  "old_package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+  "old_package_version": "0.1.0~candidate.205+gba1583cd6319",
+  "old_server_binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+  "old_source_main_sha": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+  "old_trusted_main_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/41716755430",
+  "result": "passed",
+  "tested_boundary": "After package upgrade, explicit native skill calls to a route-free controlled DNS/HTTP fixture. The first rebind.test lookup returns a public-policy fixture address; the second returns loopback. The fixture counts two A lookups and exactly three approved HTTP hits. This finite observation does not capture every host packet."
+}
