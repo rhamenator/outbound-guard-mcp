@@ -29,6 +29,8 @@ expected_binary=__BINARY_SHA__
 expected_version=__VERSION__
 old_binary=__OLD_BINARY_SHA__
 old_version=__OLD_VERSION__
+old_app_version=__OLD_APP_VERSION__
+app_version=__APP_VERSION__
 sample_resources=__SAMPLE_RESOURCES__
 printf '%s\n' "$container" > "$state"
 old_mount=()
@@ -45,10 +47,22 @@ if [[ -n $old_package ]]; then
   docker exec "$container" dpkg -i /old.deb >&2
   [[ $(docker exec "$container" dpkg-query -W -f='${Version}' outbound-guard-mcp) == "$old_version" ]]
   [[ $(docker exec "$container" sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1) == "$old_binary" ]]
+  [[ $(docker exec "$container" /usr/bin/outbound-guard-mcp --version) == "outbound-guard-mcp $old_app_version" ]]
+  docker exec "$container" sh -ec '
+    printf "%s\n" '\''{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"pre-upgrade-smoke","version":"1"}}}'\'' '\''{"jsonrpc":"2.0","method":"notifications/initialized"}'\'' '\''{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"guarded_fetch","arguments":{"url":"http://127.0.0.1/"}}}'\'' | /usr/bin/outbound-guard-mcp' > "$state.old-replies"
+  python3 - "$state.old-replies" <<'PY'
+import json, sys
+replies = [json.loads(line) for line in open(sys.argv[1], encoding='utf-8')]
+assert len(replies) == 2 and [reply['id'] for reply in replies] == [1, 2], replies
+assert replies[0].get('result', {}).get('protocolVersion'), replies[0]
+assert replies[1].get('result', {}).get('isError') is True, replies[1]
+assert 'EGRESS_INVALID_HOST' in json.dumps(replies[1]), replies[1]
+PY
 fi
 docker exec "$container" dpkg -i /candidate.deb >&2
 [[ $(docker exec "$container" dpkg-query -W -f='${Version}' outbound-guard-mcp) == "$expected_version" ]]
 [[ $(docker exec "$container" sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1) == "$expected_binary" ]]
+[[ $(docker exec "$container" /usr/bin/outbound-guard-mcp --version) == "outbound-guard-mcp $app_version" ]]
 cert_env=()
 if [[ -n ${OUTBOUND_GUARD_EXTRA_CA_CERT:-} ]]; then
   docker cp "$OUTBOUND_GUARD_EXTRA_CA_CERT" "$container:/tmp/fixture-ca.pem" >/dev/null
@@ -166,6 +180,8 @@ def main():
                          ("__VERSION__", shlex.quote(info["version"])),
                          ("__OLD_BINARY_SHA__", shlex.quote(old_info["binary_sha256"]) if old_info else "''"),
                          ("__OLD_VERSION__", shlex.quote(old_info["version"]) if old_info else "''"),
+                         ("__OLD_APP_VERSION__", shlex.quote(old_info["app_version"]) if old_info else "''"),
+                         ("__APP_VERSION__", shlex.quote(info["app_version"])),
                          ("__MEMORY_MIB__", str(args.container_memory_mib)),
                          ("__SAMPLE_RESOURCES__", "1" if args.sample_server_resources else "0"),
                          ("__MONITOR_PATH__", shlex.quote(str(monitor))),
@@ -285,6 +301,8 @@ def main():
                         if args.fixture_mode != "client-control-cancellation":
                             assert all(elapsed < 8 for elapsed in control_result["socket_closed_after_each_seconds"])
             assert state.exists(), "Debian container was not started"
+            if old_info:
+                assert (root / "container.old-replies").exists(), "old package MCP smoke was not run"
             container = state.read_text().strip()
             assert container.startswith("outbound-native-"), "invalid container identity"
             server_resources = None
@@ -363,6 +381,7 @@ def main():
                       "image_id": image_id, "package": info, "old_package": old_info,
                       "skill_zip_sha256": args.skill_sha256, "fixture_mode": args.fixture_mode,
                       "checks": ["checksum", "clean_dpkg_install", "package_upgrade" if old_info else "no_upgrade",
+                                 *(["old_package_launch_and_loopback_denial"] if old_info else []),
                                  "native_client_control_and_guarded_calls" if control_result else "native_skill_and_guarded_calls",
                                  *(cancellation_checks if control_result else {"tls": ["tls_hostname_denial", "private_dns_flip_denial"],
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
