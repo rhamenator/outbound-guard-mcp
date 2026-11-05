@@ -322,6 +322,24 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"ok")
             return
+        if self.path in ("/comma-length-equal", "/comma-length-conflict",
+                         "/signed-length", "/overflow-length"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            lengths = {"/comma-length-equal": "2, 2", "/comma-length-conflict": "2, 3",
+                       "/signed-length": "+2", "/overflow-length": "9" * 40}
+            self.send_header("Content-Length", lengths[self.path])
+            self.end_headers()
+            self.wfile.write(b"ok")
+            return
+        if self.path == "/repeated-chunked-coding":
+            self.protocol_version = "HTTP/1.1"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "chunked, chunked")
+            self.end_headers()
+            self.wfile.write(b"2\r\nok\r\n0\r\n\r\n")
+            return
         if self.path in ("/stacked-transfer-coding", "/duplicate-transfer-coding"):
             self.protocol_version = "HTTP/1.1"
             self.send_response(200)
@@ -1961,6 +1979,11 @@ def main(binary, cancellation_probe):
             ("switch-protocols", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
+            ("comma-length-equal", {"EGRESS_INVALID_FRAMING"}),
+            ("comma-length-conflict", {"EGRESS_INVALID_FRAMING"}),
+            ("signed-length", {"EGRESS_INVALID_FRAMING"}),
+            ("overflow-length", {"EGRESS_INVALID_FRAMING"}),
+            ("repeated-chunked-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING"}),
             ("stacked-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE", "EGRESS_INVALID_FRAMING"}),
             ("duplicate-transfer-coding", {"EGRESS_UNSUPPORTED_TRANSFER_CODING", "EGRESS_NETWORK_FAILURE", "EGRESS_INVALID_FRAMING"}),
             ("duplicate-type", {"EGRESS_AMBIGUOUS_RESPONSE_METADATA"}),
