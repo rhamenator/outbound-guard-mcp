@@ -1,0 +1,79 @@
+{
+  "observed_utc": "2026-11-06T11:42:11Z",
+  "scope": "Two exact-harness route-free official MCP SDK 2.3.1 replays against a checksum-verified unsigned experimental Debian 12 amd64 installed package. The 698 sequential failed-DNS calls plus final process-hour denial yielded 699 structured SDK decisions; the fixture matched the complete retained 256-event audit resource to the last 256 decisions.",
+  "tested_package_source": "e36de145905179c38c3e002fd0a77ffba0ed4577",
+  "tested_package_sha256": "c4f3ea85f07d97211a1cb70207479a3d5d9062ada2d6a1e98a84d78178f83370",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42207024696; all three files verified before testing",
+  "test_source_base": "e36de145905179c38c3e002fd0a77ffba0ed4577",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "6555a4e11ce4a8501ec312fa64292616a0dac41003a55fbcf4468bbc2d76fae0",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "cdfe5a05a0bf00cd6729baddabb4eb016cf36b20d6eba13572a8834424cf7505",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its 64-character digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-audit-linkage-2026-11-06-run1.log",
+      "log_sha256": "e5deb67dd5be778afa5d7f838ea9c018a6e09668492b69ecb9ea9b7c13eb9707",
+      "full_namespace_suite_decisions": 3370,
+      "sdk_installed_resource": {
+        "package_sha256": "c4f3ea85f07d97211a1cb70207479a3d5d9062ada2d6a1e98a84d78178f83370",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5208,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 7,
+        "fd_samples": 116,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 21385216,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      },
+      "sdk_hour_resource": {
+        "package_sha256": "c4f3ea85f07d97211a1cb70207479a3d5d9062ada2d6a1e98a84d78178f83370",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5232,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 4,
+        "current_server_fd": 3,
+        "fd_samples": 99,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 22040576,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      }
+    },
+    {
+      "log": "installed-sdk-audit-linkage-2026-11-06-run2.log",
+      "log_sha256": "e4b8c96ccccb64dabf995d48b3b88488236b0a2fbe4e582f229c1b1eedc2a29b",
+      "full_namespace_suite_decisions": 3370,
+      "sdk_installed_resource": {
+        "package_sha256": "c4f3ea85f07d97211a1cb70207479a3d5d9062ada2d6a1e98a84d78178f83370",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5160,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 7,
+        "fd_samples": 115,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 19918848,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      },
+      "sdk_hour_resource": {
+        "package_sha256": "c4f3ea85f07d97211a1cb70207479a3d5d9062ada2d6a1e98a84d78178f83370",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5188,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 4,
+        "current_server_fd": 3,
+        "fd_samples": 102,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 20406272,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      }
+    }
+  ],
+  "checks": "For each of 698 failed-DNS SDK results and the final rate-limit denial, require structured correlation_id, status and rule; require 699 distinct numerically consecutive IDs; compare every field of the last 256 result triples with the entire 256-event audit resource. No hostile hostname appears in the audit. The final denial opens no DNS/HTTP, and tools/list remains responsive. Package installation, version/hash, uninstall/residue and container/namespace cleanup passed. Both full route-free suites passed 3370 decisions.",
+  "local_verification": "47 Rust tests, 19 Python tests, cargo build --locked --bins --examples, cargo fmt --check, Clippy, JS/Python syntax and diff checks passed; two installed-package route-free suites each passed 3370 decisions.",
+  "limitations": "Sequential single-process correlation and retained-window agreement only. Does not establish concurrent completion order or ID uniqueness under concurrency, unbounded audit retention, other native clients, traffic sent via other tools, exact official candidate or platform qualification. Owner self-review and residual-risk acceptance remain outstanding; independent human review is optional and not yet performed. Four AI Scraping Defense repositories require separate adversarial evidence."
+}

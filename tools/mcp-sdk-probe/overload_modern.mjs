@@ -156,6 +156,7 @@ try {
   assert.ok((await client.listTools()).tools.length > 0);
   console.log('SDK_RATE_WINDOW_RESET');
   assert.equal((await once(input, 'line'))[0], 'hourfill');
+  const hourDecisions = [];
   for (const [index, host] of hourlyHosts.entries()) {
     for (let call = 0; call < (index === 11 ? 38 : 60); call++) {
       const result = await client.callTool({ name: 'guarded_fetch', arguments: {
@@ -163,6 +164,9 @@ try {
       } });
       assert.equal(result.isError, true);
       assert.equal(result.structuredContent.rule, 'EGRESS_DNS_FAILURE');
+      const { correlation_id, status, rule } = result.structuredContent;
+      assert.match(correlation_id, /^egress-[1-9]\d*$/);
+      hourDecisions.push({ correlation_id, status, rule });
     }
   }
   console.log('SDK_HOUR_BUDGET_FILLED');
@@ -173,12 +177,20 @@ try {
   assert.equal(hourDenied.isError, true);
   assert.equal(hourDenied.structuredContent.rule, 'EGRESS_RATE_LIMIT');
   assert.equal('body_text' in hourDenied.structuredContent, false);
+  const { correlation_id, status, rule } = hourDenied.structuredContent;
+  assert.match(correlation_id, /^egress-[1-9]\d*$/);
+  hourDecisions.push({ correlation_id, status, rule });
+  assert.equal(hourDecisions.length, 699);
+  assert.equal(new Set(hourDecisions.map(event => event.correlation_id)).size, 699);
+  for (let index = 1; index < hourDecisions.length; index++) {
+    assert.equal(Number(hourDecisions[index].correlation_id.split('-')[1]),
+      Number(hourDecisions[index - 1].correlation_id.split('-')[1]) + 1);
+  }
   const hourAudit = JSON.parse((await client.readResource({
     uri: 'outbound-guard://logs/audit.json',
   })).contents[0].text);
   assert.equal(hourAudit.events.length, 256);
-  assert.deepEqual(hourAudit.events.map(event => event.rule),
-    [...Array(255).fill('EGRESS_DNS_FAILURE'), 'EGRESS_RATE_LIMIT']);
+  assert.deepEqual(hourAudit.events, hourDecisions.slice(-256));
   assert.ok(hourAudit.events.every(event =>
     Object.keys(event).sort().join(',') === 'correlation_id,rule,status'));
   assert.equal(JSON.stringify(hourAudit).includes('hour-failure-'), false);
