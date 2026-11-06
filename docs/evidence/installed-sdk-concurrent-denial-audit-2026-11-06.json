@@ -1,0 +1,38 @@
+{
+  "observed_utc": "2026-11-06T12:55:30Z",
+  "scope": "Two route-free official MCP SDK 2.3.1 runs against a checksum-verified unsigned experimental Debian 12 amd64 package. After the 1000-call process-hour budget was exhausted, the client submitted 16 guarded calls concurrently; accepted decisions and pre-execution capacity rejections were distinguished.",
+  "tested_package_source": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+  "tested_package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42213373890; all three files verified before testing",
+  "test_source_base": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "68fdc840f4ab06dc840b6ef8110e579b9dd64fcc0c751ed507861f7213118d85",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "80068add2f4055d89d009bbb225f10f664a4fcb61a4e85e11aacc8ba7134d74b",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its 64-character digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-concurrent-denial-audit-2026-11-06-run1.log",
+      "log_sha256": "4500903d03b1daf169216dd3b3682dd90cb00157e8b064ab6e3df0a6cf819766",
+      "full_namespace_suite_decisions": 3384,
+      "burst_submissions": 16,
+      "audited_rate_denials": 13,
+      "pre_execution_busy_rejections": 3,
+      "serial_recovery_rate_denials": 1
+    },
+    {
+      "log": "installed-sdk-concurrent-denial-audit-2026-11-06-run2.log",
+      "log_sha256": "8c0788d54d47bd7c8aed198e0843526f09da53008f364fcabfc0e820abdc9ce6",
+      "full_namespace_suite_decisions": 3380,
+      "burst_submissions": 16,
+      "audited_rate_denials": 9,
+      "pre_execution_busy_rejections": 7,
+      "serial_recovery_rate_denials": 1
+    }
+  ],
+  "checks": "Each SDK burst result is either an EGRESS_RATE_LIMIT structured tool denial or a MCP_INPUT_BUSY protocol error for a request the server says was not executed. Accepted results have unique consecutive correlation IDs after the preceding serial decision, match the final audit events as a set across ID/status/rule, and contain no body. If no burst call is accepted, audit is unchanged. A subsequent serial denied call has the next ID and exactly matches the audit tail; tools/list stays responsive. No burst or recovery call caused DNS or HTTP. Package installation, hash/version, uninstall/residue and container/namespace cleanup passed.",
+  "harness_correction": "An initial probe assumed all 16 concurrent calls would return structured tool decisions; the bounded input queue instead produced MCP_INPUT_BUSY protocol errors. The probe was corrected to assert that these pre-execution rejections do not consume an audit ID, while accepted decisions match audit and serial recovery works. A transitional assertion requiring both result kinds in every run was removed because the ratio is schedule-dependent. No server code changed.",
+  "local_verification": "Two checksum-verified installed-package route-free suites passed 3384 and 3380 decisions. 47 Rust tests, 19 Python tests, cargo build --locked --bins --examples, cargo fmt --check, Clippy, JS/Python syntax, JSON parse and diff checks passed.",
+  "limitations": "One SDK client, one process, finite 16-call submission bursts, one experimental Debian package/OS/architecture. Client-side concurrent submission does not prove simultaneous server execution or completion ordering under slow calls, general queue or resource bounds, cross-client/process behavior, traffic through other tools, official candidate or platform qualification. Owner self-review and residual-risk acceptance remain outstanding; independent human review is optional and was not performed. Four AI Scraping Defense repositories require separate adversarial evidence."
+}

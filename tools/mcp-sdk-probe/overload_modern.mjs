@@ -197,6 +197,60 @@ try {
   assert.equal(JSON.stringify(hourAudit).includes('hour-denied.test'), false);
   assert.ok((await client.listTools()).tools.length > 0);
   console.log('SDK_HOUR_BUDGET_DENIED');
+  assert.equal((await once(input, 'line'))[0], 'concurrent');
+  const concurrent = await Promise.all(Array.from({ length: 16 }, () =>
+    client.callTool({ name: 'guarded_fetch', arguments: {
+      url: 'http://hour-denied.test/SYNTHETIC_CONCURRENT_MARKER',
+    } }).then(result => ({ ok: true, result }), error => ({ ok: false, error }))));
+  const busy = concurrent.filter(item => !item.ok);
+  assert.equal(busy.length + concurrent.filter(item => item.ok).length, 16);
+  for (const item of busy) {
+    assert.equal(item.error.code, -32000);
+    assert.equal(item.error.data?.rule, 'MCP_INPUT_BUSY');
+  }
+  const concurrentDecisions = concurrent.filter(item => item.ok).map(({ result }) => {
+    assert.equal(result.isError, true);
+    assert.equal(result.structuredContent.rule, 'EGRESS_RATE_LIMIT');
+    assert.equal('body_text' in result.structuredContent, false);
+    const { correlation_id, status, rule } = result.structuredContent;
+    assert.match(correlation_id, /^egress-[1-9]\d*$/);
+    return { correlation_id, status, rule };
+  });
+  const ids = concurrentDecisions.map(event => Number(event.correlation_id.split('-')[1]));
+  assert.equal(new Set(ids).size, ids.length);
+  assert.deepEqual(ids.sort((a, b) => a - b),
+    Array.from({ length: ids.length }, (_, index) => Number(correlation_id.split('-')[1]) + index + 1));
+  const concurrentAudit = JSON.parse((await client.readResource({
+    uri: 'outbound-guard://logs/audit.json',
+  })).contents[0].text);
+  assert.equal(concurrentAudit.events.length, 256);
+  if (ids.length === 0) {
+    assert.deepEqual(concurrentAudit, hourAudit);
+  } else {
+    assert.deepEqual(
+      concurrentAudit.events.slice(-ids.length).sort((a, b) =>
+        Number(a.correlation_id.split('-')[1]) - Number(b.correlation_id.split('-')[1])),
+      concurrentDecisions.sort((a, b) =>
+        Number(a.correlation_id.split('-')[1]) - Number(b.correlation_id.split('-')[1])));
+  }
+  assert.equal(JSON.stringify(concurrentAudit).includes('SYNTHETIC_CONCURRENT_MARKER'), false);
+  const recovery = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://hour-denied.test/SYNTHETIC_CONCURRENT_RECOVERY_MARKER',
+  } });
+  assert.equal(recovery.isError, true);
+  assert.equal(recovery.structuredContent.rule, 'EGRESS_RATE_LIMIT');
+  assert.equal(Number(recovery.structuredContent.correlation_id.split('-')[1]),
+    Number(correlation_id.split('-')[1]) + ids.length + 1);
+  const recoveredAudit = JSON.parse((await client.readResource({
+    uri: 'outbound-guard://logs/audit.json',
+  })).contents[0].text);
+  assert.deepEqual(recoveredAudit.events.at(-1), {
+    correlation_id: recovery.structuredContent.correlation_id,
+    status: recovery.structuredContent.status,
+    rule: recovery.structuredContent.rule,
+  });
+  assert.ok((await client.listTools()).tools.length > 0);
+  console.log(`SDK_CONCURRENT_AUDIT_DONE:${ids.length}:${busy.length}`);
   assert.equal((await once(input, 'line'))[0], 'finish');
 } finally {
   await client.close();

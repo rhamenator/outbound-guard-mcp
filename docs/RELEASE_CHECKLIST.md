@@ -18,6 +18,8 @@ The [installed SDK hour-fill resource replay](evidence/installed-sdk-hour-resour
 
 The [installed SDK audit-result linkage replay](evidence/installed-sdk-audit-linkage-2026-11-06.json) matches the retained 256 audit events to the SDK's own structured decisions across a 699-decision pressure phase, checking consecutive unique correlation IDs and exact status/rule agreement. This finite sequential check does not establish concurrent audit ordering, broad client behavior, or release approval.
 
+The [installed SDK concurrent-denial audit replay](evidence/installed-sdk-concurrent-denial-audit-2026-11-06.json) submits 16 guarded calls together after the process-hour cap. Two installed-package runs accepted 13/9 rate-limit decisions and rejected 3/7 at the bounded input gate; accepted results matched their audit events, and a serial call recovered. No new DNS or HTTP occurred. This finite submission burst does not establish overlapping server execution, general concurrency bounds or release approval.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
