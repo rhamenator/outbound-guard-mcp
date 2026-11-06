@@ -185,6 +185,10 @@ Historical pre-priority behavior: the earlier `test_saturated_cancellation` ran 
 
 Current saturation assertions are in [cancellation-priority.md](cancellation-priority.md): cancellation audit/no reply, eight admitted responses, one non-executed busy fetch, safe rejected-ID reuse and recovery. A separate both-era exhaustion test requires fixed-diagnostic termination and live socket closure.
 
+### Official SDK generated queue pressure — 2026-11-06
+
+The [SDK overload record](evidence/official-sdk-overload-2026-11-06.json) uses the pinned official modern MCP client SDK and stdio transport to generate a held guarded fetch, eight 60,000-byte `tools/list` requests, a ninth marked guarded fetch, and an SDK `AbortSignal` cancellation. The route-free namespace fixture verifies `MCP_INPUT_BUSY` for the marked call, cancellation audit and socket closure, absence of the marked HTTP hit, and an approved recovery GET on the same server process. This removes the bridge-generated-input limitation for **this SDK case**. It uses a local debug binary, not a native installed package or an official candidate, and does not prove Claude/Codex generate such input or bound arbitrary concurrency and resource use.
+
 ## Live OS DNS worker exhaustion and recovery
 
 The controlled namespace suite now exercises the real libc resolver path, not only the injected resolver unit test. In both modern stateless and legacy modes, the fixture withholds A/AAAA answers for one approved hostname while the private namespace's resolver timeout is six seconds. The server must return `EGRESS_DNS_TIMEOUT` at its separate three-second deadline with exactly one extra OS resolver thread still alive. Twenty subsequent calls alternate the stalled hostname and a different approved hostname; all must return `EGRESS_DNS_BUSY`, preserve that single extra thread, and create no additional DNS question or HTTP request. Sampled RSS must stay below 64 MiB and descriptors below 32.

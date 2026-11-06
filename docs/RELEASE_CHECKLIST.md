@@ -102,6 +102,8 @@ The [independent adversarial gate ledger](CROSS_REPOSITORY_ADVERSARIAL_GATE.md) 
 
 [Priority cancellation and overload](cancellation-priority.md) now have both-era socket/audit/recovery regressions. Independent review and final-candidate client matrix still apply; do not equate fixing server-side admission with clients sending cancellation notifications.
 
+An [official SDK generated overload replay](evidence/official-sdk-overload-2026-11-06.json) sent its own bounded queue-pressure frames through the modern stdio transport in a route-free fixture and observed busy denial, cancellation, socket closure and recovery. This is local debug-binary evidence; package-installed native Claude/Codex saturation remains bridge-generated, and exact-candidate resource bounds remain open.
+
 The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. This historical mismatch was followed by a matching pinned-native pair in PR #79 and the continuous independent-rebuild gate in PR #80. Require a matching report for the exact current candidate.
 
 Independent executable reproducibility is now a [continuous CI gate](candidate-packaging.md#continuous-independent-rebuild-gate): a clean second runner rebuilds and adversarially tests the candidate before comparing it with the primary artifact. This is not signing, physical-host attestation or owner release acceptance; retain the report for the exact release candidate.
