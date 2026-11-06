@@ -1,0 +1,31 @@
+{
+  "campaign": "network-free LLVM libFuzzer on actual MCP dispatcher/session and tool validation, with empty allowlist and stub DNS; no sockets or HTTP client",
+  "campaign_log_gzip_sha256": "a6db1348a5c0869a9b03abfdf345fbe765de24ec04232666f0c8cf14969dd92c",
+  "clang": "Ubuntu clang version 21.1.8 (6ubuntu1)",
+  "corpus_archive_sha256": "60c3ed9e15925ba6c1b6e18f5d61407672dd0a868008decadfb24e80dfb406f4",
+  "corpus_files_verified": 2065,
+  "crash_timeout_artifacts": 0,
+  "duration_seconds": 300,
+  "limits": "Finite 300-second campaign, 2s per input, 8192-byte max input, 1GiB process virtual address ceiling, 64 FDs, 330 CPU seconds, no ASan/UBSan. No admission queue, cancellation timing, real DNS/HTTP or native client coverage. No cross-repository coverage or release approval.",
+  "max_reported_rss_mib": 45,
+  "observed_at_utc": "2026-11-06T17:39:00Z",
+  "report_sha256": "5f1b3cfc05ddaab1bbf824f50935aba615bf9412a2242c193260f7c9105a375e",
+  "result": "passed",
+  "runtime_sha256": "c5df7495c36c7dd395561f53a72aad967b527f61c3c186e9ef7f32ae670d3b4a",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "seed": 306373022,
+  "source_head": "acd02dd0fd95296ce6c8665de6ad517aea3d8059",
+  "source_inputs": {
+    "Cargo.lock": "f5f0f24b280539cf2facff3ac0b2a77c7ec5f919297ab2ceb7a6ed2788e68cba",
+    "Cargo.toml": "8ed0f68a1927a7ec08ee0d227dce905c4bcc6c1b82543d342035bf0a55915584",
+    "examples/frame_fuzz.rs": "98d3a1784d00c4b39cf976f9d09beb0a13e017bfbf25813dc503508ea0637937",
+    "examples/json_fuzz.rs": "57e49f76f9583a4ea52a6f54cf6dd0c75ff5a85a2e09128653f864cbc9dc7260",
+    "examples/policy_fuzz.rs": "b18b7220a2419d71d7e006f6889c593ce5294bce9660c5ca422b06c31b39f132",
+    "examples/rpc_fuzz.rs": "33399876ee87c6c7c3fe867d32bf06987b65c0e3ca42aba069ac6a189a3c6b5d",
+    "src/lib.rs": "ad34cd8b942648b6ac353835ea642cdf2fd54eba17e5b27ede18597b34b7e846",
+    "src/main.rs": "7674ec1bc25b4008a9029a12fced3bb82639220904b807cd5683735c159a8089",
+    "src/transport.rs": "7b2ee0938d7efe994d755aab84ee4d1dd0caddd3b57d11c3c6ce5830869027ac",
+    "tools/policy_fuzz.sh": "1ff404898e58ef6ace89791ccd0e1d84a333f74d361995a1578bc13801108f2b"
+  },
+  "target": "rpc"
+}
