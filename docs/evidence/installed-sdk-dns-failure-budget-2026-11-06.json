@@ -1,0 +1,49 @@
+{
+  "observed_utc": "2026-11-06T06:45:18Z",
+  "scope": "Two exact-harness route-free replays of official MCP SDK 2.3.1 client-generated failed-DNS budget exhaustion against a checksum-verified unsigned experimental Debian 12 amd64 package built from trusted main 8ce81e5. Each run used a fresh installation in a disposable 128 MiB, 64 PID container with the installed server under a 64-FD soft limit.",
+  "tested_package_source": "8ce81e5b6d65d55d6798e77b8ae496117231cead",
+  "tested_package_sha256": "ee56b0d0cf0914e83c240bf7047589d4a70d6085775f7d1fed2471e37f552323",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42170913368; all three files verified before testing",
+  "test_source_base": "8ce81e5b6d65d55d6798e77b8ae496117231cead",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "37b565cc337c3e1931d6ce8591360d608b510a48b658cf0d32aa37280783be2e",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "1fff6574a34084cf492d15e88d611b5a53474a8249ed9feab148057d11ce61ab",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-dns-failure-budget-2026-11-06-run1.log",
+      "log_sha256": "b444778e8a1c1289e52798ac058557e0ed827199229f7d87b9b1b81800139404",
+      "full_namespace_suite_decisions": 2489,
+      "package_sha256": "ee56b0d0cf0914e83c240bf7047589d4a70d6085775f7d1fed2471e37f552323",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 4988,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 89,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 19439616,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    },
+    {
+      "log": "installed-sdk-dns-failure-budget-2026-11-06-run2.log",
+      "log_sha256": "3f250e29a0bfabc5b1c3bc3d063d4fa8ce862f267877650e0ba3242b083a3c83",
+      "full_namespace_suite_decisions": 2489,
+      "package_sha256": "ee56b0d0cf0914e83c240bf7047589d4a70d6085775f7d1fed2471e37f552323",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 4952,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 88,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 18743296,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    }
+  ],
+  "checks": "After the approved-host 60/61 rate-boundary case, 60 further official-SDK guarded calls to allowed budget-failure.test returned isError EGRESS_DNS_FAILURE with no body; the controlled resolver saw exactly 60 A and 60 AAAA queries for that name and HTTP hit count stayed unchanged. The 61st SDK call returned isError EGRESS_RATE_LIMIT with no body; resolver query and HTTP hit counts did not change. The full audit sequence and subsequent SDK tools/list control passed in the same installed process. Package hash/version/install, removal/residue and namespace/container cleanup passed.",
+  "sampling": "In-container /proc server FD monitor requested 5 ms samples during the SDK sequence. Maximum sampled FD count is a lower bound on a possibly shorter transient peak; VmHWM is server-specific, while container memory and PID high-water include helpers.",
+  "limitations": "One modern SDK client, one Debian package/OS/architecture, one short per-host window and two finite repeats. This controlled empty-answer failure does not cover every resolver error, budget reset, cross-process sharing, arbitrary concurrency, other client-generated exhaustion, traffic through other tools, exact official candidate, owner residual-risk acceptance or independent human review. The four AI Scraping Defense repositories still require separate adversarial evidence."
+}
