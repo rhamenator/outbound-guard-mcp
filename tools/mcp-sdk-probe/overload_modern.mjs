@@ -133,6 +133,25 @@ try {
   assert.equal(ringResource.contents[0].text.includes('audit-failure-'), false);
   assert.ok((await client.listTools()).tools.length > 0);
   console.log('SDK_AUDIT_CAPACITY_FILLED');
+  assert.equal((await once(input, 'line'))[0], 'reset');
+  const recovered = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://allowed.test/plain',
+  } });
+  assert.equal(recovered.structuredContent.rule, 'EGRESS_ALLOWED');
+  assert.equal(recovered.structuredContent.body_text, 'fixture-ok');
+  const failedAgain = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://budget-failure.test/plain',
+  } });
+  assert.equal(failedAgain.isError, true);
+  assert.equal(failedAgain.structuredContent.rule, 'EGRESS_DNS_FAILURE');
+  const resetAudit = JSON.parse((await client.readResource({
+    uri: 'outbound-guard://logs/audit.json',
+  })).contents[0].text);
+  assert.equal(resetAudit.events.length, 256);
+  assert.deepEqual(resetAudit.events.slice(-2).map(event => event.rule),
+    ['EGRESS_ALLOWED', 'EGRESS_DNS_FAILURE']);
+  assert.ok((await client.listTools()).tools.length > 0);
+  console.log('SDK_RATE_WINDOW_RESET');
   assert.equal((await once(input, 'line'))[0], 'finish');
 } finally {
   await client.close();

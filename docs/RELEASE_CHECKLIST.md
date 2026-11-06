@@ -10,6 +10,8 @@ The [installed SDK failed-DNS budget replay](evidence/installed-sdk-dns-failure-
 
 The [installed SDK audit-retention replay](evidence/installed-sdk-audit-retention-2026-11-06.json) drives 302 guarded decisions in one process and checks that the audit resource retains only the newest 256, in order, without URLs or body text. The server remains responsive after the controlled DNS failures. General resource bounds and the exact-candidate gate remain open.
 
+The [installed SDK rate-window reset replay](evidence/installed-sdk-rate-reset-2026-11-06.json) extends that same-process sequence past the per-host minute window. Both the previously exhausted allowed host and failed-DNS host receive fresh reservations after 61 seconds; controlled DNS and the approved HTTP path resume, while the audit stays capped at 256 events. This finite timing check does not qualify the exact candidate or establish cross-process budgets.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
