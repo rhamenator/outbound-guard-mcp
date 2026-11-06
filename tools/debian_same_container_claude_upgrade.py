@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import uuid
@@ -91,9 +92,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix="outbound-native-upgrade-") as directory:
         root = Path(directory)
         root.chmod(0o700)
+        docker = shutil.which("docker")
+        assert docker, "Docker executable not found on PATH"
         config = root / "mcp.json"
         config.write_text(json.dumps({"mcpServers": {"outbound_guard": {
-            "command": "/usr/local/bin/docker",
+            "command": docker,
             "args": ["exec", "-i", "--env",
                      "OUTBOUND_GUARD_ALLOWED_HOSTS=upgrade-allowed.test",
                      container, "/usr/bin/outbound-guard-mcp"]}}}))
