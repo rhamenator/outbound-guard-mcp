@@ -1,0 +1,191 @@
+{
+  "clients": [
+    {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "secret_path_denial",
+        "unicode_lookalike_denial",
+        "no_exfil_dns_or_marker_echo",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "claude",
+      "client_version": "2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 512,
+        "memory_peak_bytes": 14856192,
+        "pids_peak": 7,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "exfil_dns_queried": false,
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "native_turn_completed": null,
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": 0,
+        "ip_destination_entries": 50,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 49,
+        "pcap_sha256": "e4f05b77cfa6ac99af7739beefdbabbe792e45cb372335399f637c0489d3b86d",
+        "raw_pcap_retained": false,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_SECRET_DETECTED",
+        "EGRESS_INVALID_URL",
+        "EGRESS_ALLOWED"
+      ],
+      "same_rules_and_fixture_hits_as_post_upgrade_client": true,
+      "synthetic_marker_echo": false
+    },
+    {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "secret_path_denial",
+        "unicode_lookalike_denial",
+        "no_exfil_dns_or_marker_echo",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "codex",
+      "client_version": "0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 512,
+        "memory_peak_bytes": 13197312,
+        "pids_peak": 7,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "exfil_dns_queried": false,
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "native_turn_completed": true,
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": 0,
+        "ip_destination_entries": 51,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 50,
+        "pcap_sha256": "21f0173333294cb81751af79b52ae3fea3c3b08d6774a1507a7ae01214d3dc91",
+        "raw_pcap_retained": false,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_SECRET_DETECTED",
+        "EGRESS_INVALID_URL",
+        "EGRESS_ALLOWED"
+      ],
+      "same_rules_and_fixture_hits_as_post_upgrade_client": true,
+      "synthetic_marker_echo": false
+    }
+  ],
+  "comparison_evidence": "docs/evidence/native-client-debian-upgrade-exfil-packet-2026-11-06.json",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limitations": [
+    "Old-package native-client calls and post-upgrade native-client calls ran in separate containers; no same-container native-client upgrade or saved client configuration migration was tested.",
+    "Fixture namespace packet capture excludes host-client traffic; raw captures were not retained.",
+    "Finite synthetic URL cases do not establish general exfiltration prevention.",
+    "Experimental unsigned package 205 is not an owner-approved official candidate.",
+    "Traffic through other tools and all four AI Scraping Defense repositories remain outside this evidence."
+  ],
+  "observed_at_utc": "2026-11-06T15:42:00Z",
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+    "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "result": "passed",
+  "scope": "Native Claude Code and Codex CLI explicit skill/guarded_fetch calls against old experimental Debian package 205, each in a separate disposable route-free Debian 12 amd64 container. Compare only the observed rules and fixture hits to post-upgrade package 242 evidence; no same-container native-client upgrade is claimed.",
+  "skill_zip_sha256": "da944d8dcad08a7dce2bfbee73c8106c974fe2213480bb47eb1c8ac5f51bad15",
+  "tools": {
+    "Claude Code": "2.1.319",
+    "Codex CLI": "0.151.0",
+    "Docker": "28.3.3",
+    "Python": "3.14.4",
+    "tcpdump": "4.99.6"
+  }
+}
