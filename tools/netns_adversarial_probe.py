@@ -101,6 +101,8 @@ RECORDS = {
 HOURLY_HOSTS = [f"budget-{index}.test" for index in range(17)]
 RECORDS.update({host: [PUBLIC_FIXTURE] for host in HOURLY_HOSTS})
 RECORDS["budget-failure.test"] = []
+AUDIT_FAILURE_HOSTS = [f"audit-failure-{index}.test" for index in range(1, 4)]
+RECORDS.update({host: [] for host in AUDIT_FAILURE_HOSTS})
 RECORDS["dns-stall.test"] = [PUBLIC_FIXTURE]
 V6_RECORDS = {
     "v6-loopback.test": ["::1"],
@@ -1550,7 +1552,7 @@ def test_sdk_overload(binary):
         container = f"outbound-sdk-{os.getpid()}"
         wrapper_dir = tempfile.TemporaryDirectory(prefix="outbound-sdk-wrapper-")
         wrapper = Path(wrapper_dir.name) / "server.sh"
-        wrapper.write_text("#!/bin/sh\nexec docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test,budget-failure.test "
+        wrapper.write_text("#!/bin/sh\nexec docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test,budget-failure.test,audit-failure-1.test,audit-failure-2.test,audit-failure-3.test "
                            + container + " sh -ec 'ulimit -n 64; exec nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp'\n")
         wrapper.chmod(0o700)
         binary = str(wrapper)
@@ -1656,6 +1658,15 @@ def test_sdk_overload(binary):
         assert process.stdout.readline().strip() == "SDK_DNS_RATE_BUDGET_DENIED"
         assert DNS.queries == dns_before and len(HTTP.hits) == hits_before
         assert process.poll() is None
+        a_before, aaaa_before, hits_before = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
+        process.stdin.write("auditfill\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 20)[0], "SDK audit capacity fill timed out"
+        assert process.stdout.readline().strip() == "SDK_AUDIT_CAPACITY_FILLED"
+        expected_names = [host for host in AUDIT_FAILURE_HOSTS for _ in range(60)]
+        assert DNS.a_names[a_before:] == expected_names
+        assert DNS.aaaa_names[aaaa_before:] == expected_names
+        assert len(HTTP.hits) == hits_before and process.poll() is None
         if container:
             subprocess.run(["docker", "exec", container, "touch", "/tmp/sdk-fd-monitor.stop"], check=True)
             for _ in range(20):
@@ -1691,8 +1702,9 @@ def test_sdk_overload(binary):
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
         print(f"official SDK 2.3.1 overload: {cycles} client-originated bounded busy denials, "
               f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s); "
-              "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP")
-        return 12 * cycles + 37 + 61
+              "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; "
+              "180 further DNS denials retained in a bounded 256-event audit ring")
+        return 12 * cycles + 37 + 61 + 180
     finally:
         if process is not None and process.poll() is None:
             process.kill()
