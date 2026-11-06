@@ -22,6 +22,8 @@ The [installed SDK concurrent-denial audit replay](evidence/installed-sdk-concur
 
 The [Debian upgrade operator-policy replay](evidence/debian-upgrade-operator-policy-2026-11-06.json) compares the same explicit allowlist on changed-binary experimental packages 205 and 242 before and after `dpkg` upgrade. Two disposable network-disabled Debian 12 amd64 runs matched structured allowlist/DNS-denial decisions and redacted audit, then passed removal and residue checks. This validates one environment-setting compatibility path, not saved configuration migration, old-package native-client behavior, or exact-candidate approval.
 
+The [post-upgrade native-client exfiltration replay](evidence/native-client-debian-upgrade-exfil-packet-2026-11-06.json) exercises Claude Code and Codex CLI explicit skill calls after the same changed-binary experimental package upgrade. Controlled packet captures recorded no forbidden fixture TCP destination or exfiltration DNS query; native recovery and uninstall/residue checks passed. This is a finite post-upgrade check, not an old-package native-client or exact-candidate qualification.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
