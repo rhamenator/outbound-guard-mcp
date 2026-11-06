@@ -30,6 +30,8 @@ The [retained native DNS SSRF packet captures](evidence/native-dns-ssrf-retained
 
 The [300-second MCP dispatcher fuzz campaign](policy-fuzzing.md#extended-local-mcp-dispatcher-campaign-2026-11-06) retains its full 2,065-file evolved corpus, log, report, input/runtime identities and a replay verifier. It extends network-free parser/session observations only; independent review and real HTTP/DNS/cancellation gaps remain.
 
+The [300-second URL/schema policy fuzz campaign](policy-fuzzing.md#extended-local-url-and-schema-policy-campaign-2026-11-06) retains its full 2,323-file evolved corpus, log, report, source/runtime identities and replay verifier. Its stub resolver does not establish real DNS/socket safety or release approval.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |

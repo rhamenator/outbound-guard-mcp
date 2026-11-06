@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify every retained libFuzzer corpus member against its campaign report."""
+"""Verify a retained libFuzzer corpus archive against its campaign report."""
 
 import argparse
 import hashlib
@@ -9,7 +9,8 @@ import re
 import tarfile
 
 
-def verify(archive_path: Path, report_path: Path) -> dict:
+def verify(archive_path: Path, report_path: Path, max_member_bytes: int) -> dict:
+    assert 1 <= max_member_bytes <= 262144, "unsupported corpus member limit"
     report = json.loads(report_path.read_text())
     expected = report["corpus"]
     assert isinstance(expected, dict) and expected, "empty corpus report"
@@ -22,7 +23,7 @@ def verify(archive_path: Path, report_path: Path) -> dict:
             assert member.isfile() and member.name.startswith("corpus/"), member.name
             name = member.name.removeprefix("corpus/")
             assert name and "/" not in name and name not in found, member.name
-            assert member.size <= 8192, member.name
+            assert member.size <= max_member_bytes, member.name
             stream = archive.extractfile(member)
             assert stream is not None
             found[name] = hashlib.sha256(stream.read()).hexdigest()
@@ -36,8 +37,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)
     parser.add_argument("report", type=Path)
+    parser.add_argument("--max-member-bytes", type=int, required=True,
+                        help="Target's documented maximum input size")
     args = parser.parse_args()
-    print(json.dumps(verify(args.archive, args.report), sort_keys=True))
+    print(json.dumps(verify(args.archive, args.report, args.max_member_bytes), sort_keys=True))
 
 
 if __name__ == "__main__":

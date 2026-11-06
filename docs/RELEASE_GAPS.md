@@ -28,6 +28,8 @@ A [retained native DNS SSRF packet capture replay](evidence/native-dns-ssrf-reta
 
 An [extended local MCP dispatcher fuzz campaign](policy-fuzzing.md#extended-local-mcp-dispatcher-campaign-2026-11-06) reached 2,401,059 executions over 300 seconds with retained corpus, source/runtime hashes and no crash/timeout artifact. It targets parser/session/tool validation with an empty allowlist and stub DNS; it does not reach real HTTP/DNS, cancellation timing or native clients, and it does not replace independent review.
 
+An [extended URL/schema policy fuzz campaign](policy-fuzzing.md#extended-local-url-and-schema-policy-campaign-2026-11-06) reached 2,196,838 executions over 300 seconds with 2,323 retained, verified corpus files and no crash/timeout artifact. It uses stub DNS and does not reach real resolver/socket/HTTP or native-client paths; it adds bounded mutation evidence without closing independent review.
+
 ## Quality-bar differences requiring implementation or explicit scope review
 
 | Requirement | Current implementation and evidence | What remains |

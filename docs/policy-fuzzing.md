@@ -74,7 +74,17 @@ A 300-second LLVM 21 libFuzzer campaign ran the real `handle_cancellable` MCP di
 To check the retained corpus without extracting it:
 
 ```sh
-python3 tools/verify_rpc_fuzz_archive.py tests/fixtures/rpc-fuzz/extended-local-corpus.tar.gz tests/fixtures/rpc-fuzz/extended-local-report.json
+python3 tools/verify_fuzz_archive.py tests/fixtures/rpc-fuzz/extended-local-corpus.tar.gz tests/fixtures/rpc-fuzz/extended-local-report.json --max-member-bytes 8192
 ```
 
 The target uses a stub resolver and empty allowlist. It exercises RPC parsing, session transitions and tool validation without real DNS, sockets, HTTP response parsing, queue/backpressure, cancellation timing or native clients. libFuzzer coverage feedback is not an independent protocol specification, and this campaign is not a general security proof or release approval. It says nothing about traffic sent through other tools or the four AI Scraping Defense repositories.
+
+## Extended local URL and schema policy campaign (2026-11-06)
+
+A 300-second LLVM 21 libFuzzer campaign ran the real `validate` URL/schema policy target from trusted source `e23dcc9435bf959ccd02829ddbdb8d82b61335c7`. It completed 2,196,838 executions, reached 4,847 coverage counters and 23,546 features, and added 8,521 feedback-guided units. The reported peak RSS was 38 MiB and no crash or timeout artifact was produced. The [identity and limits](../tests/fixtures/policy-fuzz/extended-local-identity.json), [full report](../tests/fixtures/policy-fuzz/extended-local-report.json), [compressed log](../tests/fixtures/policy-fuzz/extended-local-campaign.log.gz), and [2,323-file evolved corpus](../tests/fixtures/policy-fuzz/extended-local-corpus.tar.gz) are retained. Every corpus member was checked against the report.
+
+```sh
+python3 tools/verify_fuzz_archive.py tests/fixtures/policy-fuzz/extended-local-corpus.tar.gz tests/fixtures/policy-fuzz/extended-local-report.json --max-member-bytes 4096
+```
+
+This target uses a stub resolver returning an approved fixture address. It exercises URL parsing and schema invariants but does not perform real DNS, HTTP, MCP transport or native-client calls. Coverage feedback is not an independent specification, and the finite campaign is not a general SSRF proof or release approval. Results from the four AI Scraping Defense repositories must be gathered separately.
