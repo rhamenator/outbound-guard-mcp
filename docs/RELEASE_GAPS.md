@@ -26,6 +26,8 @@ A [separate old-package native-client replay](evidence/native-client-old-package
 
 A [retained native DNS SSRF packet capture replay](evidence/native-dns-ssrf-retained-pcap-2026-11-06.json) now preserves the raw fixture-namespace captures for separate Claude and Codex package 242 runs, with an independent `tshark` verifier for checksums, TCP SYN destinations, DNS destinations/names, HTTP requests and all IP destinations. The capture excludes host-client traffic and other tools; the finite fixture still does not prove general SSRF resistance.
 
+An [extended local MCP dispatcher fuzz campaign](policy-fuzzing.md#extended-local-mcp-dispatcher-campaign-2026-11-06) reached 2,401,059 executions over 300 seconds with retained corpus, source/runtime hashes and no crash/timeout artifact. It targets parser/session/tool validation with an empty allowlist and stub DNS; it does not reach real HTTP/DNS, cancellation timing or native clients, and it does not replace independent review.
+
 ## Quality-bar differences requiring implementation or explicit scope review
 
 | Requirement | Current implementation and evidence | What remains |
