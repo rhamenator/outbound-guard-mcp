@@ -24,6 +24,8 @@ A [post-upgrade native-client exfiltration replay](evidence/native-client-debian
 
 A [separate old-package native-client replay](evidence/native-client-old-package-exfil-packet-2026-11-06.json) ran Claude Code and Codex CLI explicit installed-skill calls against experimental package 205 before any upgrade, in disposable route-free Debian 12 containers. Both produced the same finite synthetic-exfiltration rules and fixture hits as the [post-upgrade package 242 replay](evidence/native-client-debian-upgrade-exfil-packet-2026-11-06.json), with no forbidden fixture-namespace TCP or exfiltration DNS query. These are separate container runs: same-container native-client behavior across an in-place upgrade and saved client configuration migration remain untested.
 
+A [retained native DNS SSRF packet capture replay](evidence/native-dns-ssrf-retained-pcap-2026-11-06.json) now preserves the raw fixture-namespace captures for separate Claude and Codex package 242 runs, with an independent `tshark` verifier for checksums, TCP SYN destinations, DNS destinations/names, HTTP requests and all IP destinations. The capture excludes host-client traffic and other tools; the finite fixture still does not prove general SSRF resistance.
+
 ## Quality-bar differences requiring implementation or explicit scope review
 
 | Requirement | Current implementation and evidence | What remains |

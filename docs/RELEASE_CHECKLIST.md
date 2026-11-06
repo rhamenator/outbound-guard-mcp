@@ -26,6 +26,8 @@ The [post-upgrade native-client exfiltration replay](evidence/native-client-debi
 
 The [old-package native-client replay](evidence/native-client-old-package-exfil-packet-2026-11-06.json) ran explicit Claude Code and Codex CLI skill calls on experimental Debian package 205 in separate clean route-free containers. Its finite synthetic-exfiltration rules and fixture hits matched the post-upgrade package 242 replay. This does not establish a same-container native-client upgrade or saved client configuration migration.
 
+The [retained native DNS SSRF packet captures](evidence/native-dns-ssrf-retained-pcap-2026-11-06.json) permit independent packet-level reinspection of two installed-package native-client runs with `tshark`. Their scope is the controlled fixture namespace, not host-client traffic or other tools.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
