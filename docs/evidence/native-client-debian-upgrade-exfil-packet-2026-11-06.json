@@ -1,0 +1,199 @@
+{
+  "clients": [
+    {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "secret_path_denial",
+        "unicode_lookalike_denial",
+        "no_exfil_dns_or_marker_echo",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "claude",
+      "client_version": "2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 512,
+        "memory_peak_bytes": 21159936,
+        "pids_peak": 8,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "exfil_dns_queried": false,
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "native_turn_completed": null,
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": 0,
+        "ip_destination_entries": 50,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 49,
+        "pcap_sha256": "529b8426dbf5b9f792e34de374a780fa5f6f8dec486f7de0136e1478eef4e3d2",
+        "raw_pcap_retained": false,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_SECRET_DETECTED",
+        "EGRESS_INVALID_URL",
+        "EGRESS_ALLOWED"
+      ],
+      "synthetic_marker_echo": false
+    },
+    {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "secret_path_denial",
+        "unicode_lookalike_denial",
+        "no_exfil_dns_or_marker_echo",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "codex",
+      "client_version": "0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 512,
+        "memory_peak_bytes": 18427904,
+        "pids_peak": 7,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "exfil_dns_queried": false,
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "native_turn_completed": true,
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": 0,
+        "ip_destination_entries": 51,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 50,
+        "pcap_sha256": "216f3e0b81b0ca51474b177e957d17de664e62c99880083ab2c49b3016e1ffbc",
+        "raw_pcap_retained": false,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_SECRET_DETECTED",
+        "EGRESS_INVALID_URL",
+        "EGRESS_ALLOWED"
+      ],
+      "synthetic_marker_echo": false
+    }
+  ],
+  "limitations": [
+    "No native client exercised the old package before upgrade.",
+    "Packet capture covers fixture namespace only and raw captures were not retained; summary hash and counters are retained.",
+    "Synthetic marker and finite URL shapes do not establish general exfiltration prevention.",
+    "Experimental unsigned packages are not an owner-approved exact candidate.",
+    "Traffic sent via other tools and the four AI Scraping Defense repositories are outside this evidence."
+  ],
+  "observed_at_utc": "2026-11-06T14:40:55Z",
+  "packages": {
+    "container_image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+    "new": {
+      "app_version": "0.1.0",
+      "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+      "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+      "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+    },
+    "old": {
+      "app_version": "0.1.0",
+      "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+      "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+      "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+      "version": "0.1.0~candidate.205+gba1583cd6319"
+    },
+    "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+  },
+  "result": "passed",
+  "scope": "Post-upgrade native-client explicit skill and guarded_fetch calls in separate disposable Debian 12 amd64 containers joined to route-free controlled DNS/HTTP fixtures. Old package received direct MCP stdio smoke only. Fixture namespace packet capture excludes host-client traffic.",
+  "tools": {
+    "Claude Code": "2.1.319",
+    "Codex CLI": "0.151.0",
+    "Docker": "28.3.3",
+    "Python": "3.14.4",
+    "tcpdump": "4.99.6"
+  }
+}

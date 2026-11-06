@@ -20,6 +20,8 @@ Supplemental installer review at main `0b74f2bfb74ae4341bc2435df613283f3679932b`
 
 A [changed-binary operator-policy upgrade replay](evidence/debian-upgrade-operator-policy-2026-11-06.json) now checks explicit `OUTBOUND_GUARD_ALLOWED_HOSTS` behavior before and after experimental Debian package 205→242 upgrade in two disposable network-disabled containers. The same allowed host reaches DNS failure, an unlisted host is denied before DNS, and both redacted audits match their structured decisions. This does not test a persisted user configuration migration, old-package native-client calls, or an exact official candidate.
 
+A [post-upgrade native-client exfiltration replay](evidence/native-client-debian-upgrade-exfil-packet-2026-11-06.json) installed changed-binary experimental Debian packages 205→242 in separate route-free Debian 12 containers for Claude Code and Codex CLI. Both explicit installed-skill workflows denied loopback, a synthetic secret-shaped path, and a Unicode lookalike URL, then allowed controlled GET/HEAD recovery. Fixture-namespace packet captures saw only approved HTTP TCP destinations and local fixture DNS, with no exfiltration DNS query or marker echo; removal and residue checks passed. This finite synthetic test did not exercise the old package through a native client before upgrade, capture host-client traffic, test traffic through other tools, or qualify an official candidate.
+
 ## Quality-bar differences requiring implementation or explicit scope review
 
 | Requirement | Current implementation and evidence | What remains |
