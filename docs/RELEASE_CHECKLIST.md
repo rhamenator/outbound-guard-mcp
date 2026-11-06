@@ -98,6 +98,8 @@ A failed check or missing evidence keeps the gate open. Rebuild/retest changed a
 
 The user's adversarial-testing requirement separately applies to `ai-scraping-defense`, `ai-scraping-defense-rust`, `ai-scraping-defense-iis` and `ai-scraping-defense-mcp`. Reuse safe methodology and fixtures, but record each repository's commit, exercised interfaces, actual results and limitations separately. Outbound Guard evidence does not certify those projects, Request Guard or Runtime Guard.
 
+The [independent adversarial gate ledger](CROSS_REPOSITORY_ADVERSARIAL_GATE.md) records the four requested repositories, the `ai-scraping-defense-mcp` to `request-guard-mcp` repository rename, and the evidence still to verify on each repository's own build and callers. Its local checkout snapshots are not release-candidate evidence.
+
 [Priority cancellation and overload](cancellation-priority.md) now have both-era socket/audit/recovery regressions. Independent review and final-candidate client matrix still apply; do not equate fixing server-side admission with clients sending cancellation notifications.
 
 The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. This historical mismatch was followed by a matching pinned-native pair in PR #79 and the continuous independent-rebuild gate in PR #80. Require a matching report for the exact current candidate.
