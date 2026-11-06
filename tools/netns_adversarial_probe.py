@@ -1537,11 +1537,55 @@ def test_sdk_overload(binary):
     before_hits = len(HTTP.hits)
     env = os.environ.copy()
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
-    process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"],
-                                os.path.join(sdk_dir, "overload_modern.mjs"), binary],
-                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True, env=env)
+    package_path = os.environ.get("OUTBOUND_GUARD_TEST_SDK_PACKAGE")
+    container = None
+    wrapper_dir = None
+    if package_path:
+        from debian_upgrade_probe import package_info
+        from package_candidate import BUILDER_IMAGE
+        digest = os.environ["OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256"]
+        package = Path(package_path).resolve(strict=True)
+        info = package_info(package, digest)
+        namespace = os.environ["OUTBOUND_GUARD_TEST_NETNS"]
+        assert re.fullmatch(r"outbound-guard-probe-\d+", namespace), namespace
+        container = f"outbound-sdk-{os.getpid()}"
+        wrapper_dir = tempfile.TemporaryDirectory(prefix="outbound-sdk-wrapper-")
+        wrapper = Path(wrapper_dir.name) / "server.sh"
+        wrapper.write_text("#!/bin/sh\nexec docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test "
+                           + container + " nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp\n")
+        wrapper.chmod(0o700)
+        binary = str(wrapper)
+        try:
+            subprocess.run(["docker", "run", "-d", "--rm", "--pull", "never", "--network", "none",
+                            "--dns", "127.0.0.1",
+                            "--cap-add", "SYS_ADMIN", "--security-opt", "no-new-privileges",
+                            "--memory", "128m", "--memory-swap", "128m", "--pids-limit", "64",
+                            "--mount", f"type=bind,src=/run/netns/{namespace},dst=/run/fixture-netns,readonly",
+                            "--mount", f"type=bind,src={package},dst=/candidate.deb,readonly",
+                            "--name", container, BUILDER_IMAGE, "sleep", "infinity"],
+                           check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["docker", "exec", container, "sh", "-ec",
+                            "grep -q '^VERSION_ID=\"12\"$' /etc/os-release; "
+                            "test \"$(dpkg --print-architecture)\" = amd64"], check=True)
+            subprocess.run(["docker", "exec", container, "dpkg", "-i", "/candidate.deb"],
+                           check=True, stdout=subprocess.DEVNULL)
+            installed = subprocess.check_output(["docker", "exec", container, "sha256sum",
+                                                 "/usr/bin/outbound-guard-mcp"], text=True).split()[0]
+            assert installed == info["binary_sha256"], (installed, info["binary_sha256"])
+            version = subprocess.check_output(["docker", "exec", container, "dpkg-query",
+                                               "-W", "-f=${Version}", "outbound-guard-mcp"], text=True)
+            assert version == info["version"], (version, info["version"])
+        except Exception:
+            subprocess.run(["docker", "stop", "-t", "2", container],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            wrapper_dir.cleanup()
+            raise
+    process = None
     try:
+        process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"],
+                                    os.path.join(sdk_dir, "overload_modern.mjs"), binary],
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, env=env)
         assert select.select([process.stdout], [], [], 8)[0], "SDK overload startup timed out"
         assert process.stdout.readline().strip() == "FETCH_STARTED"
         assert HTTP.cancel_started.wait(4), "SDK overload fetch did not reach fixture"
@@ -1554,6 +1598,21 @@ def test_sdk_overload(binary):
         assert elapsed < 12 and HTTP.cancel_closed.wait(4)
         assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
         assert process.poll() is None
+        if container:
+            measurements = subprocess.check_output(["docker", "exec", container, "sh", "-ec",
+                "pid=$(pidof outbound-guard-mcp); "
+                "awk '/^VmHWM:/ {print $2}' /proc/$pid/status; "
+                "cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.peak /sys/fs/cgroup/pids.peak; "
+                "cat /sys/fs/cgroup/memory.events"], text=True).splitlines()
+            vm_hwm, memory_max, memory_peak, pids_peak = map(int, measurements[:4])
+            events = dict(line.split() for line in measurements[4:])
+            assert memory_max == 128 * 1024 * 1024 and memory_peak < memory_max
+            assert vm_hwm < 96 * 1024 and 0 < pids_peak <= 64
+            assert events["oom"] == "0" and events["oom_kill"] == "0"
+            print("SDK_INSTALLED_RESOURCE=" + json.dumps({"package_sha256": digest,
+                "installed_binary_sha256": installed, "server_vm_hwm_kib": vm_hwm,
+                "container_memory_peak_bytes": memory_peak, "container_pids_peak": pids_peak,
+                "container_oom_events": int(events["oom"])}))
         process.stdin.write("finish\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
@@ -1562,9 +1621,25 @@ def test_sdk_overload(binary):
               f"cancellation, socket closure and guarded recovery ({elapsed:.2f}s)")
         return 12
     finally:
-        if process.poll() is None:
+        if process is not None and process.poll() is None:
             process.kill()
             process.wait()
+        if container:
+            try:
+                subprocess.run(["docker", "exec", container, "dpkg", "-r", "outbound-guard-mcp"],
+                               check=True, stdout=subprocess.DEVNULL)
+                subprocess.run(["docker", "exec", container, "sh", "-ec",
+                                "test ! -e /usr/bin/outbound-guard-mcp; "
+                                "test ! -d /usr/share/doc/outbound-guard-mcp; "
+                                "test ! -e /etc/outbound-guard-mcp; "
+                                "! dpkg-query -W outbound-guard-mcp >/dev/null 2>&1"], check=True)
+            finally:
+                subprocess.run(["docker", "stop", "-t", "2", container],
+                               check=True, stdout=subprocess.DEVNULL)
+                assert subprocess.run(["docker", "container", "inspect", container],
+                                      stdout=subprocess.DEVNULL,
+                                      stderr=subprocess.DEVNULL).returncode != 0
+                wrapper_dir.cleanup()
 
 
 def test_repeated_cancellation(binary):

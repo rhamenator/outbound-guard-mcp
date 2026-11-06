@@ -1,0 +1,37 @@
+{
+  "observed_utc": "2026-11-06T02:41:46Z",
+  "scope": "Official MCP SDK 2.3.1 on the Ubuntu host drove an installed, unsigned experimental Debian 12 amd64 package inside a disposable network-disabled container joined to a route-free HTTP/DNS fixture namespace. This is not an official release candidate or a Claude/Codex/Cursor UI run.",
+  "source_revision": "4082366d4910b7a5c4d48791b88a4cc3c043671c",
+  "artifact_origin": "trusted-main CI run 42146299288, experimental-candidate-linux-x86_64 artifact",
+  "package_file": "outbound-guard-mcp_0.1.0~candidate.232+g4082366d4910_amd64.deb",
+  "package_sha256": "a7faae0298cae930dcc1a62c7f1b807d6b023e26991a99bb178a0111fb257b3f",
+  "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+  "sdk_lock_sha256": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4",
+  "fixture": {
+    "network": "Docker --network none; server entered a disposable namespace with no external route, whose allowed.test address 11.0.0.1 is on its loopback interface",
+    "client_sequence": "held /cancel-drip guarded GET; eight 60000-byte tools/list requests; ninth marked guarded call; AbortSignal cancellation; audit read; approved /plain recovery GET",
+    "assertions": [
+      "verified package checksum, provenance-derived executable hash, Debian 12 amd64 and dpkg version before launch",
+      "eight list responses and MCP_INPUT_BUSY on the ninth call",
+      "held fetch audited EGRESS_CANCELLED; fixture observed closed socket while client and server remained live",
+      "fixture HTTP hits exactly /cancel-drip and /plain; marked busy URL was not fetched",
+      "same installed server process returned EGRESS_ALLOWED and fixture-ok after overload",
+      "package removed, installed files absent and disposable container and namespace deleted"
+    ]
+  },
+  "resource_observation": {
+    "hard_container_memory_bytes": 134217728,
+    "container_memory_peak_bytes": 14585856,
+    "hard_container_pids": 64,
+    "container_pids_peak": 10,
+    "container_oom_events": 0,
+    "server_vm_hwm_kib": 4632,
+    "scope": "Container high-water marks include package setup and helper processes; VmHWM is the live installed server's kernel high-water RSS. No file-descriptor peak was sampled during the short burst."
+  },
+  "full_namespace_suite_decisions": 2259,
+  "suite_log": "installed-sdk-overload-2026-11-06.log",
+  "suite_log_sha256": "85ed71ae470a060cc482ac7d2ff61c114801828a9ece7e3f99ffa4e0053188c6",
+  "reproduce": "After checksum-verifying the trusted-main package: OUTBOUND_GUARD_TEST_SDK_DIR=\"$PWD/tools/mcp-sdk-probe\" OUTBOUND_GUARD_TEST_SDK_PACKAGE=NEW_DEB OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256=NEW_DEB_SHA256 bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "fixture_correction": "The first package attempt timed out before the HTTP fixture because the network-disabled container used its default resolver. The harness now pins Docker DNS to the namespace fixture at 127.0.0.1. The corrected final replay passed; this was a harness setup failure, not evidence of a product denial.",
+  "limitations": "One finite SDK-generated burst, not arbitrary concurrency, sustained load or traffic sent via other tools. The server executable is installed from a verified package, while the SDK client runs on the host and enters the fixture only through the server's stdio connection. Package upgrade was not exercised in this replay; separate package upgrade evidence exists. No Claude/Codex/Cursor-generated saturation, automatic skill triggering, FD peak, exact official-candidate qualification, owner self-review or residual-risk acceptance is claimed. Independent human review has not been performed."
+}

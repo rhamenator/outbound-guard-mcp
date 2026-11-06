@@ -104,6 +104,8 @@ The [independent adversarial gate ledger](CROSS_REPOSITORY_ADVERSARIAL_GATE.md) 
 
 An [official SDK generated overload replay](evidence/official-sdk-overload-2026-11-06.json) sent its own bounded queue-pressure frames through the modern stdio transport in a route-free fixture and observed busy denial, cancellation, socket closure and recovery. This is local debug-binary evidence; package-installed native Claude/Codex saturation remains bridge-generated, and exact-candidate resource bounds remain open.
 
+The [installed Debian package replay](evidence/installed-sdk-overload-2026-11-06.json) repeats SDK-generated queue pressure against a checksum-verified installed binary under 128 MiB memory and 64 PID container limits, then verifies removal and residue. It does not establish that Claude/Codex/Cursor generate this load, a file-descriptor peak, arbitrary concurrency or the exact official-candidate gate.
+
 The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. This historical mismatch was followed by a matching pinned-native pair in PR #79 and the continuous independent-rebuild gate in PR #80. Require a matching report for the exact current candidate.
 
 Independent executable reproducibility is now a [continuous CI gate](candidate-packaging.md#continuous-independent-rebuild-gate): a clean second runner rebuilds and adversarially tests the candidate before comparing it with the primary artifact. This is not signing, physical-host attestation or owner release acceptance; retain the report for the exact release candidate.
