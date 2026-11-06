@@ -1717,6 +1717,22 @@ def test_sdk_overload(binary):
         assert DNS.a_names[a_before:] == ["allowed.test", "budget-failure.test"]
         assert DNS.aaaa_names[aaaa_before:] == ["allowed.test", "budget-failure.test"]
         assert HTTP.hits[hits_before:] == ["/plain"] and process.poll() is None
+        if container:
+            monitor = ("pid=$(pidof outbound-guard-mcp); max_fd=0; samples=0; "
+                       "touch /tmp/sdk-hour-fd-monitor.ready; "
+                       "while [ ! -e /tmp/sdk-hour-fd-monitor.stop ]; do "
+                       "fd=$(ls -1 /proc/$pid/fd | wc -l); "
+                       "[ \"$fd\" -le \"$max_fd\" ] || max_fd=$fd; "
+                       "samples=$((samples + 1)); sleep 0.005; done; "
+                       "printf '%s %s\\n' \"$max_fd\" \"$samples\" > /tmp/sdk-hour-fd-monitor.summary")
+            subprocess.run(["docker", "exec", "-d", container, "sh", "-ec", monitor], check=True)
+            for _ in range(20):
+                if subprocess.run(["docker", "exec", container, "test", "-e",
+                                   "/tmp/sdk-hour-fd-monitor.ready"], stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL).returncode == 0:
+                    break
+            else:
+                raise AssertionError("installed server hour-budget FD monitor did not start")
         a_before, aaaa_before, hits_before = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
         process.stdin.write("hourfill\n")
         process.stdin.flush()
@@ -1733,6 +1749,34 @@ def test_sdk_overload(binary):
         assert select.select([process.stdout], [], [], 8)[0], "SDK process-hour denial timed out"
         assert process.stdout.readline().strip() == "SDK_HOUR_BUDGET_DENIED"
         assert DNS.queries == dns_before and len(HTTP.hits) == hits_before
+        if container:
+            subprocess.run(["docker", "exec", container, "touch", "/tmp/sdk-hour-fd-monitor.stop"], check=True)
+            for _ in range(20):
+                summary = subprocess.run(["docker", "exec", container, "cat",
+                                          "/tmp/sdk-hour-fd-monitor.summary"], capture_output=True, text=True)
+                if summary.returncode == 0:
+                    break
+            else:
+                raise AssertionError("installed server hour-budget FD monitor did not finish")
+            max_fd, fd_samples = map(int, summary.stdout.split())
+            measurements = subprocess.check_output(["docker", "exec", container, "sh", "-ec",
+                "pid=$(pidof outbound-guard-mcp); "
+                "ls -1 /proc/$pid/fd | wc -l; "
+                "awk '/^VmHWM:/ {print $2}' /proc/$pid/status; "
+                "cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.peak /sys/fs/cgroup/pids.peak; "
+                "cat /sys/fs/cgroup/memory.events"], text=True).splitlines()
+            current_fd, vm_hwm, memory_max, memory_peak, pids_peak = map(int, measurements[:5])
+            events = dict(line.split() for line in measurements[5:])
+            assert 3 <= max_fd <= 64 and fd_samples > 0 and 3 <= current_fd <= 64, (max_fd, fd_samples, current_fd)
+            assert memory_max == 128 * 1024 * 1024 and memory_peak < memory_max
+            assert vm_hwm < 96 * 1024 and 0 < pids_peak <= 64
+            assert events["oom"] == "0" and events["oom_kill"] == "0"
+            print("SDK_HOUR_RESOURCE=" + json.dumps({"package_sha256": digest,
+                "installed_binary_sha256": installed, "server_vm_hwm_kib": vm_hwm,
+                "server_fd_soft_limit": 64, "max_sampled_server_fd": max_fd,
+                "current_server_fd": current_fd, "fd_samples": fd_samples,
+                "fd_sample_sleep_ms": 5, "container_memory_peak_bytes": memory_peak,
+                "container_pids_peak": pids_peak, "container_oom_events": int(events["oom"])}))
         process.stdin.write("finish\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
