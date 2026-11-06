@@ -1,0 +1,51 @@
+{
+  "observed_utc": "2026-11-06T04:46:46Z",
+  "scope": "Two finite repeats of twelve consecutive official MCP SDK 2.3.1 client-generated overload, cancellation and recovery cycles against one checksum-verified unsigned experimental Debian 12 amd64 package installed in a disposable route-free fixture container. The server used a 64-FD soft limit, 128 MiB memory limit and 64-PID cap.",
+  "tested_package_source": "4082366d4910b7a5c4d48791b88a4cc3c043671c",
+  "test_source_base": "e38561d81633326775b48359c96eee09065ba8fc",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "0f47ff2b583436e39941eb9983f1e630db5a13b1923ed4597993a912dab6bbc9",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "f55ca8197727b72c28bf7818f747b7d92906db1865c6b9ee87c91cefa370bac9",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-repeat-overload-2026-11-06-run1.log",
+      "log_sha256": "27d36c230a7bd40c3a18ef4056356d48ada48634a82c4cae6300193f82d5f434",
+      "cycles": 12,
+      "elapsed_seconds": 0.44,
+      "full_namespace_suite_decisions": 2391,
+      "package_sha256": "a7faae0298cae930dcc1a62c7f1b807d6b023e26991a99bb178a0111fb257b3f",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 4928,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 72,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 18812928,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    },
+    {
+      "log": "installed-sdk-repeat-overload-2026-11-06-run2.log",
+      "log_sha256": "ea1198e3130d1101e3c4e30baa807f050370b505b9627592e65c7834bf2181cb",
+      "cycles": 12,
+      "elapsed_seconds": 0.44,
+      "full_namespace_suite_decisions": 2391,
+      "package_sha256": "a7faae0298cae930dcc1a62c7f1b807d6b023e26991a99bb178a0111fb257b3f",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 4696,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 71,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 18079744,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    }
+  ],
+  "checks": "Each run required all 12 held fetches to reach the controlled HTTP fixture; each 8-request SDK tools/list burst completed; each ninth marked call returned MCP_INPUT_BUSY with no marked HTTP hit; all 12 AbortSignal cancellations closed fixture sockets; audit events alternated EGRESS_CANCELLED and EGRESS_ALLOWED; all 12 approved GET recoveries returned fixture-ok in one installed server process; package install/hash/version, removal/residue, and no remaining container/namespace passed.",
+  "sampling": "In-container /proc server FD sampling requested 5 ms intervals during all 12 cycles; reported max is a sampled lower bound on transient peak. VmHWM is process-specific; container memory/PID high-water marks include helpers.",
+  "limitations": "Finite single-client SDK session and one Debian artifact only. No sustained or arbitrary concurrency, other platform, Claude/Codex/Cursor-generated overload, traffic through other tools, exact official candidate, owner residual-risk acceptance or independent human review is claimed. The four AI Scraping Defense repositories require separate evidence. Initial development runs exposed a test-harness monitor timing error and incomplete expected audit sequence; a CI-only finish-handshake race was then found and fixed. All three harness errors were corrected before these two passing repeats."
+}
