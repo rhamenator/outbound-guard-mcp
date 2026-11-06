@@ -1526,6 +1526,47 @@ def test_sdk_cancellation(binary, modern=False):
             process.wait()
 
 
+def test_sdk_overload(binary):
+    """A real SDK transport, rather than the fixture bridge, generates pressure."""
+    sdk_dir = os.environ.get("OUTBOUND_GUARD_TEST_SDK_DIR")
+    if not sdk_dir:
+        print("official SDK overload: not requested (set OUTBOUND_GUARD_TEST_SDK_DIR)")
+        return 0
+    HTTP.cancel_started.clear()
+    HTTP.cancel_closed.clear()
+    before_hits = len(HTTP.hits)
+    env = os.environ.copy()
+    env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
+    process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"],
+                                os.path.join(sdk_dir, "overload_modern.mjs"), binary],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True, env=env)
+    try:
+        assert select.select([process.stdout], [], [], 8)[0], "SDK overload startup timed out"
+        assert process.stdout.readline().strip() == "FETCH_STARTED"
+        assert HTTP.cancel_started.wait(4), "SDK overload fetch did not reach fixture"
+        started = time.monotonic()
+        process.stdin.write("flood\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 12)[0], "SDK overload timed out"
+        assert process.stdout.readline().strip() == "SDK_OVERLOAD_RECOVERED"
+        elapsed = time.monotonic() - started
+        assert elapsed < 12 and HTTP.cancel_closed.wait(4)
+        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
+        assert process.poll() is None
+        process.stdin.write("finish\n")
+        process.stdin.flush()
+        stdout, stderr = process.communicate(timeout=8)
+        assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
+        print(f"official SDK 2.3.1 overload: client-originated bounded busy denial, "
+              f"cancellation, socket closure and guarded recovery ({elapsed:.2f}s)")
+        return 12
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+
+
 def test_repeated_cancellation(binary):
     wrapper = ('import os,resource,sys; resource.setrlimit(resource.RLIMIT_NOFILE,(64,64)); '
                'os.execv(sys.argv[1],[sys.argv[1]])')
@@ -2191,6 +2232,7 @@ def main(binary, cancellation_probe):
         test_saturated_cancellation(binary)
         test_input_overload(binary)
         sdk_cases = test_sdk_cancellation(binary) + test_sdk_cancellation(binary, modern=True)
+        sdk_cases += test_sdk_overload(binary)
         silent_cases = test_silent_transport_cancellation(binary)
         repeated_cases = test_repeated_cancellation(binary)
         descriptor_cases = test_descriptor_exhaustion(binary)

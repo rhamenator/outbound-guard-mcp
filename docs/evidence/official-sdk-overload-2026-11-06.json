@@ -1,0 +1,28 @@
+{
+  "observed_utc": "2026-11-06T01:39:12Z",
+  "scope": "Pinned official MCP client SDK 2.3.1 modern stdio transport generates overload requests against a local debug server in a route-free Linux namespace with controlled HTTP/DNS fixtures. This is not a package-installed or official-candidate test.",
+  "source_base_before_test_edits": "a8b360f14e584e7866f8942c31439d983604c31e",
+  "server_binary_sha256": "8c4e6922ebdf45f823acf2eac7345838c62b856e878e7704406fb9e655234872",
+  "sdk_lock_sha256": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4",
+  "sdk_client_probe_sha256": "d6653880f03a094c3e5d26ee1d41509cd4ee60f06d7a6b986cc729a3aaec370a",
+  "node_version": "v22.20.0",
+  "reproduce": "npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund && OUTBOUND_GUARD_TEST_SDK_DIR=\"$PWD/tools/mcp-sdk-probe\" bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "fixture": {
+    "network": "disposable namespace, no external route; allowed.test resolves to 11.0.0.1 on namespace loopback",
+    "client_generated_sequence": "held /cancel-drip GET; eight 60000-byte tools/list requests; ninth marked guarded_fetch; SDK AbortSignal cancellation; audit read; approved /plain GET",
+    "expected_and_observed": [
+      "eight admitted tools/list results",
+      "ninth request rejected with protocol code -32000 and MCP_INPUT_BUSY",
+      "held fetch cancelled and EGRESS_CANCELLED audited",
+      "cancelled fixture socket closed while client remained live",
+      "HTTP hits exactly /cancel-drip and /plain; no marked busy URL hit",
+      "same-process recovery GET returned EGRESS_ALLOWED and fixture-ok"
+    ]
+  },
+  "observed_overload_elapsed_seconds_rounded": 0.04,
+  "full_suite_result": "2259 MCP decisions reported by the run; all assertions passed",
+  "full_suite_log": "official-sdk-overload-2026-11-06.log",
+  "full_suite_log_sha256": "8d7e6f3746918284bc2064d9854225a5daa511f4ef19239ed247c27d011d0109",
+  "cleanup": "Probe wrapper removed its namespace and resolver directory; no outbound-guard-probe namespace remained after exit.",
+  "limitations": "One finite client-originated burst with an SDK control API, not a desktop or terminal UI. This does not show Claude Code, Codex or Cursor generating these overload frames; the package-installed native-client saturation fixture still uses a bridge. No resource peak was sampled during the 0.05-second burst, no arbitrary concurrency or traffic from other tools is covered, and this is not exact official-candidate qualification. Owner self-review and residual-risk acceptance remain open; no independent human review is claimed."
+}
