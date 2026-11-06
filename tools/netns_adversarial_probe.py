@@ -1629,6 +1629,18 @@ def test_sdk_overload(binary):
         assert elapsed < cycles * 12
         assert select.select([process.stdout], [], [], 8)[0], "SDK final audit timed out"
         assert process.stdout.readline().strip() == "SDK_OVERLOAD_AUDIT_DONE"
+        process.stdin.write("budget\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 12)[0], "SDK budget fill timed out"
+        assert process.stdout.readline().strip() == "SDK_BUDGET_FILLED"
+        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"] * cycles + ["/plain"] * 36
+        dns_before, hits_before = DNS.queries, len(HTTP.hits)
+        process.stdin.write("deny\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 8)[0], "SDK budget denial timed out"
+        assert process.stdout.readline().strip() == "SDK_RATE_BUDGET_DENIED"
+        assert DNS.queries == dns_before and len(HTTP.hits) == hits_before
+        assert process.poll() is None
         if container:
             subprocess.run(["docker", "exec", container, "touch", "/tmp/sdk-fd-monitor.stop"], check=True)
             for _ in range(20):
@@ -1663,8 +1675,9 @@ def test_sdk_overload(binary):
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
         print(f"official SDK 2.3.1 overload: {cycles} client-originated bounded busy denials, "
-              f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s)")
-        return 12 * cycles
+              f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s); "
+              "60 spent host slots followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP")
+        return 12 * cycles + 37
     finally:
         if process is not None and process.poll() is None:
             process.kill()
