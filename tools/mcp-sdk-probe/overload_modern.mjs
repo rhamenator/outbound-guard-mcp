@@ -9,7 +9,7 @@ const input = createInterface({ input: process.stdin });
 const client = new Client({ name: 'outbound-guard-overload-probe', version: '1' },
   { versionNegotiation: { mode: { pin: '2026-07-28' } } });
 const transport = new StdioClientTransport({ command: process.argv[2],
-  env: { ...process.env, OUTBOUND_GUARD_ALLOWED_HOSTS: 'allowed.test' }, stderr: 'pipe' });
+  env: { ...process.env, OUTBOUND_GUARD_ALLOWED_HOSTS: 'allowed.test,budget-failure.test' }, stderr: 'pipe' });
 let stderr = '';
 transport.stderr?.on('data', chunk => { stderr += chunk.toString(); });
 try {
@@ -83,6 +83,30 @@ try {
       .flat().concat(Array(36).fill('EGRESS_ALLOWED'), 'EGRESS_RATE_LIMIT'));
   assert.ok((await client.listTools()).tools.length > 0);
   console.log('SDK_RATE_BUDGET_DENIED');
+  assert.equal((await once(input, 'line'))[0], 'dnsbudget');
+  for (let call = 0; call < 60; call++) {
+    const result = await client.callTool({ name: 'guarded_fetch', arguments: {
+      url: 'http://budget-failure.test/plain',
+    } });
+    assert.equal(result.isError, true);
+    assert.equal(result.structuredContent.rule, 'EGRESS_DNS_FAILURE');
+    assert.equal('body_text' in result.structuredContent, false);
+  }
+  console.log('SDK_DNS_BUDGET_FILLED');
+  assert.equal((await once(input, 'line'))[0], 'dnsdeny');
+  const dnsDenied = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://budget-failure.test/SYNTHETIC_DNS_BUDGET_MARKER',
+  } });
+  assert.equal(dnsDenied.isError, true);
+  assert.equal(dnsDenied.structuredContent.rule, 'EGRESS_RATE_LIMIT');
+  assert.equal('body_text' in dnsDenied.structuredContent, false);
+  const dnsAudit = await client.readResource({ uri: 'outbound-guard://logs/audit.json' });
+  assert.deepEqual(JSON.parse(dnsAudit.contents[0].text).events.map(event => event.rule),
+    Array.from({ length: cycles }, () => ['EGRESS_CANCELLED', 'EGRESS_ALLOWED'])
+      .flat().concat(Array(36).fill('EGRESS_ALLOWED'), 'EGRESS_RATE_LIMIT',
+        Array(60).fill('EGRESS_DNS_FAILURE'), 'EGRESS_RATE_LIMIT'));
+  assert.ok((await client.listTools()).tools.length > 0);
+  console.log('SDK_DNS_RATE_BUDGET_DENIED');
   assert.equal((await once(input, 'line'))[0], 'finish');
 } finally {
   await client.close();
