@@ -1,0 +1,62 @@
+{
+  "checked_utc": "2026-11-06T00:34:54Z",
+  "outbound_guard_results_credit_to_other_repositories": false,
+  "repositories": [
+    {
+      "adversarial_gate_status": "not_assessed_by_outbound_guard_loop",
+      "candidate_revision": null,
+      "canonical_remote": "https://github.com/rhamenator/ai-scraping-defense",
+      "interface_summary_from_readme": "Nginx/Lua and Python services",
+      "observed_local_branch": "codex/release-0013-20261103",
+      "observed_local_head": "9e179b5b75646ef9d00cf18618d36500204f4fbb",
+      "owner_release_decision_verified_here": false,
+      "repository_specific_evidence_verified_here": false,
+      "requested_name": "ai-scraping-defense"
+    },
+    {
+      "adversarial_gate_status": "not_assessed_by_outbound_guard_loop",
+      "candidate_revision": null,
+      "canonical_remote": "https://github.com/rhamenator/ai-scraping-defense-rust",
+      "interface_summary_from_readme": "Rust service stack",
+      "observed_local_branch": "codex/release-014-20261102",
+      "observed_local_head": "03651e735516d4fcf92d572b5e07593bdd354778",
+      "owner_release_decision_verified_here": false,
+      "repository_specific_evidence_verified_here": false,
+      "requested_name": "ai-scraping-defense-rust"
+    },
+    {
+      "adversarial_gate_status": "not_assessed_by_outbound_guard_loop",
+      "candidate_revision": null,
+      "canonical_remote": "https://github.com/rhamenator/ai-scraping-defense-iis",
+      "interface_summary_from_readme": ".NET edge gateway and services",
+      "observed_local_branch": "codex/release-105-20261102",
+      "observed_local_head": "1cc399984813b5d11d40f4c1b5d0814e942cde10",
+      "owner_release_decision_verified_here": false,
+      "repository_specific_evidence_verified_here": false,
+      "requested_name": "ai-scraping-defense-iis"
+    },
+    {
+      "adversarial_gate_status": "not_assessed_by_outbound_guard_loop",
+      "candidate_revision": null,
+      "canonical_remote": "https://github.com/rhamenator/request-guard-mcp",
+      "interface_summary_from_readme": "inbound MCP classifier; old requested name redirects to current canonical repository",
+      "observed_local_branch": "copilot/create-rust-mcp-server",
+      "observed_local_head": "89128f7632bc71fe7bb1884f58f4e993d8201a3c",
+      "owner_release_decision_verified_here": false,
+      "repository_specific_evidence_verified_here": false,
+      "requested_name": "ai-scraping-defense-mcp"
+    }
+  ],
+  "required_categories": [
+    "SSRF",
+    "DNS rebinding",
+    "exfiltration",
+    "redirects",
+    "slow drip",
+    "decompression bombs",
+    "malformed protocol",
+    "resource exhaustion",
+    "fail-closed behavior"
+  ],
+  "scope": "Read-only local checkout identity and README inspection; no adversarial tests of these repositories performed by this loop. Local branch heads are not release candidates."
+}
