@@ -106,6 +106,8 @@ An [official SDK generated overload replay](evidence/official-sdk-overload-2026-
 
 The [installed Debian package replay](evidence/installed-sdk-overload-2026-11-06.json) repeats SDK-generated queue pressure against a checksum-verified installed binary under 128 MiB memory and 64 PID container limits, then verifies removal and residue. It does not establish that Claude/Codex/Cursor generate this load, a file-descriptor peak, arbitrary concurrency or the exact official-candidate gate.
 
+A [two-run FD sampling follow-up](evidence/installed-sdk-fd-2026-11-06.json) observed at most seven installed-server descriptors in 26 samples per run under a 64-descriptor soft limit. The sample ceiling is not a proof of the transient peak or arbitrary load safety.
+
 The [PR #75 independent artifact comparison](candidate-packaging.md#first-cross-host-observation-pr-75) found identical source bytes but different recorded compilers/executables. This historical mismatch was followed by a matching pinned-native pair in PR #79 and the continuous independent-rebuild gate in PR #80. Require a matching report for the exact current candidate.
 
 Independent executable reproducibility is now a [continuous CI gate](candidate-packaging.md#continuous-independent-rebuild-gate): a clean second runner rebuilds and adversarially tests the candidate before comparing it with the primary artifact. This is not signing, physical-host attestation or owner release acceptance; retain the report for the exact release candidate.

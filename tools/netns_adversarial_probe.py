@@ -1552,7 +1552,7 @@ def test_sdk_overload(binary):
         wrapper_dir = tempfile.TemporaryDirectory(prefix="outbound-sdk-wrapper-")
         wrapper = Path(wrapper_dir.name) / "server.sh"
         wrapper.write_text("#!/bin/sh\nexec docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test "
-                           + container + " nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp\n")
+                           + container + " sh -ec 'ulimit -n 64; exec nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp'\n")
         wrapper.chmod(0o700)
         binary = str(wrapper)
         try:
@@ -1589,6 +1589,22 @@ def test_sdk_overload(binary):
         assert select.select([process.stdout], [], [], 8)[0], "SDK overload startup timed out"
         assert process.stdout.readline().strip() == "FETCH_STARTED"
         assert HTTP.cancel_started.wait(4), "SDK overload fetch did not reach fixture"
+        if container:
+            monitor = ("pid=$(pidof outbound-guard-mcp); max_fd=0; samples=0; "
+                       "touch /tmp/sdk-fd-monitor.ready; "
+                       "while [ ! -e /tmp/sdk-fd-monitor.stop ]; do "
+                       "fd=$(ls -1 /proc/$pid/fd | wc -l); "
+                       "[ \"$fd\" -le \"$max_fd\" ] || max_fd=$fd; "
+                       "samples=$((samples + 1)); sleep 0.005; done; "
+                       "printf '%s %s\\n' \"$max_fd\" \"$samples\" > /tmp/sdk-fd-monitor.summary")
+            subprocess.run(["docker", "exec", "-d", container, "sh", "-ec", monitor], check=True)
+            for _ in range(20):
+                if subprocess.run(["docker", "exec", container, "test", "-e",
+                                   "/tmp/sdk-fd-monitor.ready"], stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL).returncode == 0:
+                    break
+            else:
+                raise AssertionError("installed server FD monitor did not start")
         started = time.monotonic()
         process.stdin.write("flood\n")
         process.stdin.flush()
@@ -1599,18 +1615,32 @@ def test_sdk_overload(binary):
         assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
         assert process.poll() is None
         if container:
+            subprocess.run(["docker", "exec", container, "touch", "/tmp/sdk-fd-monitor.stop"], check=True)
+            for _ in range(20):
+                summary = subprocess.run(["docker", "exec", container, "cat",
+                                          "/tmp/sdk-fd-monitor.summary"], capture_output=True, text=True)
+                if summary.returncode == 0:
+                    break
+            else:
+                raise AssertionError("installed server FD monitor did not finish")
+            max_fd, fd_samples = map(int, summary.stdout.split())
+            assert 3 < max_fd <= 64 and fd_samples > 0, (max_fd, fd_samples)
             measurements = subprocess.check_output(["docker", "exec", container, "sh", "-ec",
                 "pid=$(pidof outbound-guard-mcp); "
+                "awk '/^Max open files/ {print $4}' /proc/$pid/limits; "
                 "awk '/^VmHWM:/ {print $2}' /proc/$pid/status; "
                 "cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.peak /sys/fs/cgroup/pids.peak; "
                 "cat /sys/fs/cgroup/memory.events"], text=True).splitlines()
-            vm_hwm, memory_max, memory_peak, pids_peak = map(int, measurements[:4])
-            events = dict(line.split() for line in measurements[4:])
+            fd_limit, vm_hwm, memory_max, memory_peak, pids_peak = map(int, measurements[:5])
+            events = dict(line.split() for line in measurements[5:])
+            assert fd_limit == 64
             assert memory_max == 128 * 1024 * 1024 and memory_peak < memory_max
             assert vm_hwm < 96 * 1024 and 0 < pids_peak <= 64
             assert events["oom"] == "0" and events["oom_kill"] == "0"
             print("SDK_INSTALLED_RESOURCE=" + json.dumps({"package_sha256": digest,
                 "installed_binary_sha256": installed, "server_vm_hwm_kib": vm_hwm,
+                "server_fd_soft_limit": fd_limit, "max_sampled_server_fd": max_fd,
+                "fd_samples": fd_samples, "fd_sample_sleep_ms": 5,
                 "container_memory_peak_bytes": memory_peak, "container_pids_peak": pids_peak,
                 "container_oom_events": int(events["oom"])}))
         process.stdin.write("finish\n")

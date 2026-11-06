@@ -1,0 +1,36 @@
+{
+  "observed_utc": "2026-11-06T03:36:06Z",
+  "scope": "Two finite repeats of official MCP SDK 2.3.1 client-generated queue pressure against a checksum-verified, unsigned experimental Debian 12 amd64 package in a route-free fixture namespace. The installed server ran with a 64-descriptor soft limit in a 128 MiB, 64 PID disposable container.",
+  "tested_package_source": "4082366d4910b7a5c4d48791b88a4cc3c043671c",
+  "tested_package_sha256": "a7faae0298cae930dcc1a62c7f1b807d6b023e26991a99bb178a0111fb257b3f",
+  "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+  "test_source_base": "00ed0b0147d5d0eaa5fa4982a08776a988f447e7",
+  "reproduce": "Set OUTBOUND_GUARD_TEST_SDK_DIR to the pinned npm-installed tools/mcp-sdk-probe directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the checksum-verified .deb, and OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its digest; run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-fd-2026-11-06-run1.log",
+      "log_sha256": "f440a0a1222851fa4a5aa446afc47214f9f4700a3762c33c4814e4678e21a42a",
+      "max_sampled_server_fd": 7,
+      "fd_samples": 26,
+      "server_vm_hwm_kib": 4724,
+      "container_memory_peak_bytes": 18522112,
+      "container_pids_peak": 14,
+      "container_oom_events": 0,
+      "full_namespace_suite_decisions": 2259
+    },
+    {
+      "log": "installed-sdk-fd-2026-11-06-run2.log",
+      "log_sha256": "4d58baec7019adb40912599194c7c64bd61bee8546c6b1f81f75faa402672f8b",
+      "max_sampled_server_fd": 7,
+      "fd_samples": 26,
+      "server_vm_hwm_kib": 4692,
+      "container_memory_peak_bytes": 16572416,
+      "container_pids_peak": 14,
+      "container_oom_events": 0,
+      "full_namespace_suite_decisions": 2259
+    }
+  ],
+  "checks": "Both runs verified package version and installed executable hash, eight admitted list results, ninth MCP_INPUT_BUSY without a marked HTTP hit, EGRESS_CANCELLED audit and closed socket, approved same-process recovery GET, package uninstall/residue, and no remaining test container or namespace.",
+  "sampling": "An in-container monitor started while the HTTP fetch was held, sampled /proc/<server-pid>/fd with a 5 ms requested sleep through the burst and recovery, and reported its maximum and count after a stop marker. The server /proc limits showed a 64-descriptor soft limit. The maximum observed value is a sampled lower bound on the actual transient peak; no exact peak or general load bound is claimed.",
+  "limitations": "A single SDK client and two short bursts on one Debian artifact; no sustained or arbitrary concurrency, other platform, Claude/Codex/Cursor-generated overload, traffic through other tools, exact official candidate, owner acceptance or independent human review is claimed. Container memory and PID high-water marks include fixture setup/helpers; the server VmHWM is process-specific. The four AI Scraping Defense repositories require separate evidence."
+}
