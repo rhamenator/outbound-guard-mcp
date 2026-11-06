@@ -1,0 +1,49 @@
+{
+  "observed_utc": "2026-11-06T07:38:48Z",
+  "scope": "Two exact-harness route-free replays of official MCP SDK 2.3.1 client-generated audit retention pressure against a checksum-verified unsigned experimental Debian 12 amd64 package built from trusted main 6730484. Each run used a fresh installation in a disposable 128 MiB, 64 PID container with the installed server under a 64-FD soft limit.",
+  "tested_package_source": "673048435ce976212bb1c78d2f9c0b6e06ce3817",
+  "tested_package_sha256": "bed1e798f589df15591dcd9b288164f92dab9f6c6e4e07552a9ef7e9d10b5f7e",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42177227874; all three files verified before testing",
+  "test_source_base": "673048435ce976212bb1c78d2f9c0b6e06ce3817",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "dcc4442b110a350e72dc23b0e4e9b6d8deab87292f141a2bf5309a70b33a463c",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "eae5941e605ed6f238ac5ec1368724deb4d1369b6533d8872baf7992bae3be0c",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-audit-retention-2026-11-06-run1.log",
+      "log_sha256": "12822377e90d710194d52128378c3f8f249c5bc4d785a06013e8c6e39c62210b",
+      "full_namespace_suite_decisions": 2669,
+      "package_sha256": "bed1e798f589df15591dcd9b288164f92dab9f6c6e4e07552a9ef7e9d10b5f7e",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 5208,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 108,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 19886080,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    },
+    {
+      "log": "installed-sdk-audit-retention-2026-11-06-run2.log",
+      "log_sha256": "c99f2d4597aa9614d41ee2d7bba4ea5be292e41a04e913578117dd6a4861abf0",
+      "full_namespace_suite_decisions": 2669,
+      "package_sha256": "bed1e798f589df15591dcd9b288164f92dab9f6c6e4e07552a9ef7e9d10b5f7e",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 5140,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 109,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 19472384,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    }
+  ],
+  "checks": "In each run the prior overload and host-budget phases produced 122 guarded audit events. The official SDK then generated 180 more EGRESS_DNS_FAILURE decisions across three allowed empty-answer fixture hostnames; each received exactly 60 A and 60 AAAA queries with no HTTP hit. The audit resource reported capacity 256 and retained exactly the newest 256 of all 302 guarded decision rules in order. Every retained event contained only correlation_id, status and rule fields, with no fixture hostname. A subsequent SDK tools/list succeeded; package hash/version/install, removal/residue and namespace/container cleanup passed.",
+  "sampling": "In-container /proc server FD monitor requested 5 ms samples during the SDK sequence. Maximum sampled FD count is a lower bound on a possibly shorter transient peak; VmHWM is server-specific, while container memory and PID high-water include helpers.",
+  "limitations": "One modern SDK client, one Debian package/OS/architecture and two finite repeats. This does not prove a general memory bound, sustained or arbitrary concurrency, all logging failure paths, other client-generated pressure, traffic through other tools, exact official candidate, owner residual-risk acceptance or independent human review. The four AI Scraping Defense repositories still require separate adversarial evidence."
+}

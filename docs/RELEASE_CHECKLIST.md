@@ -8,6 +8,8 @@ The [installed SDK host-budget replay](evidence/installed-sdk-rate-budget-2026-1
 
 The [installed SDK failed-DNS budget replay](evidence/installed-sdk-dns-failure-budget-2026-11-06.json) adds a second 60/61 boundary: failed lookups consume their hostname's rate slots, and the next SDK call is denied before DNS or HTTP. This is finite experimental Debian evidence; the release and owner gates remain open.
 
+The [installed SDK audit-retention replay](evidence/installed-sdk-audit-retention-2026-11-06.json) drives 302 guarded decisions in one process and checks that the audit resource retains only the newest 256, in order, without URLs or body text. The server remains responsive after the controlled DNS failures. General resource bounds and the exact-candidate gate remain open.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
