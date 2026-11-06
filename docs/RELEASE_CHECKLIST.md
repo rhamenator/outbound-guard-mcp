@@ -2,6 +2,8 @@
 
 Status: experimental; no official pre-1.0 release candidate or stable release approved. [Tracking issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) is the durable owner decision record. [QUALITY_BAR.md](QUALITY_BAR.md) remains authoritative; this index does not waive or narrow its criteria.
 
+The [repeated installed SDK overload replay](evidence/installed-sdk-repeat-overload-2026-11-06.json) adds twelve consecutive client-generated busy, cancellation and recovery cycles under process and container limits. This is finite experimental Debian evidence; it does not satisfy the final client, platform, adversarial or owner-acceptance gates below.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |

@@ -1532,9 +1532,8 @@ def test_sdk_overload(binary):
     if not sdk_dir:
         print("official SDK overload: not requested (set OUTBOUND_GUARD_TEST_SDK_DIR)")
         return 0
-    HTTP.cancel_started.clear()
-    HTTP.cancel_closed.clear()
     before_hits = len(HTTP.hits)
+    cycles = 12
     env = os.environ.copy()
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
     package_path = os.environ.get("OUTBOUND_GUARD_TEST_SDK_PACKAGE")
@@ -1582,6 +1581,8 @@ def test_sdk_overload(binary):
             raise
     process = None
     try:
+        HTTP.cancel_started.clear()
+        HTTP.cancel_closed.clear()
         process = subprocess.Popen([os.environ["OUTBOUND_GUARD_TEST_NODE"],
                                     os.path.join(sdk_dir, "overload_modern.mjs"), binary],
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -1606,14 +1607,28 @@ def test_sdk_overload(binary):
             else:
                 raise AssertionError("installed server FD monitor did not start")
         started = time.monotonic()
-        process.stdin.write("flood\n")
-        process.stdin.flush()
-        assert select.select([process.stdout], [], [], 12)[0], "SDK overload timed out"
-        assert process.stdout.readline().strip() == "SDK_OVERLOAD_RECOVERED"
+        for cycle in range(cycles):
+            if cycle:
+                HTTP.cancel_started.clear()
+                HTTP.cancel_closed.clear()
+                process.stdin.write("continue\n")
+                process.stdin.flush()
+                assert select.select([process.stdout], [], [], 8)[0], "SDK overload startup timed out"
+                assert process.stdout.readline().strip() == "FETCH_STARTED"
+                assert HTTP.cancel_started.wait(4), "SDK overload fetch did not reach fixture"
+            process.stdin.write("flood\n")
+            process.stdin.flush()
+            assert select.select([process.stdout], [], [], 12)[0], "SDK overload timed out"
+            response = process.stdout.readline().strip()
+            assert response == "SDK_OVERLOAD_RECOVERED", (cycle, response, process.poll(),
+                process.stderr.read() if process.poll() is not None else "")
+            assert HTTP.cancel_closed.wait(4)
+            assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"] * (cycle + 1)
+            assert process.poll() is None
         elapsed = time.monotonic() - started
-        assert elapsed < 12 and HTTP.cancel_closed.wait(4)
-        assert HTTP.hits[before_hits:] == ["/cancel-drip", "/plain"]
-        assert process.poll() is None
+        assert elapsed < cycles * 12
+        assert select.select([process.stdout], [], [], 8)[0], "SDK final audit timed out"
+        assert process.stdout.readline().strip() == "SDK_OVERLOAD_AUDIT_DONE"
         if container:
             subprocess.run(["docker", "exec", container, "touch", "/tmp/sdk-fd-monitor.stop"], check=True)
             for _ in range(20):
@@ -1647,9 +1662,9 @@ def test_sdk_overload(binary):
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
-        print(f"official SDK 2.3.1 overload: client-originated bounded busy denial, "
-              f"cancellation, socket closure and guarded recovery ({elapsed:.2f}s)")
-        return 12
+        print(f"official SDK 2.3.1 overload: {cycles} client-originated bounded busy denials, "
+              f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s)")
+        return 12 * cycles
     finally:
         if process is not None and process.poll() is None:
             process.kill()
