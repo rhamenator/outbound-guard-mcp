@@ -1,0 +1,80 @@
+{
+  "after": {
+    "client": "2.1.319 (Claude Code)",
+    "methods": [
+      "GET",
+      "GET"
+    ],
+    "rules": [
+      "EGRESS_DNS_FAILURE",
+      "EGRESS_HOST_NOT_ALLOWED"
+    ],
+    "tools": [
+      "mcp__outbound_guard__guarded_fetch",
+      "mcp__outbound_guard__guarded_fetch"
+    ],
+    "urls": [
+      "http://upgrade-allowed.test/plain",
+      "http://upgrade-blocked.test/plain"
+    ]
+  },
+  "before": {
+    "client": "2.1.319 (Claude Code)",
+    "methods": [
+      "GET",
+      "GET"
+    ],
+    "rules": [
+      "EGRESS_DNS_FAILURE",
+      "EGRESS_HOST_NOT_ALLOWED"
+    ],
+    "tools": [
+      "mcp__outbound_guard__guarded_fetch",
+      "mcp__outbound_guard__guarded_fetch"
+    ],
+    "urls": [
+      "http://upgrade-allowed.test/plain",
+      "http://upgrade-blocked.test/plain"
+    ]
+  },
+  "checks": [
+    "same_container",
+    "unchanged_saved_client_config",
+    "old_native_client_calls",
+    "in_place_package_upgrade",
+    "new_native_client_calls",
+    "remove",
+    "residue"
+  ],
+  "container_image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limits": [
+    "network-disabled server: no successful HTTP or controlled DNS fixture",
+    "host client traffic and other tools not covered",
+    "experimental unsigned packages; no official candidate approval"
+  ],
+  "new_installed": {
+    "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+    "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+  },
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+    "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+    "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+    "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+  },
+  "old_installed": {
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "old_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+    "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "platform": "Debian 12 amd64",
+  "result": "passed",
+  "saved_mcp_config_sha256": "aa0c33f13558c562d3b1b4317f6b920b166054d45d2c6a18b99e61c55b60d767"
+}
