@@ -61,6 +61,28 @@ try {
   assert.deepEqual(JSON.parse(finalAudit.contents[0].text).events.map(event => event.rule),
     Array.from({ length: cycles }, () => ['EGRESS_CANCELLED', 'EGRESS_ALLOWED']).flat());
   console.log('SDK_OVERLOAD_AUDIT_DONE');
+  assert.equal((await once(input, 'line'))[0], 'budget');
+  for (let call = 0; call < 36; call++) {
+    const result = await client.callTool({ name: 'guarded_fetch', arguments: {
+      url: 'http://allowed.test/plain',
+    } });
+    assert.equal(result.structuredContent.rule, 'EGRESS_ALLOWED');
+    assert.equal(result.structuredContent.body_text, 'fixture-ok');
+  }
+  console.log('SDK_BUDGET_FILLED');
+  assert.equal((await once(input, 'line'))[0], 'deny');
+  const denied = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://allowed.test/SYNTHETIC_RATE_MARKER',
+  } });
+  assert.equal(denied.isError, true);
+  assert.equal(denied.structuredContent.rule, 'EGRESS_RATE_LIMIT');
+  assert.equal('body_text' in denied.structuredContent, false);
+  const budgetAudit = await client.readResource({ uri: 'outbound-guard://logs/audit.json' });
+  assert.deepEqual(JSON.parse(budgetAudit.contents[0].text).events.map(event => event.rule),
+    Array.from({ length: cycles }, () => ['EGRESS_CANCELLED', 'EGRESS_ALLOWED'])
+      .flat().concat(Array(36).fill('EGRESS_ALLOWED'), 'EGRESS_RATE_LIMIT'));
+  assert.ok((await client.listTools()).tools.length > 0);
+  console.log('SDK_RATE_BUDGET_DENIED');
   assert.equal((await once(input, 'line'))[0], 'finish');
 } finally {
   await client.close();
