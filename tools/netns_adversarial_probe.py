@@ -1777,6 +1777,15 @@ def test_sdk_overload(binary):
                 "current_server_fd": current_fd, "fd_samples": fd_samples,
                 "fd_sample_sleep_ms": 5, "container_memory_peak_bytes": memory_peak,
                 "container_pids_peak": pids_peak, "container_oom_events": int(events["oom"])}))
+        process.stdin.write("concurrent\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 8)[0], "SDK concurrent audit timed out"
+        response = process.stdout.readline().strip()
+        assert response.startswith("SDK_CONCURRENT_AUDIT_DONE:"), (response, process.poll(),
+            process.stderr.read() if process.poll() is not None else "")
+        accepted, busy = map(int, response.split(":")[1:])
+        assert 0 <= accepted <= 16 and accepted + busy == 16, response
+        assert DNS.queries == dns_before and len(HTTP.hits) == hits_before
         process.stdin.write("finish\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
@@ -1786,8 +1795,9 @@ def test_sdk_overload(binary):
               "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; "
               "180 further DNS denials retained in a bounded 256-event audit ring; "
               "same-process host windows reset after 61 seconds with DNS/HTTP recovery; "
-              "1000/1001 process-hour budget blocked a fresh host before DNS/HTTP")
-        return 12 * cycles + 37 + 61 + 180 + 2 + 699
+              f"1000/1001 process-hour budget and 16 concurrent SDK submissions: {accepted} audited "
+              f"rate denials, {busy} fail-closed MCP_INPUT_BUSY rejections, serial recovery, no DNS/HTTP")
+        return 12 * cycles + 37 + 61 + 180 + 2 + 699 + accepted + 1
     finally:
         if process is not None and process.poll() is None:
             process.kill()
