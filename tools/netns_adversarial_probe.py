@@ -103,6 +103,9 @@ RECORDS.update({host: [PUBLIC_FIXTURE] for host in HOURLY_HOSTS})
 RECORDS["budget-failure.test"] = []
 AUDIT_FAILURE_HOSTS = [f"audit-failure-{index}.test" for index in range(1, 4)]
 RECORDS.update({host: [] for host in AUDIT_FAILURE_HOSTS})
+SDK_HOURLY_FAILURE_HOSTS = [f"hour-failure-{index}.test" for index in range(1, 13)]
+RECORDS.update({host: [] for host in SDK_HOURLY_FAILURE_HOSTS})
+RECORDS["hour-denied.test"] = []
 RECORDS["dns-stall.test"] = [PUBLIC_FIXTURE]
 V6_RECORDS = {
     "v6-loopback.test": ["::1"],
@@ -1552,7 +1555,10 @@ def test_sdk_overload(binary):
         container = f"outbound-sdk-{os.getpid()}"
         wrapper_dir = tempfile.TemporaryDirectory(prefix="outbound-sdk-wrapper-")
         wrapper = Path(wrapper_dir.name) / "server.sh"
-        wrapper.write_text("#!/bin/sh\nexec docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS=allowed.test,budget-failure.test,audit-failure-1.test,audit-failure-2.test,audit-failure-3.test "
+        allowed_hosts = ["allowed.test", "budget-failure.test", *AUDIT_FAILURE_HOSTS,
+                         *SDK_HOURLY_FAILURE_HOSTS, "hour-denied.test"]
+        wrapper.write_text("#!/bin/sh\nexec docker exec -i --env OUTBOUND_GUARD_ALLOWED_HOSTS="
+                           + ",".join(allowed_hosts) + " "
                            + container + " sh -ec 'ulimit -n 64; exec nsenter --net=/run/fixture-netns /usr/bin/outbound-guard-mcp'\n")
         wrapper.chmod(0o700)
         binary = str(wrapper)
@@ -1711,6 +1717,22 @@ def test_sdk_overload(binary):
         assert DNS.a_names[a_before:] == ["allowed.test", "budget-failure.test"]
         assert DNS.aaaa_names[aaaa_before:] == ["allowed.test", "budget-failure.test"]
         assert HTTP.hits[hits_before:] == ["/plain"] and process.poll() is None
+        a_before, aaaa_before, hits_before = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
+        process.stdin.write("hourfill\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 45)[0], "SDK process-hour fill timed out"
+        assert process.stdout.readline().strip() == "SDK_HOUR_BUDGET_FILLED"
+        expected_names = [host for host in SDK_HOURLY_FAILURE_HOSTS[:11] for _ in range(60)]
+        expected_names += [SDK_HOURLY_FAILURE_HOSTS[11]] * 38
+        assert DNS.a_names[a_before:] == expected_names
+        assert DNS.aaaa_names[aaaa_before:] == expected_names
+        assert len(HTTP.hits) == hits_before and process.poll() is None
+        dns_before = DNS.queries
+        process.stdin.write("hourdeny\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 8)[0], "SDK process-hour denial timed out"
+        assert process.stdout.readline().strip() == "SDK_HOUR_BUDGET_DENIED"
+        assert DNS.queries == dns_before and len(HTTP.hits) == hits_before
         process.stdin.write("finish\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
@@ -1719,8 +1741,9 @@ def test_sdk_overload(binary):
               f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s); "
               "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; "
               "180 further DNS denials retained in a bounded 256-event audit ring; "
-              "same-process host windows reset after 61 seconds with DNS/HTTP recovery")
-        return 12 * cycles + 37 + 61 + 180 + 2
+              "same-process host windows reset after 61 seconds with DNS/HTTP recovery; "
+              "1000/1001 process-hour budget blocked a fresh host before DNS/HTTP")
+        return 12 * cycles + 37 + 61 + 180 + 2 + 699
     finally:
         if process is not None and process.poll() is None:
             process.kill()

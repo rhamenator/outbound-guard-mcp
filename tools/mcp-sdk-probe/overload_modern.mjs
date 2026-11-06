@@ -6,11 +6,14 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const input = createInterface({ input: process.stdin });
+const hourlyHosts = Array.from({ length: 12 }, (_, index) => `hour-failure-${index + 1}.test`);
 const client = new Client({ name: 'outbound-guard-overload-probe', version: '1' },
   { versionNegotiation: { mode: { pin: '2026-07-28' } } });
 const transport = new StdioClientTransport({ command: process.argv[2],
   env: { ...process.env, OUTBOUND_GUARD_ALLOWED_HOSTS:
-    'allowed.test,budget-failure.test,audit-failure-1.test,audit-failure-2.test,audit-failure-3.test' }, stderr: 'pipe' });
+    ['allowed.test', 'budget-failure.test', 'audit-failure-1.test',
+      'audit-failure-2.test', 'audit-failure-3.test', ...hourlyHosts,
+      'hour-denied.test'].join(',') }, stderr: 'pipe' });
 let stderr = '';
 transport.stderr?.on('data', chunk => { stderr += chunk.toString(); });
 try {
@@ -152,6 +155,36 @@ try {
     ['EGRESS_ALLOWED', 'EGRESS_DNS_FAILURE']);
   assert.ok((await client.listTools()).tools.length > 0);
   console.log('SDK_RATE_WINDOW_RESET');
+  assert.equal((await once(input, 'line'))[0], 'hourfill');
+  for (const [index, host] of hourlyHosts.entries()) {
+    for (let call = 0; call < (index === 11 ? 38 : 60); call++) {
+      const result = await client.callTool({ name: 'guarded_fetch', arguments: {
+        url: `http://${host}/plain`,
+      } });
+      assert.equal(result.isError, true);
+      assert.equal(result.structuredContent.rule, 'EGRESS_DNS_FAILURE');
+    }
+  }
+  console.log('SDK_HOUR_BUDGET_FILLED');
+  assert.equal((await once(input, 'line'))[0], 'hourdeny');
+  const hourDenied = await client.callTool({ name: 'guarded_fetch', arguments: {
+    url: 'http://hour-denied.test/SYNTHETIC_HOUR_BUDGET_MARKER',
+  } });
+  assert.equal(hourDenied.isError, true);
+  assert.equal(hourDenied.structuredContent.rule, 'EGRESS_RATE_LIMIT');
+  assert.equal('body_text' in hourDenied.structuredContent, false);
+  const hourAudit = JSON.parse((await client.readResource({
+    uri: 'outbound-guard://logs/audit.json',
+  })).contents[0].text);
+  assert.equal(hourAudit.events.length, 256);
+  assert.deepEqual(hourAudit.events.map(event => event.rule),
+    [...Array(255).fill('EGRESS_DNS_FAILURE'), 'EGRESS_RATE_LIMIT']);
+  assert.ok(hourAudit.events.every(event =>
+    Object.keys(event).sort().join(',') === 'correlation_id,rule,status'));
+  assert.equal(JSON.stringify(hourAudit).includes('hour-failure-'), false);
+  assert.equal(JSON.stringify(hourAudit).includes('hour-denied.test'), false);
+  assert.ok((await client.listTools()).tools.length > 0);
+  console.log('SDK_HOUR_BUDGET_DENIED');
   assert.equal((await once(input, 'line'))[0], 'finish');
 } finally {
   await client.close();

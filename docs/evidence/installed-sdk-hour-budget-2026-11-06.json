@@ -1,0 +1,54 @@
+{
+  "observed_utc": "2026-11-06T09:50:18Z",
+  "scope": "One debug and two exact-harness route-free replays of official MCP SDK 2.3.1 client-generated 1000/1001 process-hour budget boundary against a checksum-verified unsigned experimental Debian 12 amd64 package from trusted main 2ce8d91. Each package run used a fresh installation in a disposable 128 MiB, 64 PID container with a 64-FD server soft limit.",
+  "tested_package_source": "2ce8d916f6db4789a3dc701b6c4dec201729d18f",
+  "tested_package_sha256": "97087886b3eae9e087530d0546810265c05f54aee0586563e657542cc905cda7",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42191803607; all three files verified before testing",
+  "test_source_base": "2ce8d916f6db4789a3dc701b6c4dec201729d18f",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "9e4f3dc743f89f03508b919f18d12866d7d58054653fd3961ffa844d59572472",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "db376c65340405a1510584ecaa0bc25690777e69f8312392a9d9c5d3563675c3",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its 64-character digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "debug_run": {
+    "log_sha256": "a6bd904c5bc6b1a875bc88f5a66c80577fb88c345db4ba18985f198836747274",
+    "full_namespace_suite_decisions": 3370
+  },
+  "runs": [
+    {
+      "log": "installed-sdk-hour-budget-2026-11-06-run1.log",
+      "log_sha256": "6fe8f8f065ccb76e73fe93dff923ae19c453c105c50b49a52b0e339483189075",
+      "full_namespace_suite_decisions": 3370,
+      "package_sha256": "97087886b3eae9e087530d0546810265c05f54aee0586563e657542cc905cda7",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 5200,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 112,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 22581248,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    },
+    {
+      "log": "installed-sdk-hour-budget-2026-11-06-run2.log",
+      "log_sha256": "171a8aecf49fcd9140ea426483bab478ab6031bae516b42671ffb29883870de9",
+      "full_namespace_suite_decisions": 3370,
+      "package_sha256": "97087886b3eae9e087530d0546810265c05f54aee0586563e657542cc905cda7",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 5160,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 109,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 19755008,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    }
+  ],
+  "checks": "The earlier SDK sequence reserved 302 calls in one process: 60 on allowed.test, 60 on budget-failure.test, 180 on three audit-failure hosts, then two after the per-host minute reset. The SDK made 698 further failed-DNS calls across twelve allowed hour-failure hosts (eleven hosts x 60, one host x 38), each with exact controlled A/AAAA queries and no HTTP, reaching 1000 reserved calls. A 1001st call to fresh allowed hour-denied.test returned EGRESS_RATE_LIMIT without DNS/HTTP. The audit resource retained exactly 256 events, ending in the rate-limit denial, with no hostname; tools/list remained responsive. Package install/hash/version, removal/residue and namespace/container cleanup passed.",
+  "local_verification": "One debug and two installed-package route-free suites each passed 3370 decisions; 47 Rust tests, 19 Python tests, cargo build --locked --bins --examples, cargo fmt/clippy, JS/Python syntax, JSON parse and diff checks passed.",
+  "sampling": "In-container /proc server FD monitor requested 5 ms samples during the initial SDK sequence, then stopped before the minute wait and hour-budget fill. Reported FD/VmHWM/container memory and PID peaks therefore do not measure the 698-call hour fill; they cannot establish its resource bounds.",
+  "limitations": "One modern SDK client, one experimental Debian package/OS/architecture, two finite package repeats. Does not establish hourly-window expiry, cross-process quota sharing, arbitrary concurrency or resource bounds, other native clients, traffic through other tools, exact official candidate, owner residual-risk acceptance or independent human review. Four AI Scraping Defense repositories still require separate adversarial evidence."
+}
