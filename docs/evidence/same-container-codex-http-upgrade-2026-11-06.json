@@ -1,0 +1,103 @@
+{
+  "after": [
+    {
+      "rule": "EGRESS_ALLOWED",
+      "status": "SAFE",
+      "url": "http://allowed.test/plain"
+    },
+    {
+      "rule": "EGRESS_FORBIDDEN_ADDRESS",
+      "status": "BLOCKED",
+      "url": "http://private.test/plain"
+    },
+    {
+      "rule": "EGRESS_HOST_NOT_ALLOWED",
+      "status": "BLOCKED",
+      "url": "http://unlisted.test/plain"
+    }
+  ],
+  "before": [
+    {
+      "rule": "EGRESS_ALLOWED",
+      "status": "SAFE",
+      "url": "http://allowed.test/plain"
+    },
+    {
+      "rule": "EGRESS_FORBIDDEN_ADDRESS",
+      "status": "BLOCKED",
+      "url": "http://private.test/plain"
+    },
+    {
+      "rule": "EGRESS_HOST_NOT_ALLOWED",
+      "status": "BLOCKED",
+      "url": "http://unlisted.test/plain"
+    }
+  ],
+  "checks": [
+    "same_container",
+    "unchanged_saved_client_config",
+    "old_native_calls",
+    "in_place_package_upgrade",
+    "new_native_calls",
+    "controlled_http_and_dns",
+    "remove",
+    "residue",
+    "route_free_fixture"
+  ],
+  "client": "codex-cli 0.151.0",
+  "fixture_dns_a_after": [
+    "allowed.test",
+    "private.test"
+  ],
+  "fixture_dns_a_before": [
+    "allowed.test",
+    "private.test"
+  ],
+  "fixture_dns_all": [
+    "allowed.test",
+    "allowed.test",
+    "private.test",
+    "private.test",
+    "allowed.test",
+    "allowed.test",
+    "private.test",
+    "private.test"
+  ],
+  "fixture_http_hits": [
+    "/plain",
+    "/plain"
+  ],
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limits": [
+    "finite local DNS/HTTP fixture; no packet capture or universal socket proof",
+    "no TLS or host-client/other-tool traffic coverage",
+    "Codex approval bypass ran from private test cwd but retained host access",
+    "unsigned experimental packages, not an approved candidate"
+  ],
+  "native_client": "codex",
+  "new_installed": {
+    "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+    "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+  },
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+    "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+    "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+    "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+  },
+  "old_installed": {
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "old_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+    "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "platform": "Debian 12 amd64",
+  "result": "passed",
+  "saved_mcp_config_sha256": "ef714ba8738b81db4842e28b8a017e2639fa47f440c67a8350cc5e0a24a8c404"
+}
