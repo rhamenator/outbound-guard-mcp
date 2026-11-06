@@ -1,0 +1,217 @@
+{
+  "clients": [
+    {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "private_dns_denial",
+        "alias_private_denial",
+        "mixed_dns_denial",
+        "metadata_dns_denial",
+        "resolver_failure_denial",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "claude",
+      "client_version": "2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 512,
+        "memory_peak_bytes": 14716928,
+        "pids_peak": 7,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "native_skill_discovered": null,
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+        "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+        "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+      },
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "alias-private.test",
+          "allowed.test",
+          "loop-dns.test",
+          "metadata.test",
+          "mixed.test",
+          "private.test"
+        ],
+        "dns_query_count": 17,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/head-ok"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "54eaa9b27c56eed1ccb02db0de0b2c21750ea5056005b355b5e5656d1c8e9527",
+        "tcp_syn_count": 3
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-dns-ssrf-claude-2026-11-06.pcap",
+      "pcap_sha256": "54eaa9b27c56eed1ccb02db0de0b2c21750ea5056005b355b5e5656d1c8e9527",
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_DNS_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+    },
+    {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "loopback_denial",
+        "private_dns_denial",
+        "alias_private_denial",
+        "mixed_dns_denial",
+        "metadata_dns_denial",
+        "resolver_failure_denial",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "codex",
+      "client_version": "0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 512,
+        "memory_peak_bytes": 13950976,
+        "pids_peak": 8,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/plain"
+      ],
+      "native_skill_discovered": true,
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+        "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+        "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+      },
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "alias-private.test",
+          "allowed.test",
+          "loop-dns.test",
+          "metadata.test",
+          "mixed.test",
+          "private.test"
+        ],
+        "dns_query_count": 17,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/head-ok"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "8d0e71ce356fe687f3b81b68a74c945cd353ef381baf51ee2d02ba512d49f860",
+        "tcp_syn_count": 3
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-dns-ssrf-codex-2026-11-06.pcap",
+      "pcap_sha256": "8d0e71ce356fe687f3b81b68a74c945cd353ef381baf51ee2d02ba512d49f860",
+      "rules": [
+        "EGRESS_INVALID_HOST",
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_DNS_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+    }
+  ],
+  "limitations": [
+    "The retained captures contain fixture-only DNS/HTTP traffic and were checked for common credential/token strings; this is not a general packet sanitization guarantee.",
+    "No host-client traffic, traffic sent through other tools, or network outside the disposable fixture namespace was captured.",
+    "Finite DNS/URL cases do not establish general SSRF prevention.",
+    "The package is unsigned and experimental, not an owner-approved exact candidate.",
+    "The four AI Scraping Defense repositories require independent adversarial evidence."
+  ],
+  "method": "tools/debian_native_container_probe.py --fixture-mode dns-ssrf-packet, with OUTBOUND_GUARD_PACKET_ARCHIVE set to a new .pcap in a private caller-owned directory. tools/verify_native_dns_ssrf_pcap.py rechecks retained capture bytes and destinations with tshark.",
+  "observed_at_utc": "2026-11-06T16:37:00Z",
+  "result": "passed",
+  "scope": "Two separate installed experimental Debian package 242 native-client DNS-SSRF fixture runs. Route-free fixture namespace only; host native-client network was not captured.",
+  "source_head": "2b183e6a1459dff62d39fea5e2392efb8648fba8",
+  "tools": {
+    "Claude Code": "2.1.319",
+    "Codex CLI": "0.151.0",
+    "Docker": "28.3.3",
+    "tcpdump": "4.99.6",
+    "tshark": "4.6.4"
+  }
+}

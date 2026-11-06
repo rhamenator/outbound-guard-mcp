@@ -311,3 +311,16 @@ The [redacted transfer-coding record](evidence/transfer-coding-property-corpus-2
 The [redacted early-close record](evidence/unsupported-transfer-coding-early-close-2026-11-05.json) captures one controlled HTTP/1.1 response with `Transfer-Encoding: gzip999, chunked`. The fixture sends only an incomplete chunk prefix and keeps the response open for up to two seconds. A persistent MCP process must return exact `EGRESS_UNSUPPORTED_TRANSFER_CODING` within two seconds, omit body text, and close the socket before the fixture's wait expires. The probe checks process liveness at that point and makes an approved recovery GET in the same process before closing its stdin. This separates response-socket cleanup from process teardown. It does not bound every transport shutdown path or native-client behavior.
 
 This deterministic matrix broadens the prior five fixed forms. It is not a coverage-guided HTTP fuzz campaign, formal parser proof, native-client package replay, or assertion that every socket/packet was absent. The two earlier native clients and package-installed replays remain separately scoped evidence.
+
+## Retained native DNS SSRF packet captures (2026-11-06)
+
+The [evidence record](evidence/native-dns-ssrf-retained-pcap-2026-11-06.json) keeps raw, fixture-only packet captures for explicit Claude Code 2.1.319 and Codex CLI 0.151.0 skill workflows against checksum-verified experimental Debian package 242. Each disposable Debian 12 amd64 container joined a route-free namespace with controlled DNS and HTTP. The native calls denied loopback, private, mixed-answer, metadata and resolver-failure cases, then completed approved HTTP recovery. No forbidden TCP destination appeared in the fixture namespace. The captures are [Claude](../tests/fixtures/packet-capture/native-dns-ssrf-claude-2026-11-06.pcap) and [Codex](../tests/fixtures/packet-capture/native-dns-ssrf-codex-2026-11-06.pcap).
+
+To independently inspect the retained bytes with Wireshark `tshark`, run:
+
+```sh
+python3 tools/verify_native_dns_ssrf_pcap.py tests/fixtures/packet-capture/native-dns-ssrf-claude-2026-11-06.pcap 54eaa9b27c56eed1ccb02db0de0b2c21750ea5056005b355b5e5656d1c8e9527
+python3 tools/verify_native_dns_ssrf_pcap.py tests/fixtures/packet-capture/native-dns-ssrf-codex-2026-11-06.pcap 8d0e71ce356fe687f3b81b68a74c945cd353ef381baf51ee2d02ba512d49f860
+```
+
+The verifier checks the raw SHA-256, all TCP SYN destinations, DNS query destinations/names, HTTP request paths and all IP destinations. It rejects a wrong digest. The replay harness optionally copies a finished capture to a new `.pcap` path named by `OUTBOUND_GUARD_PACKET_ARCHIVE`; its parent must be private and caller-owned. The default still removes the transient capture. The retained captures were checked for common credential/token strings before commit. They contain controlled fixture traffic only; they do not capture host-client traffic or requests sent through other tools. These finite cases do not establish general SSRF resistance or qualify an official candidate.
