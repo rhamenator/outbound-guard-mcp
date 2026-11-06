@@ -1,0 +1,81 @@
+{
+  "observed_utc": "2026-11-06T10:43:47Z",
+  "scope": "Two exact-harness route-free official MCP SDK 2.3.1 installed-package replays of 698 controlled failed-DNS calls that fill the 1000-call process-hour budget, with sampled server FDs during that phase and post-fill server/container high-water counters. Each run installed the checksum-verified unsigned experimental Debian 12 amd64 package in a fresh disposable 128 MiB / 64 PID container with a 64-FD server soft limit.",
+  "tested_package_source": "066a4aa4ec5603c09af7509f4be34b48275adb58",
+  "tested_package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42199265023; all three files verified before testing",
+  "test_source_base": "066a4aa4ec5603c09af7509f4be34b48275adb58",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "e69f585dfcd8a4363da8f660fe0c72cd5b0a852cbba19db041d150e8ed8850b8",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "db376c65340405a1510584ecaa0bc25690777e69f8312392a9d9c5d3563675c3",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its 64-character digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "installed-sdk-hour-resource-2026-11-06-run1.log",
+      "log_sha256": "fef73eb0f3371241321632c0ccc4b6fe8bb08e3a917a92ed11910d1b43edafe4",
+      "full_namespace_suite_decisions": 3370,
+      "prior_resource": {
+        "package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5208,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 7,
+        "fd_samples": 113,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 21762048,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      },
+      "hour_fill_resource": {
+        "package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5232,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 4,
+        "current_server_fd": 3,
+        "fd_samples": 100,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 21762048,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      }
+    },
+    {
+      "log": "installed-sdk-hour-resource-2026-11-06-run2.log",
+      "log_sha256": "266188d26fd44e2406ad2df62b835a8b3577c0397b3069612d100b3e1674ed2d",
+      "full_namespace_suite_decisions": 3370,
+      "prior_resource": {
+        "package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5204,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 7,
+        "fd_samples": 114,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 19427328,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      },
+      "hour_fill_resource": {
+        "package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931",
+        "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "server_vm_hwm_kib": 5228,
+        "server_fd_soft_limit": 64,
+        "max_sampled_server_fd": 4,
+        "current_server_fd": 3,
+        "fd_samples": 118,
+        "fd_sample_sleep_ms": 5,
+        "container_memory_peak_bytes": 19742720,
+        "container_pids_peak": 14,
+        "container_oom_events": 0
+      }
+    }
+  ],
+  "checks": "The SDK fixture made 698 additional failed-DNS calls after 302 prior reserved calls, then a 1001st call to a fresh allowed host was denied before DNS/HTTP; bounded redacted audit and tools/list passed. Both installed runs passed 3370 decisions. During the hour fill, a requested 5 ms server-FD sampler recorded maxima of 4 with 100/118 samples; final server FD count was 3, server VmHWM 5232/5228 KiB, container memory peak 21762048/19742720 bytes and PID peak 14, with zero OOM events under 64 FD / 64 PID / 128 MiB limits. Package hash/version/install, removal/residue and container/namespace cleanup passed.",
+  "harness_correction": "An initial disposable run failed a probe-only assertion requiring more than 3 FDs after the calls had completed; the installed server correctly returned to its three stdio FDs. The assertion was corrected to allow 3 current FDs while retaining a sampled-peak check, then two complete package-installed runs passed. No server code changed.",
+  "local_verification": "Two installed-package route-free suites each passed 3370 decisions; 47 Rust tests, 19 Python tests, cargo build --locked --bins --examples, cargo fmt/clippy, JS/Python syntax, JSON parse and diff checks passed.",
+  "sampling": "The 5 ms interval is requested, not a hard real-time schedule; a shorter transient FD peak can be missed. Server VmHWM is process-specific; container memory/PID high-water include Docker exec helpers and all earlier fixture phases, so the high-water cannot be attributed solely to the hour fill. Measurements end before uninstall and do not establish sustained behavior.",
+  "limitations": "One modern SDK client, one experimental Debian package/OS/architecture and two finite sequential runs. This is evidence under stated limits, not a general memory or FD bound, arbitrary concurrency or sustained load. It does not cover other native clients, traffic through other tools, exact official candidate, owner residual-risk acceptance or independent human review. Four AI Scraping Defense repositories still require separate adversarial evidence."
+}

@@ -14,6 +14,8 @@ The [installed SDK rate-window reset replay](evidence/installed-sdk-rate-reset-2
 
 The [installed SDK process-hour budget replay](evidence/installed-sdk-hour-budget-2026-11-06.json) drives 1,000 reserved guarded calls through the official SDK in one process. The 1,001st call to a fresh operator-allowed hostname returns `EGRESS_RATE_LIMIT` before DNS or HTTP; the audit remains bounded and discovery responds. This finite experimental Debian result does not prove an hourly reset, cross-process quotas, arbitrary concurrency, or release readiness.
 
+The [installed SDK hour-fill resource replay](evidence/installed-sdk-hour-resource-2026-11-06.json) samples server file descriptors during the 698-call DNS failure fill and reads server/process and container high-water counters afterward. Two finite installed-package runs stayed within their 64-FD, 64-PID and 128 MiB limits without OOM. Sampling can miss transient FD peaks; this does not establish a general resource bound or release approval.
+
 | Gate | Evidence already available | Remaining work |
 | --- | --- | --- |
 | Core egress | [Threat model](threat-model.md), [DNS/HTTP fixtures](adversarial-netns.md), [address properties](ip-policy.md) | Configured HTTP parser/stream/time bounds now have controlled fixtures. Review every remaining quality-bar criterion, including OS/resolver resource limitations, fuller secrets/quarantine, redirects and reservation semantics. Current stricter denials and spent-budget behavior are documented, not automatic acceptance of a changed requirement. |
