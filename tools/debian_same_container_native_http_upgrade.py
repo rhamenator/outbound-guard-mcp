@@ -17,6 +17,8 @@ import tempfile
 import time
 import uuid
 
+from verify_upgrade_http_pcap import verify as verify_capture
+
 from debian_same_container_native_upgrade import command, installed
 from debian_upgrade_probe import package_info
 from package_candidate import BUILDER_IMAGE
@@ -154,6 +156,8 @@ def main():
     parser.add_argument("--new", type=Path, required=True)
     parser.add_argument("--new-sha256", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--capture", type=Path,
+                        help="Retain and verify a fixture-namespace packet capture")
     args = parser.parse_args()
     assert args.client != "codex" or args.allow_codex_approval_bypass, \
         "Codex native MCP calls require explicit approval-bypass opt-in for this isolated probe"
@@ -176,6 +180,8 @@ def main():
                            "--format", "{{.Id}}")
         started = False
         fixture = None
+        packet_capture = None
+        tcpdump_pid = None
         try:
             command("docker", "run", "-d", "--rm", "--pull", "never", "--network", "none",
                     "--dns", "127.0.0.1", "--cap-drop", "ALL",
@@ -199,6 +205,33 @@ def main():
                             "link", "set", "lo", "up"], check=True)
             routes = command("sudo", "-n", "nsenter", "-t", str(pid), "-n", "ip", "route")
             assert not routes, f"fixture namespace has a non-local route: {routes}"
+            if args.capture:
+                assert shutil.which("tcpdump") and shutil.which("tshark") and shutil.which("aa-exec")
+                capture_tmp = root / "fixture.pcap"
+                packet_capture = subprocess.Popen(
+                    ["sudo", "-n", "nsenter", "-t", str(pid), "-n", "tcpdump",
+                     "-Z", "root", "-i", "any", "-U", "-w", str(capture_tmp)],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+                deadline = time.monotonic() + 5
+                while not capture_tmp.exists() or capture_tmp.stat().st_size < 24:
+                    assert packet_capture.poll() is None and time.monotonic() < deadline, \
+                        "fixture packet capture failed to start"
+                    time.sleep(0.05)
+                while tcpdump_pid is None:
+                    matches = []
+                    for entry in Path("/proc").iterdir():
+                        if not entry.name.isdigit():
+                            continue
+                        try:
+                            if (entry / "comm").read_text().strip() == "tcpdump" and \
+                                    str(capture_tmp) in (entry / "cmdline").read_bytes().decode(errors="replace"):
+                                matches.append(int(entry.name))
+                        except (OSError, ProcessLookupError):
+                            continue
+                    assert len(matches) <= 1 and packet_capture.poll() is None and time.monotonic() < deadline, \
+                        "fixture packet capture PID not found"
+                    tcpdump_pid = matches[0] if matches else None
+                    time.sleep(0.05)
             fixture_script = Path(__file__).with_name("client_cancellation_fixture.py").resolve()
             with (root / "fixture.stderr").open("w") as stderr:
                 fixture = subprocess.Popen(["sudo", "-n", "nsenter", "-t", str(pid), "-n",
@@ -228,6 +261,16 @@ def main():
                     "test ! -d /usr/share/doc/outbound-guard-mcp; "
                     "test ! -e /etc/outbound-guard-mcp; "
                     "! dpkg-query -W outbound-guard-mcp >/dev/null 2>&1")
+            capture_result = None
+            if packet_capture:
+                assert packet_capture.poll() is None and tcpdump_pid is not None
+                subprocess.run(["sudo", "-n", "aa-exec", "-p", "tcpdump",
+                                "/usr/bin/kill", "-INT", str(tcpdump_pid)], check=True)
+                packet_capture.wait(timeout=5)
+                data = subprocess.check_output(["sudo", "-n", "cat", str(capture_tmp)])
+                args.capture.parent.mkdir(parents=True, exist_ok=True)
+                args.capture.write_bytes(data)
+                capture_result = verify_capture(args.capture, hashlib.sha256(data).hexdigest())
             result = {"result": "passed", "platform": "Debian 12 amd64",
                       "native_client": args.client,
                       "client": command(args.client, "--version"), "image_id": image_id,
@@ -239,15 +282,27 @@ def main():
                       "fixture_dns_a_before": old_fixture["dns_a"],
                       "fixture_dns_a_after": new_fixture["dns_a"],
                       "fixture_dns_all": new_fixture["dns_all"],
+                      "packet_capture": capture_result,
                       "checks": ["same_container", "unchanged_saved_client_config",
                                  "old_native_calls", "in_place_package_upgrade",
                                  "new_native_calls", "controlled_http_and_dns",
-                                 "remove", "residue", "route_free_fixture"],
-                      "limits": ["finite local DNS/HTTP fixture; no packet capture or universal socket proof",
+                                 "remove", "residue", "route_free_fixture"] +
+                                (["packet_capture_verified"] if capture_result else []),
+                      "limits": ["finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof" if capture_result else "finite local DNS/HTTP fixture; no packet capture or universal socket proof",
                                  "no TLS or host-client/other-tool traffic coverage",
                                  "Codex approval bypass ran from private test cwd but retained host access" if args.client == "codex" else "Claude native tool availability is model dependent",
                                  "unsigned experimental packages, not an approved candidate"]}
         finally:
+            if packet_capture is not None and packet_capture.poll() is None:
+                capture_target = str(tcpdump_pid) if tcpdump_pid is not None else str(-packet_capture.pid)
+                subprocess.run(["sudo", "-n", "aa-exec", "-p", "tcpdump",
+                                "/usr/bin/kill", "-TERM", "--", capture_target], check=False)
+                try:
+                    packet_capture.wait(timeout=4)
+                except subprocess.TimeoutExpired:
+                    subprocess.run(["sudo", "-n", "aa-exec", "-p", "tcpdump",
+                                    "/usr/bin/kill", "-KILL", "--", capture_target], check=False)
+                    packet_capture.wait(timeout=4)
             if fixture is not None:
                 subprocess.run(["sudo", "-n", "/bin/kill", "-TERM", "--",
                                 str(-fixture.pid)], stdout=subprocess.DEVNULL,
