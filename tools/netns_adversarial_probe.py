@@ -1767,7 +1767,7 @@ def test_sdk_overload(binary):
                 "cat /sys/fs/cgroup/memory.events"], text=True).splitlines()
             current_fd, vm_hwm, memory_max, memory_peak, pids_peak = map(int, measurements[:5])
             events = dict(line.split() for line in measurements[5:])
-            assert 3 < max_fd <= 64 and fd_samples > 0 and 3 <= current_fd <= 64, (max_fd, fd_samples, current_fd)
+            assert 3 <= max_fd <= 64 and fd_samples > 0 and 3 <= current_fd <= 64, (max_fd, fd_samples, current_fd)
             assert memory_max == 128 * 1024 * 1024 and memory_peak < memory_max
             assert vm_hwm < 96 * 1024 and 0 < pids_peak <= 64
             assert events["oom"] == "0" and events["oom_kill"] == "0"

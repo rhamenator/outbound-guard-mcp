@@ -17,37 +17,37 @@ GitHub secret probe: 13 synthetic paths blocked before DNS/HTTP, no result/stder
 GitLab/PyPI secret probe: 42 synthetic paths blocked before DNS/HTTP, no result/stderr/audit marker echo; 28 lookalike controls fetched
 library cancellation probe: cancelled after fixture byte in 0.01s, no partial body, peer observed closed socket, audited denial, next fetch recovered
 stdio cancellation probe: string/numeric IDs stayed distinct, integer-valued numeric representations matched; malformed, unknown and late notifications ignored; cancelled replies suppressed, audit redacted, live socket closed and ID reuse recovered
-queue saturation legacy: bounded recovery; busy denial, priority cancellation and rejected-ID reuse; RSS=9248 KiB, FDs=3
-queue saturation modern: bounded recovery; busy denial, priority cancellation and rejected-ID reuse; RSS=9196 KiB, FDs=3
+queue saturation legacy: bounded recovery; busy denial, priority cancellation and rejected-ID reuse; RSS=9216 KiB, FDs=3
+queue saturation modern: bounded recovery; busy denial, priority cancellation and rejected-ID reuse; RSS=9228 KiB, FDs=3
 input overload: both eras terminate with fixed diagnostic and close live fetch; queues remain bounded
-official SDK 1.32.1 legacy cancellation: AbortSignal rejected; audited cancellation, socket closed while client live, recovery and output-schema checks passed (0.05s)
-official SDK 2.3.1 modern cancellation: AbortSignal rejected; audited cancellation, socket closed while client live, recovery and output-schema checks passed (0.06s)
-SDK_INSTALLED_RESOURCE={"package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931", "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21", "server_vm_hwm_kib": 5208, "server_fd_soft_limit": 64, "max_sampled_server_fd": 7, "fd_samples": 113, "fd_sample_sleep_ms": 5, "container_memory_peak_bytes": 21762048, "container_pids_peak": 14, "container_oom_events": 0}
-SDK_HOUR_RESOURCE={"package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931", "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21", "server_vm_hwm_kib": 5232, "server_fd_soft_limit": 64, "max_sampled_server_fd": 4, "current_server_fd": 3, "fd_samples": 100, "fd_sample_sleep_ms": 5, "container_memory_peak_bytes": 21762048, "container_pids_peak": 14, "container_oom_events": 0}
-official SDK 2.3.1 overload: 12 client-originated bounded busy denials, cancellations, socket closures and guarded recoveries (0.44s); 60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; 180 further DNS denials retained in a bounded 256-event audit ring; same-process host windows reset after 61 seconds with DNS/HTTP recovery; 1000/1001 process-hour budget blocked a fresh host before DNS/HTTP
+official SDK 1.32.1 legacy cancellation: AbortSignal rejected; audited cancellation, socket closed while client live, recovery and output-schema checks passed (0.04s)
+official SDK 2.3.1 modern cancellation: AbortSignal rejected; audited cancellation, socket closed while client live, recovery and output-schema checks passed (0.05s)
+SDK_INSTALLED_RESOURCE={"package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931", "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21", "server_vm_hwm_kib": 5144, "server_fd_soft_limit": 64, "max_sampled_server_fd": 7, "fd_samples": 107, "fd_sample_sleep_ms": 5, "container_memory_peak_bytes": 21737472, "container_pids_peak": 14, "container_oom_events": 0}
+SDK_HOUR_RESOURCE={"package_sha256": "0748bcde95421b7a974c2e4eb7166fe1345cde4acbb4b92aca20f56584861931", "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21", "server_vm_hwm_kib": 5160, "server_fd_soft_limit": 64, "max_sampled_server_fd": 4, "current_server_fd": 3, "fd_samples": 102, "fd_sample_sleep_ms": 5, "container_memory_peak_bytes": 21745664, "container_pids_peak": 14, "container_oom_events": 0}
+official SDK 2.3.1 overload: 12 client-originated bounded busy denials, cancellations, socket closures and guarded recoveries (0.45s); 60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; 180 further DNS denials retained in a bounded 256-event audit ring; same-process host windows reset after 61 seconds with DNS/HTTP recovery; 1000/1001 process-hour budget blocked a fresh host before DNS/HTTP
 silent transport cancellation legacy/headers: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
 silent transport cancellation legacy/body: 0.00s, socket closed, cancelled reply suppressed, audit and ID recovery passed
 silent transport cancellation legacy/tls: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
 silent transport cancellation modern/headers: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
-silent transport cancellation modern/body: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
+silent transport cancellation modern/body: 0.00s, socket closed, cancelled reply suppressed, audit and ID recovery passed
 silent transport cancellation modern/tls: 0.03s, socket closed, cancelled reply suppressed, audit and ID recovery passed
-repeated cancellation legacy: 30 cancel/recovery cycles, ID reuse and 61st-attempt budget denial; retained samples 3 FDs/3 threads/8604 KiB under hard NOFILE64
-repeated cancellation modern: 30 cancel/recovery cycles, ID reuse and 61st-attempt budget denial; retained samples 3 FDs/3 threads/8648 KiB under hard NOFILE64
+repeated cancellation legacy: 30 cancel/recovery cycles, ID reuse and 61st-attempt budget denial; retained samples 3 FDs/3 threads/8644 KiB under hard NOFILE64
+repeated cancellation modern: 30 cancel/recovery cycles, ID reuse and 61st-attempt budget denial; retained samples 3 FDs/3 threads/8572 KiB under hard NOFILE64
 descriptor exhaustion legacy/NOFILE=4: 3 structured denials ['EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE'], no HTTP/body, ping/audit live and clean exit
 descriptor exhaustion modern/NOFILE=4: 3 structured denials ['EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE', 'EGRESS_CLIENT_FAILURE'], no HTTP/body, ping/audit live and clean exit
 descriptor exhaustion NOFILE=3: loader/startup failure, no MCP output (not a structured denial)
-connect blackhole legacy: 3.00s shared connect deadline, 0.02s cancellation; SYN sockets removed, no fallback renewal, recovery passed
-connect blackhole modern: 3.01s shared connect deadline, 0.01s cancellation; SYN sockets removed, no fallback renewal, recovery passed
+connect blackhole legacy: 3.00s shared connect deadline, 0.01s cancellation; SYN sockets removed, no fallback renewal, recovery passed
+connect blackhole modern: 3.01s shared connect deadline, 0.02s cancellation; SYN sockets removed, no fallback renewal, recovery passed
 post-DNS syscall legacy: 8 real-DNS forbidden-answer denials, zero extra Internet stream sockets; approved TCP controls; refused address followed by pinned fallback without DNS retry; next-call private rebinding denied; redirect not followed
 post-DNS syscall modern: 8 real-DNS forbidden-answer denials, zero extra Internet stream sockets; approved TCP controls; refused address followed by pinned fallback without DNS retry; next-call private rebinding denied; redirect not followed
-live DNS worker legacy: timeout 3.00s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8212 KiB/4 FDs
-live DNS worker modern: timeout 3.00s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8424 KiB/4 FDs
-live DNS worker legacy: cancellation 0.02s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8188 KiB/4 FDs
-live DNS worker modern: cancellation 0.02s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8196 KiB/4 FDs
-network resource probe: hard 64-FD limit; sampled peak 7 FDs, VmHWM 8700 KiB across 26 samples
-network resource probe: hard 64-FD limit; sampled peak 4 FDs, VmHWM 8320 KiB across 10 samples
-network resource probe: hard 64-FD limit; sampled peak 7 FDs, VmHWM 8984 KiB across 431 samples
-live budget probe: per-host 60/61 (mixed-case hosts and failed HTTP), failed DNS 60/61, hourly 1000/1001 across 17 hosts in 2.47s; blocked calls opened no DNS or HTTP
+live DNS worker legacy: timeout 3.00s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8388 KiB/4 FDs
+live DNS worker modern: timeout 3.00s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8416 KiB/4 FDs
+live DNS worker legacy: cancellation 0.02s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8232 KiB/4 FDs
+live DNS worker modern: cancellation 0.02s; 20 busy denials, one lingering worker, no extra DNS/HTTP, late-result discard/recovery; sampled 8336 KiB/4 FDs
+network resource probe: hard 64-FD limit; sampled peak 7 FDs, VmHWM 8616 KiB across 20 samples
+network resource probe: hard 64-FD limit; sampled peak 4 FDs, VmHWM 8424 KiB across 12 samples
+network resource probe: hard 64-FD limit; sampled peak 7 FDs, VmHWM 9076 KiB across 319 samples
+live budget probe: per-host 60/61 (mixed-case hosts and failed HTTP), failed DNS 60/61, hourly 1000/1001 across 17 hosts in 1.79s; blocked calls opened no DNS or HTTP
 schema mutation probe: 644 invalid inputs; seed=306373022276; sha256=122313201384fa572dcc29a12650c8303ebc201b70788c8cb6cda1c8efbd6d0b; baseline fetched, invalid inputs opened no DNS/HTTP and echoed no marker
 absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; original Host/SNI and pinned destinations preserved
 netns adversarial probe: 3370 MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; ambient proxy ignored; rebind A queries=2; framing={'interim-header-flood': 'EGRESS_RESPONSE_WIRE_LIMIT', 'switch-protocols': 'EGRESS_PROTOCOL_UPGRADE_DENIED', 'upgrade-header-200': 'EGRESS_PROTOCOL_UPGRADE_DENIED', 'connection-upgrade-200': 'EGRESS_PROTOCOL_UPGRADE_DENIED', 'conflict-framing': 'EGRESS_INVALID_FRAMING', 'duplicate-length': 'EGRESS_INVALID_FRAMING', 'comma-length-equal': 'EGRESS_INVALID_FRAMING', 'comma-length-conflict': 'EGRESS_INVALID_FRAMING', 'signed-length': 'EGRESS_INVALID_FRAMING', 'overflow-length': 'EGRESS_INVALID_FRAMING', 'repeated-chunked-coding': 'EGRESS_UNSUPPORTED_TRANSFER_CODING', 'stacked-transfer-coding': 'EGRESS_UNSUPPORTED_TRANSFER_CODING', 'duplicate-transfer-coding': 'EGRESS_UNSUPPORTED_TRANSFER_CODING', 'duplicate-type': 'EGRESS_AMBIGUOUS_RESPONSE_METADATA', 'duplicate-encoding': 'EGRESS_AMBIGUOUS_RESPONSE_METADATA', 'chunked-large': 'EGRESS_RESPONSE_LIMIT', 'chunked-bad-size': 'EGRESS_READ_FAILURE', 'chunked-truncated': 'EGRESS_READ_FAILURE', 'many-headers': 'EGRESS_INVALID_FRAMING', 'oversized-header': 'EGRESS_INVALID_FRAMING', 'parser-limit': 'EGRESS_INVALID_FRAMING'}
