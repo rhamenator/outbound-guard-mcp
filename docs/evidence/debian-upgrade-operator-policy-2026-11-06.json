@@ -1,0 +1,87 @@
+{
+  "observed_utc": "2026-11-06T13:39:33Z",
+  "scope": "Two disposable network-disabled Debian 12 amd64 upgrades from checksum-verified unsigned experimental package 205 to 242, with different executable bytes. The same explicit operator allowlist was exercised by each installed version before and after dpkg upgrade.",
+  "old_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+    "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+    "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+    "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+    "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+  },
+  "old_artifact_manifest": "SHA256SUMS from trusted-main CI run 41716755430; all three artifact files verified",
+  "new_artifact_manifest": "SHA256SUMS from trusted-main CI run 42213373890; all three artifact files verified",
+  "test_source_base": "a748779e64872eedc9ec61acc102aee7023af192",
+  "test_source_sha256": "20f86a5cb907522382e917ec8d613c4e6640ab15f2a010d65777d4f73d397f3a",
+  "reproduce": "python3 tools/debian_upgrade_probe.py --old VERIFIED_205.deb --old-sha256 OLD_DIGEST --new VERIFIED_242.deb --new-sha256 NEW_DIGEST --check-policy-compat --output evidence.json (run twice after checking each artifact SHA256SUMS).",
+  "runs": [
+    {
+      "log": "debian-upgrade-operator-policy-2026-11-06-run1.log",
+      "log_sha256": "163aebdf9f601475f6dbba8f3c80cab2f8deeaf784749794a6586dc6ce03dd63",
+      "checks": [
+        "old_install",
+        "new_upgrade",
+        "installed_binary_bytes",
+        "mcp_discovery",
+        "loopback_denial",
+        "non_ascii_url_denial",
+        "remove",
+        "residue",
+        "old_and_new_operator_allowlist_and_audit"
+      ],
+      "policy_decisions": [
+        {
+          "correlation_id": "egress-1",
+          "rule": "EGRESS_DNS_FAILURE",
+          "status": "BLOCKED"
+        },
+        {
+          "correlation_id": "egress-2",
+          "rule": "EGRESS_HOST_NOT_ALLOWED",
+          "status": "BLOCKED"
+        }
+      ]
+    },
+    {
+      "log": "debian-upgrade-operator-policy-2026-11-06-run2.log",
+      "log_sha256": "163aebdf9f601475f6dbba8f3c80cab2f8deeaf784749794a6586dc6ce03dd63",
+      "checks": [
+        "old_install",
+        "new_upgrade",
+        "installed_binary_bytes",
+        "mcp_discovery",
+        "loopback_denial",
+        "non_ascii_url_denial",
+        "remove",
+        "residue",
+        "old_and_new_operator_allowlist_and_audit"
+      ],
+      "policy_decisions": [
+        {
+          "correlation_id": "egress-1",
+          "rule": "EGRESS_DNS_FAILURE",
+          "status": "BLOCKED"
+        },
+        {
+          "correlation_id": "egress-2",
+          "rule": "EGRESS_HOST_NOT_ALLOWED",
+          "status": "BLOCKED"
+        }
+      ]
+    }
+  ],
+  "checks": "Inside each fresh network-disabled 256 MiB / 64 PID Bookworm container: install old package, check version and installed executable digest, launch MCP with OUTBOUND_GUARD_ALLOWED_HOSTS=upgrade-allowed.test, require that host to reach EGRESS_DNS_FAILURE and an unlisted host to return EGRESS_HOST_NOT_ALLOWED, compare both structured results to redacted audit; upgrade to new package and repeat exactly; compare the two decision triples; run MCP discovery and loopback/invalid-URL denials; remove package and check executable, documentation, package database and /etc residue. The container has no external network path. The existing default upgrade path also passed unchanged without the opt-in flag.",
+  "harness_correction": "An initial probe attempted to write replies to a host bind mount, but Docker user namespace mapping denied the write. The final harness keeps replies inside the disposable container, emits bounded base64 only after removal, and parses it on the host. Two complete final runs passed. No server code changed.",
+  "limitations": "This checks compatibility of one explicit environment setting and two safe fixture hostnames, not migration of saved user configuration; the Debian package has no default allowlist or service. The old package was invoked through direct MCP stdio, not a native Claude/Codex client, and no approved HTTP request succeeded because the container had no network. It does not qualify an exact official candidate, another OS/architecture, independent human review, owner residual-risk acceptance, traffic sent through other tools, or any AI Scraping Defense repository.",
+  "default_probe_regression": {
+    "log": "debian-upgrade-operator-policy-2026-11-06-default.log",
+    "log_sha256": "7f5f3c67de0787b9511ab8091a2cf9f5f860a6920cd56f3f61ef43e5650d1f22",
+    "result": "passed without --check-policy-compat"
+  }
+}
