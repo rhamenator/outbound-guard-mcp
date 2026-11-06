@@ -100,6 +100,8 @@ A [redacted URL-class diagnostic](evidence/native-client-url-class-diagnostics-2
 
 A [package-installed DNS SSRF replay](evidence/native-client-debian-dns-ssrf-2026-10-31.json) passed native Claude/Codex private, alias, mixed and metadata DNS denials, resolver failure and approved recovery, with only approved HTTP fixture hits. It is finite evidence, not universal socket or packet absence proof.
 
+A [same-container native-client live HTTP/DNS upgrade replay](evidence/same-container-codex-http-upgrade-2026-11-06.json) adds Codex CLI before/after calls across experimental Debian package 205→242, complementing the [Claude replay](evidence/same-container-claude-http-upgrade-2026-11-06.json). Each native client observed an approved response and private/unlisted-host denials in both phases with unchanged saved MCP configuration and exactly two approved fixture HTTP hits. Codex used explicit approval bypass from a private test directory, which retained host access. These finite route-free fixtures lack packet capture, TLS, Cursor and exact official-candidate coverage.
+
 A [package-installed between-call rebinding replay](evidence/native-client-debian-dns-rebind-2026-10-31.json) passed native Claude/Codex public answer, private changed answer denial and approved recovery. Intra-call DNS changes and universal socket absence remain unproven by this replay.
 
 A [package-installed synthetic URL exfiltration replay](evidence/native-client-debian-synthetic-exfil-2026-10-31.json) passed native Claude/Codex ASCII token-shaped and Unicode lookalike denials, no exfil DNS query or marker echo in MCP results, and approved recovery. It does not prove generic secret detection or header/body exfiltration prevention.
