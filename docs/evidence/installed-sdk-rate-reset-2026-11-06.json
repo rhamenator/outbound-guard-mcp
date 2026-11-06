@@ -1,0 +1,54 @@
+{
+  "observed_utc": "2026-11-06T08:45:04Z",
+  "scope": "One debug and two exact-harness route-free replays of official MCP SDK 2.3.1 client-generated same-process rate-window reset against a checksum-verified unsigned experimental Debian 12 amd64 package built from trusted main 6730484. Each installed run used a fresh package in a disposable 128 MiB, 64 PID container with a 64-FD server soft limit.",
+  "tested_package_source": "673048435ce976212bb1c78d2f9c0b6e06ce3817",
+  "tested_package_sha256": "bed1e798f589df15591dcd9b288164f92dab9f6c6e4e07552a9ef7e9d10b5f7e",
+  "tested_package_manifest": "SHA256SUMS from exact-main CI run 42177227874; all three files verified before testing",
+  "test_source_base": "5c4a1ba2ccc618a27462a954b1d6ee1ddbdb45fa",
+  "test_source_sha256": {
+    "tools/netns_adversarial_probe.py": "0a7a8c1192cd5030fa1f4bc09187ddab675f26433a301e24fc83573f0c168ea0",
+    "tools/mcp-sdk-probe/overload_modern.mjs": "b43744d820cbacebac16b6e5a32baaa0372bfc6cff0a87bdf48b528a9493fdec",
+    "tools/mcp-sdk-probe/package-lock.json": "62b0a62fce5d0c89d8a7c3de3ccacc20822989d5125f589ad1a38ede8914a2e4"
+  },
+  "reproduce": "Install pinned SDK with npm ci --prefix tools/mcp-sdk-probe --ignore-scripts --no-audit --no-fund; set OUTBOUND_GUARD_TEST_SDK_DIR to that directory, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its digest, then run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "debug_run": {
+    "log_sha256": "cf49497f66445347d563fd6e91f17200acf8fbb363ab9c9e839813b01668a9b9",
+    "full_namespace_suite_decisions": 2671
+  },
+  "runs": [
+    {
+      "log": "installed-sdk-rate-reset-2026-11-06-run1.log",
+      "log_sha256": "7d2daf52d59dd50f14b0bbeb814506ded28c4be7c0f63384cd177fd8a11af906",
+      "full_namespace_suite_decisions": 2671,
+      "package_sha256": "bed1e798f589df15591dcd9b288164f92dab9f6c6e4e07552a9ef7e9d10b5f7e",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 5152,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 111,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 20549632,
+      "container_pids_peak": 14,
+      "container_oom_events": 0
+    },
+    {
+      "log": "installed-sdk-rate-reset-2026-11-06-run2.log",
+      "log_sha256": "b57cf832f9a5cd2dcfdf5fe0a2f786a4be09f752cfebb0f1902125b2b7fa7193",
+      "full_namespace_suite_decisions": 2671,
+      "package_sha256": "bed1e798f589df15591dcd9b288164f92dab9f6c6e4e07552a9ef7e9d10b5f7e",
+      "installed_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+      "server_vm_hwm_kib": 5204,
+      "server_fd_soft_limit": 64,
+      "max_sampled_server_fd": 7,
+      "fd_samples": 115,
+      "fd_sample_sleep_ms": 5,
+      "container_memory_peak_bytes": 19824640,
+      "container_pids_peak": 15,
+      "container_oom_events": 0
+    }
+  ],
+  "checks": "Before the wait, 60/61 per-host allowed-HTTP and failed-DNS calls yielded EGRESS_RATE_LIMIT on the 61st calls without DNS/HTTP. The parent waited until 61 seconds after the failed-DNS fill completed, keeping the same server process alive. The official SDK then obtained EGRESS_ALLOWED and one /plain HTTP hit for allowed.test, plus EGRESS_DNS_FAILURE after one A and one AAAA query for budget-failure.test with no HTTP. The bounded audit resource stayed at 256 events, ended with those two rules, and tools/list remained responsive. Fresh package install/hash/version, removal/residue and namespace/container cleanup passed.",
+  "local_verification": "One debug and two installed-package route-free suites each passed 2671 decisions; 47 Rust tests, 19 Python tests, cargo build --locked --bins --examples, cargo fmt/clippy, JS/Python syntax and git diff checks passed.",
+  "sampling": "In-container /proc server FD monitor requested 5 ms samples before the one-minute wait; its maximum is a lower bound on transient peaks. VmHWM, container memory/PID high-water were collected before the wait, while process liveness, DNS/HTTP and audit controls were tested afterward.",
+  "limitations": "One modern SDK client, one experimental Debian package/OS/architecture, two finite package repeats and a 61-second wait. Does not establish exact expiry edge behavior, the process-hour reset, cross-process budgets, arbitrary concurrency or sustained resource bounds, other native clients, traffic through other tools, exact official candidate, owner residual-risk acceptance or independent human review. Four AI Scraping Defense repositories still require separate adversarial evidence."
+}

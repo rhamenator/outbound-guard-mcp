@@ -1648,6 +1648,7 @@ def test_sdk_overload(binary):
         process.stdin.flush()
         assert select.select([process.stdout], [], [], 12)[0], "SDK DNS budget fill timed out"
         assert process.stdout.readline().strip() == "SDK_DNS_BUDGET_FILLED"
+        dns_budget_filled_at = time.monotonic()
         assert DNS.a_names[a_before:] == ["budget-failure.test"] * 60
         assert DNS.aaaa_names[aaaa_before:] == ["budget-failure.test"] * 60
         assert len(HTTP.hits) == hits_before
@@ -1696,6 +1697,20 @@ def test_sdk_overload(binary):
                 "fd_samples": fd_samples, "fd_sample_sleep_ms": 5,
                 "container_memory_peak_bytes": memory_peak, "container_pids_peak": pids_peak,
                 "container_oom_events": int(events["oom"])}))
+        # Both per-host windows must expire while this same server process stays alive.
+        reset_deadline = dns_budget_filled_at + 61
+        while remaining := reset_deadline - time.monotonic():
+            if remaining <= 0:
+                break
+            time.sleep(min(30, remaining))
+        a_before, aaaa_before, hits_before = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
+        process.stdin.write("reset\n")
+        process.stdin.flush()
+        assert select.select([process.stdout], [], [], 8)[0], "SDK rate-window reset timed out"
+        assert process.stdout.readline().strip() == "SDK_RATE_WINDOW_RESET"
+        assert DNS.a_names[a_before:] == ["allowed.test", "budget-failure.test"]
+        assert DNS.aaaa_names[aaaa_before:] == ["allowed.test", "budget-failure.test"]
+        assert HTTP.hits[hits_before:] == ["/plain"] and process.poll() is None
         process.stdin.write("finish\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
@@ -1703,8 +1718,9 @@ def test_sdk_overload(binary):
         print(f"official SDK 2.3.1 overload: {cycles} client-originated bounded busy denials, "
               f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s); "
               "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; "
-              "180 further DNS denials retained in a bounded 256-event audit ring")
-        return 12 * cycles + 37 + 61 + 180
+              "180 further DNS denials retained in a bounded 256-event audit ring; "
+              "same-process host windows reset after 61 seconds with DNS/HTTP recovery")
+        return 12 * cycles + 37 + 61 + 180 + 2
     finally:
         if process is not None and process.poll() is None:
             process.kill()
