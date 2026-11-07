@@ -76,7 +76,7 @@ tls_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1'
 active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
-assert not packet_capture_requested or (dns_mode or rebind_mode or exfil_mode or attack_mode or slow_http_mode), 'packet capture requires a DNS SSRF, rebinding, exfiltration, redirect/encoding, or slow HTTP replay'
+assert not packet_capture_requested or (dns_mode or rebind_mode or exfil_mode or attack_mode or slow_http_mode or malformed_mode), 'packet capture requires a DNS SSRF, rebinding, exfiltration, redirect/encoding, slow HTTP, or malformed HTTP replay'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim','interim-repeat','headers'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','headers')
