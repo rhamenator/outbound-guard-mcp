@@ -152,6 +152,8 @@ A [bridge-injected queue-saturation replay during native sessions](evidence/nati
 
 A [package-installed response header-limit replay](evidence/native-client-debian-header-limit-2026-10-31.json) passed native Claude/Codex excess-count, oversized-header and parser-limit denials with no denied body text and approved recovery. Arbitrary framing and aggregate resource bounds remain open.
 
+A [retained native Claude response header-limit upgrade capture](evidence/native-claude-header-limit-upgrade-pcap-2026-11-07.json) verifies three header denials and approved recovery after experimental Debian package 205→242 upgrade. Its [fixture-namespace pcap](../tests/fixtures/packet-capture/native-claude-header-limit-upgrade-2026-11-07.pcap) independently confirms seventy fixture headers, a 24,576-byte header value, a 128,000-byte incomplete header prefix, five approved source connections and fixture-local DNS. This finite run does not establish arbitrary parser/resource bounds, host-client or other-tool coverage, or exact-candidate qualification.
+
 A [package-installed malformed MCP frame replay](evidence/native-client-debian-malformed-mcp-frame-2026-10-31.json) passed native Claude/Codex sessions with one bridge-injected parse error, no forbidden fixture DNS/HTTP, and two later approved calls. It does not establish arbitrary malformed-protocol coverage.
 
 A [package-installed JSON quarantine replay](evidence/native-client-debian-json-quarantine-2026-10-31.json) passed native Claude/Codex controlled instruction and duplicate-key denials, no instruction string in captured client transcripts, and approved recovery. Arbitrary prompt-injection coverage remains open.
