@@ -172,8 +172,6 @@ def main():
     parser.add_argument("--capture", type=Path,
                         help="Retain and verify a fixture-namespace packet capture")
     args = parser.parse_args()
-    assert not args.capture or args.scenario == "dns", \
-        "the retained pcap verifier currently covers the DNS scenario only"
     urls, rules, phase_hits = SCENARIOS[args.scenario]
     prompt = ("Use ONLY outbound_guard guarded_fetch. Make exactly three GET calls, "
               "in order: " + ", ".join(urls) + ". Do not use any other tools or "
@@ -290,7 +288,8 @@ def main():
                 data = subprocess.check_output(["sudo", "-n", "cat", str(capture_tmp)])
                 args.capture.parent.mkdir(parents=True, exist_ok=True)
                 args.capture.write_bytes(data)
-                capture_result = verify_capture(args.capture, hashlib.sha256(data).hexdigest())
+                capture_result = verify_capture(args.capture, hashlib.sha256(data).hexdigest(),
+                                                args.scenario)
             result = {"result": "passed", "platform": "Debian 12 amd64",
                       "scenario": args.scenario,
                       "native_client": args.client,
