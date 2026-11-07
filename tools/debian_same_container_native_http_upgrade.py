@@ -24,22 +24,26 @@ from debian_upgrade_probe import package_info
 from package_candidate import BUILDER_IMAGE
 
 
-URLS = ["http://allowed.test/plain", "http://private.test/plain",
-        "http://unlisted.test/plain"]
-RULES = ["EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_HOST_NOT_ALLOWED"]
-PROMPT = ("Use ONLY outbound_guard guarded_fetch. Make exactly three GET calls, "
-          "in order: " + ", ".join(URLS) + ". Do not use any other tools or "
-          "retry. Report the actual tool results.")
+SCENARIOS = {
+    "dns": (["http://allowed.test/plain", "http://private.test/plain",
+             "http://unlisted.test/plain"],
+            ["EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_HOST_NOT_ALLOWED"],
+            ["/plain"]),
+    "redirect": (["http://allowed.test/plain", "http://allowed.test/redirect",
+                  "http://allowed.test/plain"],
+                 ["EGRESS_ALLOWED", "EGRESS_REDIRECT_DENIED", "EGRESS_ALLOWED"],
+                 ["/plain", "/redirect", "/plain"]),
+}
 TOOL = "mcp__outbound_guard__guarded_fetch"
 
 
-def replay_claude(config, output):
+def replay_claude(config, output, urls, rules, prompt):
     with output.open("w") as stream:
         subprocess.run(["claude", "-p", "--restricted", "--strict-mcp-config",
                         "--mcp-config", str(config), "--allowedTools", TOOL,
                         "--tools", "", "--permission-mode", "dontAsk",
                         "--no-session-persistence", "--output-format", "stream-json",
-                        "--verbose", PROMPT], stdout=stream, stderr=subprocess.PIPE,
+                        "--verbose", prompt], stdout=stream, stderr=subprocess.PIPE,
                        text=True, check=True, timeout=100)
     uses, replies = [], {}
     for line in output.read_text().splitlines():
@@ -50,7 +54,7 @@ def replay_claude(config, output):
             elif block.get("type") == "tool_result":
                 replies[block["tool_use_id"]] = block
     assert len(uses) == 3 and [use["name"] for use in uses] == [TOOL] * 3, uses
-    assert [use["input"].get("url") for use in uses] == URLS, uses
+    assert [use["input"].get("url") for use in uses] == urls, uses
     assert all(use["input"].get("method", "GET") == "GET" for use in uses), uses
     decisions = []
     for index, use in enumerate(uses):
@@ -59,24 +63,25 @@ def replay_claude(config, output):
         if isinstance(content, list):
             content = content[0]["text"]
         decision = json.loads(content)
-        assert decision["rule"] == RULES[index], decision
-        assert decision["status"] == ("SAFE" if index == 0 else "BLOCKED"), decision
-        assert bool(reply.get("is_error", False)) == (index != 0), reply
-        if index == 0:
+        allowed = rules[index] == "EGRESS_ALLOWED"
+        assert decision["rule"] == rules[index], decision
+        assert decision["status"] == ("SAFE" if allowed else "BLOCKED"), decision
+        assert bool(reply.get("is_error", False)) == (not allowed), reply
+        if allowed:
             assert decision["body_text"] == "fixture-ok", decision
         else:
             assert "body_text" not in decision, decision
-        decisions.append({"url": URLS[index], "rule": decision["rule"],
+        decisions.append({"url": urls[index], "rule": decision["rule"],
                           "status": decision["status"]})
     return decisions
 
 
-def replay_codex(root, output):
+def replay_codex(root, output, urls, rules, prompt):
     env = dict(os.environ, CODEX_HOME=str(root))
     with output.open("w") as stream:
         subprocess.run(["codex", "exec", "--ephemeral", "--skip-git-repo-check",
                         "--dangerously-bypass-approvals-and-sandbox", "--json",
-                        "-C", str(root), PROMPT], env=env, stdout=stream,
+                        "-C", str(root), prompt], env=env, stdout=stream,
                        stderr=subprocess.PIPE, text=True, check=True, timeout=100)
     events = [json.loads(line) for line in output.read_text().splitlines()]
     assert any(event.get("type") == "turn.completed" for event in events), "Codex turn did not finish"
@@ -89,21 +94,26 @@ def replay_codex(root, output):
     assert len(calls) == 3, f"Codex made {len(calls)} MCP calls, expected three"
     assert [(call["server"], call["tool"]) for call in calls] == [
         ("outbound_guard", "guarded_fetch")] * 3, calls
-    assert [call["arguments"].get("url") for call in calls] == URLS, calls
+    assert [call["arguments"].get("url") for call in calls] == urls, calls
     assert all(call["arguments"].get("method", "GET") == "GET" for call in calls), calls
     assert all(call.get("error") is None for call in calls), calls
     decisions = [call["result"]["structured_content"] for call in calls]
-    assert [decision["rule"] for decision in decisions] == RULES, decisions
-    assert [decision["status"] for decision in decisions] == ["SAFE", "BLOCKED", "BLOCKED"], decisions
-    assert decisions[0]["body_text"] == "fixture-ok", decisions[0]
-    assert all("body_text" not in decision for decision in decisions[1:]), decisions
-    return [{"url": URLS[index], "rule": decision["rule"], "status": decision["status"]}
+    assert [decision["rule"] for decision in decisions] == rules, decisions
+    for decision, rule in zip(decisions, rules):
+        allowed = rule == "EGRESS_ALLOWED"
+        assert decision["status"] == ("SAFE" if allowed else "BLOCKED"), decision
+        if allowed:
+            assert decision.get("body_text") == "fixture-ok", decision
+        else:
+            assert "body_text" not in decision, decision
+    return [{"url": urls[index], "rule": decision["rule"], "status": decision["status"]}
             for index, decision in enumerate(decisions)]
 
 
-def replay(client, root, config, phase):
+def replay(client, root, config, phase, urls, rules, prompt):
     output = root / f"{phase}.jsonl"
-    return replay_claude(config, output) if client == "claude" else replay_codex(root, output)
+    return (replay_claude(config, output, urls, rules, prompt) if client == "claude"
+            else replay_codex(root, output, urls, rules, prompt))
 
 
 def saved_config(client, root, docker, container):
@@ -127,7 +137,7 @@ def saved_config(client, root, docker, container):
     return config
 
 
-def fixture_state(root, expected_hits, previous_dns_count):
+def fixture_state(root, expected_hits, previous_dns_count, scenario):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         try:
@@ -138,9 +148,11 @@ def fixture_state(root, expected_hits, previous_dns_count):
             time.sleep(0.05)
             continue
         phase_dns = dns_a[previous_dns_count:]
-        if len(hits) == expected_hits and {"allowed.test", "private.test"} <= set(phase_dns):
-            assert hits == ["/plain"] * expected_hits, hits
-            assert "unlisted.test" not in dns_all, dns_all
+        expected_dns = (["allowed.test", "private.test"] if scenario == "dns"
+                        else ["allowed.test"] * 3)
+        if hits == expected_hits and phase_dns == expected_dns:
+            assert "unlisted.test" not in dns_all and \
+                (scenario != "redirect" or "private.test" not in dns_all), dns_all
             return {"hits": hits, "dns_a": phase_dns, "dns_all": dns_all}
         time.sleep(0.05)
     raise AssertionError("fixture did not observe the expected HTTP and DNS activity")
@@ -149,6 +161,7 @@ def fixture_state(root, expected_hits, previous_dns_count):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--client", choices=("claude", "codex"), default="claude")
+    parser.add_argument("--scenario", choices=tuple(SCENARIOS), default="dns")
     parser.add_argument("--allow-codex-approval-bypass", action="store_true",
                         help="Opt in to Codex's unsafe approval bypass from a private test cwd; host access remains")
     parser.add_argument("--old", type=Path, required=True)
@@ -159,6 +172,12 @@ def main():
     parser.add_argument("--capture", type=Path,
                         help="Retain and verify a fixture-namespace packet capture")
     args = parser.parse_args()
+    assert not args.capture or args.scenario == "dns", \
+        "the retained pcap verifier currently covers the DNS scenario only"
+    urls, rules, phase_hits = SCENARIOS[args.scenario]
+    prompt = ("Use ONLY outbound_guard guarded_fetch. Make exactly three GET calls, "
+              "in order: " + ", ".join(urls) + ". Do not use any other tools or "
+              "retry. Report the actual tool results.")
     assert args.client != "codex" or args.allow_codex_approval_bypass, \
         "Codex native MCP calls require explicit approval-bypass opt-in for this isolated probe"
     old_path, new_path = args.old.resolve(strict=True), args.new.resolve(strict=True)
@@ -245,14 +264,15 @@ def main():
                 time.sleep(0.05)
             command("docker", "exec", container, "dpkg", "-i", "/old.deb")
             old_installed = installed(container, old)
-            before = replay(args.client, root, config, "before")
-            old_fixture = fixture_state(fixture_root, 1, 0)
+            before = replay(args.client, root, config, "before", urls, rules, prompt)
+            old_fixture = fixture_state(fixture_root, phase_hits, 0, args.scenario)
             assert hashlib.sha256(config.read_bytes()).hexdigest() == config_sha
             command("docker", "exec", container, "dpkg", "-i", "/new.deb")
             new_installed = installed(container, new)
             assert hashlib.sha256(config.read_bytes()).hexdigest() == config_sha
-            after = replay(args.client, root, config, "after")
-            new_fixture = fixture_state(fixture_root, 2, len(old_fixture["dns_a"]))
+            after = replay(args.client, root, config, "after", urls, rules, prompt)
+            new_fixture = fixture_state(fixture_root, phase_hits * 2,
+                                        len(old_fixture["dns_a"]), args.scenario)
             assert before == after
             assert hashlib.sha256(config.read_bytes()).hexdigest() == config_sha
             command("docker", "exec", container, "dpkg", "-r", "outbound-guard-mcp")
@@ -272,6 +292,7 @@ def main():
                 args.capture.write_bytes(data)
                 capture_result = verify_capture(args.capture, hashlib.sha256(data).hexdigest())
             result = {"result": "passed", "platform": "Debian 12 amd64",
+                      "scenario": args.scenario,
                       "native_client": args.client,
                       "client": command(args.client, "--version"), "image_id": image_id,
                       "old_package": old, "new_package": new,
@@ -291,7 +312,9 @@ def main():
                       "limits": ["finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof" if capture_result else "finite local DNS/HTTP fixture; no packet capture or universal socket proof",
                                  "no TLS or host-client/other-tool traffic coverage",
                                  "Codex approval bypass ran from private test cwd but retained host access" if args.client == "codex" else "Claude native tool availability is model dependent",
-                                 "unsigned experimental packages, not an approved candidate"]}
+                                 "unsigned experimental packages, not an approved candidate"] +
+                                (["redirects are denied by current policy; this does not test safe redirect following"]
+                                 if args.scenario == "redirect" else [])}
         finally:
             if packet_capture is not None and packet_capture.poll() is None:
                 capture_target = str(tcpdump_pid) if tcpdump_pid is not None else str(-packet_capture.pid)
