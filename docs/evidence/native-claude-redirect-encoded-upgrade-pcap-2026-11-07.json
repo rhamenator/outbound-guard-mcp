@@ -1,0 +1,145 @@
+{
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "package_upgrade",
+    "old_package_launch_and_loopback_denial",
+    "native_skill_and_guarded_calls",
+    "loopback_denial",
+    "redirect_denial",
+    "encoded_response_denial",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "client": "Claude Code 2.1.319",
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 512,
+    "memory_peak_bytes": 18878464,
+    "pids_peak": 7,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "fixture_hits": [
+    "/plain",
+    "/head-ok",
+    "/redirect",
+    "/gzip-bomb",
+    "/plain"
+  ],
+  "fixture_mode": "redirect-encoded-packet",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limitations": [
+    "Fixture namespace only; host-client and other-tool traffic are not captured.",
+    "Current policy denies every redirect and every encoded response; this does not test safe redirect following or accepted decompression and expansion-ratio enforcement.",
+    "The finite gzip fixture is not general decompression-bomb resistance; no decoded body was returned.",
+    "Only the old-package loopback denial is exercised before upgrade; redirect/encoding sequence runs on the new package.",
+    "Unsigned experimental packages are not an exact owner-approved candidate.",
+    "No independent human review is claimed; four AI Scraping Defense repositories require separate evidence."
+  ],
+  "native_skill_invoked": true,
+  "native_skill_loaded": true,
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+    "package_sha256": "2440359066dc7f0072387db84f62ff671b794307846ee7fe16d3d442e3e06eca",
+    "revision": "fed9ad86ebf983edf92946f99a08e604292de3c5",
+    "version": "0.1.0~candidate.242+gfed9ad86ebf9"
+  },
+  "observed_at_utc": "2026-11-07T09:33:26+00:00",
+  "old_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3d8c5d2f28deaa2da381f6b63a390a8d6afa8cbde381a17ef752fba5d467c670",
+    "package_sha256": "2c0e7a55a991d1facfe1740bf7545fd755b4b1b3fd15cb9b2157f2a86f020e11",
+    "revision": "ba1583cd631949f86b5d6ea9a40950b12c8afbc7",
+    "version": "0.1.0~candidate.205+gba1583cd6319"
+  },
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "dns_query_count": 11,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "exfil_dns_query_count": null,
+    "ip_destination_entries": 78,
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "packet_count": 77,
+    "pcap_sha256": "16b8c91dfadc60e16f4635ed61c5acfb172e46251ee1017f7b9961eeaeee6f7a",
+    "raw_pcap_retained": true,
+    "rebind_a_answers": null,
+    "rebind_a_query_count": null,
+    "redirect_private_dns_query_count": 0,
+    "tcp_syn_count": 5,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "timed_out_streams_client_closed": null,
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0
+  },
+  "packet_verifier": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 11,
+    "encoded_response": "gzip",
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/head-ok"
+      ],
+      [
+        "allowed.test",
+        "/redirect"
+      ],
+      [
+        "allowed.test",
+        "/gzip-bomb"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "redirect_location": "http://private.test/plain",
+    "scope": "fixture namespace only",
+    "sha256": "16b8c91dfadc60e16f4635ed61c5acfb172e46251ee1017f7b9961eeaeee6f7a",
+    "tcp_syn_count": 5
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-redirect-encoded-upgrade-2026-11-07.pcap",
+  "pcap_sha256": "16b8c91dfadc60e16f4635ed61c5acfb172e46251ee1017f7b9961eeaeee6f7a",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_DIR/claude.pcap python3 tools/debian_native_container_probe.py claude NEW.deb NEW_SHA SKILL.zip SKILL_SHA --old-package OLD.deb --old-sha256 OLD_SHA --fixture-mode redirect-encoded-packet; python3 tools/verify_native_redirect_encoded_pcap.py RETAINED.pcap SHA",
+  "result": "passed",
+  "rules": [
+    "EGRESS_INVALID_HOST",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_REDIRECT_DENIED",
+    "EGRESS_ENCODED_RESPONSE",
+    "EGRESS_ALLOWED"
+  ],
+  "scenario": "native Claude redirect-to-private and gzip-encoded response denial with approved recovery after Debian package upgrade",
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+}

@@ -100,6 +100,8 @@ An [active ambient-proxy package replay](evidence/native-client-debian-active-pr
 
 A [package-installed redirect and encoded-response replay](evidence/native-client-debian-redirect-encoded-2026-10-31.json) passed native Claude/Codex 302 denial, gzip denial and approved recovery. Redirect following and accepted decompression remain unimplemented, so this is evidence for the current stricter denial policy only.
 
+A [retained native Claude redirect/encoded upgrade capture](evidence/native-claude-redirect-encoded-upgrade-pcap-2026-11-07.json) records the same current strict denials after experimental Debian package 205→242 upgrade. Its [fixture-namespace pcap](../tests/fixtures/packet-capture/native-claude-redirect-encoded-upgrade-2026-11-07.pcap) independently verifies the 302 `Location` to `private.test`, the gzip response, approved source requests only, no private-target DNS query or TCP destination, and approved recovery. This does not establish safe redirect following, accepted decompression, host-client/other-tool coverage or official-candidate qualification.
+
 A [redacted URL-class diagnostic](evidence/native-client-url-class-diagnostics-2026-10-31.json) now distinguishes exact controlled fixture URLs from unknown client inputs in future native replay failures without retaining raw URLs. A passing package-native Codex control verified the labels. It does not explain the earlier intermittent `EGRESS_INVALID_URL`.
 
 A [package-installed DNS SSRF replay](evidence/native-client-debian-dns-ssrf-2026-10-31.json) passed native Claude/Codex private, alias, mixed and metadata DNS denials, resolver failure and approved recovery, with only approved HTTP fixture hits. It is finite evidence, not universal socket or packet absence proof.
