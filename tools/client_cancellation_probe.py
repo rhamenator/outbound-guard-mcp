@@ -9,7 +9,7 @@ With SKILL_ZIP, set OUTBOUND_GUARD_CLIENT_TRAPS=1 to add controlled redirect
 and compressed-body denials to the explicit native skill workflow.
 Set OUTBOUND_GUARD_CLIENT_DNS_SSRF=1 for private, mixed-answer and metadata
 DNS denials.
-Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF, rebinding, synthetic exfiltration, redirect/encoding, or slow HTTP mode to check
+Set OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 with DNS SSRF, rebinding, synthetic exfiltration, redirect/encoding, slow HTTP, or interim slow-drip mode to check
 TCP connection attempts and DNS query destinations in the fixture namespace.
 Set OUTBOUND_GUARD_CLIENT_EXFIL=1 for a synthetic secret-shaped URL denial.
 Set OUTBOUND_GUARD_CLIENT_REBIND=1 for a two-call controlled DNS rebinding replay.
@@ -85,13 +85,13 @@ tls_slow_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_SLOW')=='1'
 active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
-assert not packet_capture_requested or (dns_mode or dns_truncated_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, or response-limit replay'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim','interim-repeat','interim-slow','headers'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','headers')
 interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 interim_slow_mode=upgrade_variant=='interim-slow'
+assert not packet_capture_requested or (dns_mode or dns_truncated_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, response-limit, or interim slow-drip replay'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
@@ -338,10 +338,10 @@ def summarize_packet_capture():
  timed_out_streams_closed=None
  tls_client_hello_streams=None
  tls_pinning_sni=None
- if slow_http_mode:
+ if slow_http_mode or interim_slow_mode:
   requests=fields('http.request','http.request.uri','tcp.stream')
   timed_out_streams_closed={}
-  for path in ('/drip','/delayed'):
+  for path in (('/interim-slow-drip',) if interim_slow_mode else ('/drip','/delayed')):
    streams={stream for uri,stream in requests if uri==path}
    assert len(streams)==1, (path,streams)
    stream=next(iter(streams))
