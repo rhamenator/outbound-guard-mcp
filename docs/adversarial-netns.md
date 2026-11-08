@@ -406,3 +406,9 @@ python3 tools/verify_native_dns_truncated_pcap.py tests/fixtures/packet-capture/
 ```
 
 An exploratory packet-summary check mistook a TCP DNS query for a UDP query; its UDP-only filter was corrected before these passing captures. The observations cover one finite resolver path inside the fixture namespace. They do not establish arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or the four separate AI Scraping Defense gates.
+
+## Native truncated UDP to mixed IPv4/IPv6 TCP DNS answers — 2026-11-08
+
+The [native-client evidence](evidence/native-client-dns-tcp-mixed-v6-2026-11-08.json) uses a checksum-verified trusted-main experimental Debian package in separate 128 MiB route-free containers. For `truncated-mixed-v6.test`, the controlled UDP resolver sends `TC=1` with no answers; the TCP DNS fixture returns public A `11.0.0.1` and private IPv6 loopback AAAA `::1`. Explicit Claude Code 2.1.319 and Codex CLI 0.151.0 companion-skill workflows each made an approved plain GET, the hostile hostname GET, then an approved recovery GET. Both received exact `EGRESS_FORBIDDEN_ADDRESS` without denied body text. The fixture recorded TCP A and AAAA queries and only the two approved HTTP hits. Package installation, removal, residue and finite resource checks passed without OOM.
+
+Reproduce with `python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-tcp-mixed-v6 --container-memory-mib 128 --sample-server-resources`, replacing `CLIENT` with `claude` or `codex` and using the evidence checksums. No packet capture was retained for this mode. Fixture logs establish the observed queries and guarded decisions; the fixture code specifies the answer bytes. This finite result does not prove arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or any of the four separate AI Scraping Defense gates.

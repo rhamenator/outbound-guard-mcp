@@ -5,7 +5,7 @@ from client_wire_url_class import fixture_url_class
 assert len(sys.argv) in (4,5,6)
 ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
-assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,fallback-pin.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
+assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,truncated-mixed-v6.test','allowed.test,fallback-pin.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
 assert mutation in (None,'mutate','inject-arguments','active-proxy','queue-saturate')
 mutant_enabled=mutation=='mutate'

@@ -7,7 +7,8 @@ dns=socketserver.ThreadingUDPServer(('127.0.0.1',53),DNS)
 http=http.server.ThreadingHTTPServer((PUBLIC_FIXTURE,80),HTTP);http.daemon_threads=True
 for s in [dns,http]:threading.Thread(target=s.serve_forever,daemon=True).start()
 tcp_dns_queries=[]
-if os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_TCP_PRIVATE')=='1':
+tcp_dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_TCP_PRIVATE')
+if tcp_dns_mode in ('1','mixed-v6'):
  class PrivateTCPDNS(socketserver.BaseRequestHandler):
   def handle(self):
    self.request.settimeout(3)
@@ -33,11 +34,17 @@ if os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_TCP_PRIVATE')=='1':
      labels.append(data[offset:offset+size].decode('ascii','ignore'));offset+=size
     if offset+5>len(data):return
     name='.'.join(labels).lower();qtype=struct.unpack('!H',data[offset+1:offset+3])[0]
-    if name!='truncated-private.test' or qtype not in (1,28):return
+    expected_name='truncated-mixed-v6.test' if tcp_dns_mode=='mixed-v6' else 'truncated-private.test'
+    if name!=expected_name or qtype not in (1,28):return
     tcp_dns_queries.append((name,qtype))
     question=data[12:offset+5]
-    answer=(b'\xc0\x0c'+struct.pack('!HHIH',1,1,60,4)+socket.inet_pton(socket.AF_INET,'127.0.0.1')) if qtype==1 else b''
-    response=data[:2]+struct.pack('!HHHHH',0x8180,1,int(qtype==1),0,0)+question+answer
+    if tcp_dns_mode=='mixed-v6':
+     address='11.0.0.1' if qtype==1 else '::1'
+     answer=(b'\xc0\x0c'+struct.pack('!HHIH',qtype,1,60,4 if qtype==1 else 16)+
+             socket.inet_pton(socket.AF_INET if qtype==1 else socket.AF_INET6,address))
+    else:
+     answer=(b'\xc0\x0c'+struct.pack('!HHIH',1,1,60,4)+socket.inet_pton(socket.AF_INET,'127.0.0.1')) if qtype==1 else b''
+    response=data[:2]+struct.pack('!HHHHH',0x8180,1,int(bool(answer)),0,0)+question+answer
     self.request.sendall(struct.pack('!H',len(response))+response)
  class ThreadedTCPDNS(socketserver.ThreadingMixIn,socketserver.TCPServer):
   daemon_threads=True
