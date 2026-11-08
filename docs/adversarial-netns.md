@@ -385,3 +385,11 @@ python3 tools/verify_native_dns_truncated_pcap.py tests/fixtures/packet-capture/
 ```
 
 The first exploratory packet parser counted an ICMP quote of a DNS response as another response; excluding ICMP fixed that harness error before these passing captures. The captures show only this resolver's finite TCP fallback attempt inside the fixture namespace. They do not establish arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or the four separate AI Scraping Defense gates.
+
+## Native truncated UDP to private TCP DNS answer — 2026-11-08
+
+The [native-client evidence](evidence/native-client-dns-tcp-private-2026-11-08.json) uses the checksum-verified trusted-main experimental Debian package in separate 128 MiB route-free containers. The controlled `truncated-private.test` UDP replies set `TC=1`; its fixture TCP DNS listener returns a loopback A answer and an empty AAAA answer. Native Claude Code 2.1.319 and Codex CLI 0.151.0 companion-skill workflows each made an approved plain GET, the hostile hostname GET, then an approved recovery GET. Both received exact `EGRESS_FORBIDDEN_ADDRESS` without denied body text; the fixture recorded TCP A and AAAA queries and only the two approved HTTP hits. Package install, removal, residue and finite resource checks passed without OOM.
+
+Reproduce with `python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-tcp-private --container-memory-mib 128 --sample-server-resources`, replacing `CLIENT` with `claude` or `codex` and using the evidence checksums. An initial exploratory run closed the fixture TCP DNS connection after its first framed query; the resolver then failed before receiving the private answer. The fixture was corrected to serve multiple framed queries per connection before the passing replays. No server code changed.
+
+No packet capture was retained for this mode. Fixture logs establish the observed queries and guarded decisions, while the fixture code specifies the answer bytes. This finite result does not prove arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or any of the four separate AI Scraping Defense gates.
