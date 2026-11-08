@@ -59,10 +59,11 @@ exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
-assert framing_variant in (None,'1','comma','coding'), 'unsupported HTTP framing replay mode'
-framing_mode=framing_variant in ('1','comma','coding')
+assert framing_variant in (None,'1','comma','coding','obs-fold'), 'unsupported HTTP framing replay mode'
+framing_mode=framing_variant in ('1','comma','coding','obs-fold')
 comma_framing_mode=framing_variant=='comma'
 coding_framing_mode=framing_variant=='coding'
+obs_fold_framing_mode=framing_variant=='obs-fold'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
 argument_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION')=='1'
@@ -382,6 +383,9 @@ if skill_zip:
    elif coding_framing_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these five calls in order: GET http://allowed.test/plain ; GET http://allowed.test/coding-mutant-0 ; GET http://allowed.test/coding-mutant-3 ; GET http://allowed.test/coding-mutant-5 ; GET http://allowed.test/plain . The three middle responses carry seeded unsupported Transfer-Encoding values. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
+   elif obs_fold_framing_mode:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/obs-fold-length ; GET http://allowed.test/obs-fold-encoding ; GET http://allowed.test/obs-fold-connection ; GET http://allowed.test/obs-fold-extension ; GET http://allowed.test/plain . The four middle responses contain obsolete folded HTTP header lines. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
+    expected_rules=['EGRESS_ALLOWED']+['EGRESS_INVALID_FRAMING']*4+['EGRESS_ALLOWED']
    else:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/conflict-framing ; GET http://allowed.test/duplicate-length ; GET http://allowed.test/stacked-transfer-coding ; GET http://allowed.test/duplicate-transfer-coding ; GET http://allowed.test/plain . The four middle responses deliberately contain conflicting or unsupported HTTP framing metadata. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report the actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_UNSUPPORTED_TRANSFER_CODING','EGRESS_ALLOWED']
@@ -620,6 +624,8 @@ if skill_zip:
                   if comma_framing_mode else
                   ['/plain','/coding-mutant-0','/coding-mutant-3','/coding-mutant-5','/plain']
                   if coding_framing_mode else
+                  ['/plain','/obs-fold-length','/obs-fold-encoding','/obs-fold-connection','/obs-fold-extension','/plain']
+                  if obs_fold_framing_mode else
                   ['/plain','/conflict-framing','/duplicate-length','/stacked-transfer-coding','/duplicate-transfer-coding','/plain'])
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())

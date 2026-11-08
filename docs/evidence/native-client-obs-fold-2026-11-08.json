@@ -1,0 +1,179 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode framing-http-obs-fold --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T01:47:15.304932+00:00",
+  "findings": [
+    "Both native clients made six guarded_fetch calls in the prescribed order through the installed Debian server and loaded companion skill workflow.",
+    "Each of the four folded responses was denied with exact EGRESS_INVALID_FRAMING and no returned body; approved recovery succeeded.",
+    "Both 128 MiB container runs reported no OOM and passed package removal/residue checks."
+  ],
+  "fixture": "Route-free controlled DNS/HTTP. Each native client requests two approved plain controls and four raw obs-fold responses; folded fields are Content-Length, Content-Encoding, Connection and X-Fixture.",
+  "harness_sha256": {
+    "client_cancellation_fixture.py": "9912bdd20635ddb214c3aa18118c024a6689663bad7650922649d723cedee7e5",
+    "client_cancellation_probe.py": "433e42b6b91f2272faf6a01b0dbe10fe578ca3f340591084d388663a435eb95f",
+    "client_wire_bridge.py": "eb852a667d731d113f8688c2d87078d79ca25c853cdec68098fb6755f4c0a90e",
+    "debian_native_container_probe.py": "180614088c4c51f33c4abfefe3b83312f81ad0100a6df6c9f1c89e31b9957fb2",
+    "netns_adversarial_probe.py": "cb258e7348a08effe63a91c517176abae9056d8825e7f387fd322d436f94907c"
+  },
+  "limitations": [
+    "No packet capture for these runs; fixture path logs and bridge results are scoped to the disposable network namespace. Host client traffic and other tools are outside this observation.",
+    "Finite four-shape HTTP/1.1 corpus and 50 ms server RSS/FD samples cannot establish arbitrary parser correctness or sustained resource bounds.",
+    "Native clients ran on Ubuntu; server was installed in Debian 12 amd64. This was an experimental package, not an official candidate. No Cursor, TLS obs-fold, upgrade/migration, owner residual-risk acceptance or independent human review is established.",
+    "The package and skill checksums match the trusted-main CI manifest; the local CLI did not repeat GitHub attestation verification. The four AI Scraping Defense repositories need separate tests."
+  ],
+  "package_ci_run": 42431609935,
+  "package_source_main_sha": "51d85d239a40e9ed4bdf0e4b13456004664f3c98",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "folded_length_denial",
+        "folded_encoding_denial",
+        "folded_connection_denial",
+        "folded_extension_denial",
+        "no_denied_body_text",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17571840,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "local_log_sha256": "18b3d797eb286f4da693c084d68afade0d41bead380ebf6ddd326593d8524c12",
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "6944e1fc1c2f92f7af87f9c480fa741802c2df0e910b7a59fa67d8a3cc45bd67",
+        "revision": "51d85d239a40e9ed4bdf0e4b13456004664f3c98",
+        "version": "0.1.0~candidate.278+g51d85d239a40"
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3956,
+        "sample_interval_ms": 50,
+        "samples": 281,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+      "workflow": {
+        "explicit_skill_input_accepted": null,
+        "fixture_hits": [
+          "/plain",
+          "/obs-fold-length",
+          "/obs-fold-encoding",
+          "/obs-fold-connection",
+          "/obs-fold-extension",
+          "/plain"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ]
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "folded_length_denial",
+        "folded_encoding_denial",
+        "folded_connection_denial",
+        "folded_extension_denial",
+        "no_denied_body_text",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16801792,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "local_log_sha256": "0efac37e99424c301db175e316f05e42fd2580547e229903c28e708ed7c8d6da",
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "6944e1fc1c2f92f7af87f9c480fa741802c2df0e910b7a59fa67d8a3cc45bd67",
+        "revision": "51d85d239a40e9ed4bdf0e4b13456004664f3c98",
+        "version": "0.1.0~candidate.278+g51d85d239a40"
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3892,
+        "sample_interval_ms": 50,
+        "samples": 239,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+      "workflow": {
+        "explicit_skill_input_accepted": true,
+        "fixture_hits": [
+          "/plain",
+          "/obs-fold-length",
+          "/obs-fold-encoding",
+          "/obs-fold-connection",
+          "/obs-fold-extension",
+          "/plain"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_INVALID_FRAMING",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ]
+      }
+    }
+  }
+}

@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "slow-http-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "slow-http", "slow-http-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -219,6 +219,7 @@ def main():
              "framing-http-packet": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-comma": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-coding": "OUTBOUND_GUARD_CLIENT_FRAMING",
+             "framing-http-obs-fold": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS",
              "redirect-encoded-packet": "OUTBOUND_GUARD_CLIENT_TRAPS",
              "http-upgrade": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
@@ -246,6 +247,7 @@ def main():
         if mode_variable:
             env[mode_variable] = ("comma" if args.fixture_mode == "framing-http-comma" else
                                   "coding" if args.fixture_mode == "framing-http-coding" else
+                                  "obs-fold" if args.fixture_mode == "framing-http-obs-fold" else
                                   "duplicate" if args.fixture_mode == "json-duplicate" else
                                   "interim" if args.fixture_mode == "http-interim-flood" else "1")
             if args.fixture_mode == "http-upgrade-headers":
@@ -413,6 +415,7 @@ def main():
                                     "framing-http-packet": ["conflicting_length_transfer_denial", "duplicate_length_denial", "stacked_transfer_denial", "duplicate_transfer_denial", "fixture_namespace_tcp_syn_capture"],
                                     "framing-http-comma": ["equal_comma_length_denial", "conflicting_comma_length_denial", "repeated_chunked_coding_denial"],
                                     "framing-http-coding": ["seeded_stacked_coding_denial", "seeded_parameterized_coding_denial", "seeded_unknown_coding_denial"],
+                                    "framing-http-obs-fold": ["folded_length_denial", "folded_encoding_denial", "folded_connection_denial", "folded_extension_denial", "no_denied_body_text"],
                                     "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"],
                                     "redirect-encoded-packet": ["loopback_denial", "redirect_denial", "encoded_response_denial",
                                                                 "fixture_namespace_tcp_syn_capture"],
