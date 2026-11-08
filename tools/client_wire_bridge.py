@@ -12,7 +12,7 @@ mutant_enabled=mutation=='mutate'
 argument_enabled=mutation=='inject-arguments'
 saturation_enabled=mutation=='queue-saturate'
 server_env=['PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts]
-if hosts=='allowed.test,tls-handshake.test':
+if pathlib.Path(log).with_name('ca.pem').exists():
  server_env.append('OUTBOUND_GUARD_EXTRA_CA_CERT='+str(pathlib.Path(log).with_name('ca.pem')))
 if mutation=='active-proxy':
  proxy='http://127.0.0.1:3128'

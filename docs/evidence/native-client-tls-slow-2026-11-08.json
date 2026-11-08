@@ -1,0 +1,206 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode tls-slow-http --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T02:40:08.235111+00:00",
+  "findings": [
+    "Both native clients made four guarded_fetch calls through the installed Debian server and loaded companion skill workflow.",
+    "Each observed exact EGRESS_RESPONSE_TOO_SLOW for one-byte-per-second TLS body and EGRESS_NETWORK_FAILURE for eleven-second delayed TLS headers; approved recovery succeeded without partial text.",
+    "All four fixture-side TLS connections retained allowed.test SNI and passed certificate validation.",
+    "Both 128 MiB container runs reported no OOM and passed package removal/residue checks."
+  ],
+  "fixture": "Route-free controlled DNS/HTTPS with ephemeral fixture CA and valid allowed.test certificate. Each native client requests approved plain GET, one-byte-per-second body, eleven-second delayed headers, then approved plain recovery. The TLS fixture records SNI.",
+  "harness_sha256": {
+    "client_cancellation_fixture.py": "c78b930efad7be796625c6aa26bdae7cdac9aba1202c775bf52be8053aabe8ff",
+    "client_cancellation_probe.py": "bee30c85fe8dcfed858332b4212223d0cb7806a600ccebb7342dba57eef9fbd1",
+    "client_wire_bridge.py": "c03e78e53e0701cdd3aaf6364c048ebe14abac844dd0b7289a6578c458048768",
+    "debian_native_container_probe.py": "8444f06b19db5ea1a503e330eddc96009132a1975e01736d3452851b72eaa656"
+  },
+  "limitations": [
+    "Finite controlled TLS/HTTP fixture; no packet capture, host-client traffic observation, other-tool traffic observation, or independent TLS/HTTP oracle.",
+    "Delayed headers currently yield EGRESS_NETWORK_FAILURE, not the body-specific EGRESS_RESPONSE_TOO_SLOW; this is the expected rule at this stage.",
+    "Finite 50 ms server RSS/FD samples can miss transient peaks and do not establish sustained resource bounds.",
+    "Native clients ran on Ubuntu; server was installed in Debian 12 amd64. This was an experimental package, not an official candidate. No Cursor, upgrade/migration, owner residual-risk acceptance, or independent human review is established.",
+    "Package and skill checksums match the trusted-main CI manifest; the local CLI did not repeat GitHub attestation verification. The four AI Scraping Defense repositories need separate tests."
+  ],
+  "package_ci_run": 42436433287,
+  "package_source_main_sha": "e508f42a97035ac87a9d6d2c54e111c24fe1941b",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "trusted_tls_handshake",
+        "tls_sni_preserved",
+        "tls_slow_drip_denial",
+        "tls_delayed_first_byte_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18345984,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "local_log_sha256": "7028fddca63464622e535a10d83f17e00cf3b16d60160840c84b0d2cd211c70d",
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "746a905c9cbd1e8c62d6fdfd287ee6e706d4b00ff5f37b0f7ccf78aef49e40d7",
+        "revision": "e508f42a97035ac87a9d6d2c54e111c24fe1941b",
+        "version": "0.1.0~candidate.279+ge508f42a9703"
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4804,
+        "sample_interval_ms": 50,
+        "samples": 363,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+      "workflow": {
+        "explicit_skill_input_accepted": null,
+        "fixture_hits": [
+          "/plain",
+          "/drip",
+          "/delayed",
+          "/plain"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_RESPONSE_TOO_SLOW",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "tls_sni": [
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ],
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ],
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ],
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ]
+        ]
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "trusted_tls_handshake",
+        "tls_sni_preserved",
+        "tls_slow_drip_denial",
+        "tls_delayed_first_byte_denial",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16572416,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "local_log_sha256": "d898a9e81daf1cbd163d56269fd5b913ab35543d6ca09a6aed30be0a3f3800ba",
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "746a905c9cbd1e8c62d6fdfd287ee6e706d4b00ff5f37b0f7ccf78aef49e40d7",
+        "revision": "e508f42a97035ac87a9d6d2c54e111c24fe1941b",
+        "version": "0.1.0~candidate.279+ge508f42a9703"
+      },
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4752,
+        "sample_interval_ms": 50,
+        "samples": 329,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+      "workflow": {
+        "explicit_skill_input_accepted": true,
+        "fixture_hits": [
+          "/plain",
+          "/drip",
+          "/delayed",
+          "/plain"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_RESPONSE_TOO_SLOW",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED"
+        ],
+        "status_codes": [
+          200,
+          200
+        ],
+        "tls_sni": [
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ],
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ],
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ],
+          [
+            "11.0.0.1",
+            "allowed.test"
+          ]
+        ]
+      }
+    }
+  }
+}
