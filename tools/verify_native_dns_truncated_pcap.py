@@ -20,13 +20,14 @@ def rows(path: Path, display_filter: str, *fields: str) -> list[list[str]]:
 
 
 def verify(path: Path, digest: str, scenario: str = "refused") -> dict:
-    assert scenario in ("refused", "private-answer")
+    assert scenario in ("refused", "private-answer", "mixed-v6")
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture size outside fixture limit"
     actual = hashlib.sha256(data).hexdigest()
     assert actual == digest, "capture SHA-256 mismatch"
 
-    name = "truncated-private.test" if scenario == "private-answer" else "truncated.test"
+    name = {"refused": "truncated.test", "private-answer": "truncated-private.test",
+            "mixed-v6": "truncated-mixed-v6.test"}[scenario]
     queries = rows(path, "dns.flags.response == 0 && udp.dstport == 53", "dns.qry.name", "dns.qry.type",
                    "ip.dst", "udp.dstport")
     assert queries and all(ip == "127.0.0.1" and port == "53"
@@ -57,9 +58,11 @@ def verify(path: Path, digest: str, scenario: str = "refused") -> dict:
         assert not dns_tcp_resets, dns_tcp_resets
         assert rows(path, "dns && tcp.dstport == 53", "frame.number"), "missing TCP DNS query"
         tcp_answers = rows(path, f'dns.flags.response == 1 && dns.qry.name == "{name}" && tcp.srcport == 53',
-                           "dns.qry.type", "dns.a", "dns.count.answers", "dns.flags.truncated")
-        assert tcp_answers == [["1", "127.0.0.1", "1", "False"],
-                               ["28", "", "0", "False"]], tcp_answers
+                           "dns.qry.type", "dns.a", "dns.aaaa", "dns.count.answers", "dns.flags.truncated")
+        expected = ([["1", "127.0.0.1", "", "1", "False"], ["28", "", "", "0", "False"]]
+                    if scenario == "private-answer" else
+                    [["1", "11.0.0.1", "", "1", "False"], ["28", "", "::1", "1", "False"]])
+        assert tcp_answers == expected, tcp_answers
 
     requests = rows(path, "http.request", "http.host", "http.request.uri")
     assert requests == [["allowed.test", "/plain"], ["allowed.test", "/plain"]], requests
@@ -82,7 +85,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--scenario", choices=("refused", "private-answer"), default="refused")
+    parser.add_argument("--scenario", choices=("refused", "private-answer", "mixed-v6"), default="refused")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-dns-truncated-pcap-verify-") as directory:
