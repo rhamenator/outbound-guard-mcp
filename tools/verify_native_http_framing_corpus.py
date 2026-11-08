@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Recheck retained native malformed-HTTP captures against evidence and wire oracles."""
+
+import json
+from pathlib import Path
+import re
+import subprocess
+
+
+ROOT = Path(__file__).resolve().parent.parent
+CAPTURE_ROOT = ROOT / "tests/fixtures/packet-capture"
+CASES = (
+    ("claude", "malformed", "tools/verify_native_malformed_http_pcap.py"),
+    ("codex", "malformed", "tools/verify_native_malformed_http_pcap.py"),
+    ("claude", "framing", "tools/verify_native_framing_http_pcap.py"),
+    ("codex", "framing", "tools/verify_native_framing_http_pcap.py"),
+)
+
+
+def main() -> None:
+    results = []
+    seen = set()
+    for client, kind, verifier in CASES:
+        filename = f"native-{client}-{kind}-http-upgrade-pcap-2026-11-07.json"
+        document = json.loads((ROOT / "docs/evidence" / filename).read_text())
+        assert document["result"] == "passed", filename
+        assert client in document["client"].lower(), filename
+        relative = Path(document["pcap_path"])
+        capture = (ROOT / relative).resolve(strict=True)
+        assert capture.is_relative_to(CAPTURE_ROOT), relative
+        assert capture not in seen, capture
+        seen.add(capture)
+        digest = document["pcap_sha256"]
+        assert re.fullmatch(r"[0-9a-f]{64}", digest), digest
+        checked = json.loads(subprocess.check_output(
+            ["python3", str(ROOT / verifier), str(capture), digest],
+            text=True, timeout=25))
+        recorded = document["packet_verifier"]
+        for field in ("sha256", "http_requests", "ip_destinations", "tcp_syn_count"):
+            assert checked[field] == recorded[field], (filename, field)
+        results.append({"evidence": filename, "client": client, "kind": kind,
+                        "capture": str(relative), "sha256": digest})
+    assert len(results) == len(CASES)
+    print(json.dumps({"verified_captures": results, "count": len(results)}, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
