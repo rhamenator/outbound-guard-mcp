@@ -414,6 +414,21 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"ok")
             return
+        if self.path in ("/obs-fold-length", "/obs-fold-encoding",
+                         "/obs-fold-connection", "/obs-fold-extension"):
+            # Obsolete line folding is malformed HTTP/1.1 even on an unrelated
+            # header. Send raw bytes so the fixture does not normalize it.
+            folded = {
+                "/obs-fold-length": b"Content-Length: 2\r\n 3\r\n",
+                "/obs-fold-encoding": b"Content-Encoding: identity\r\n gzip\r\n",
+                "/obs-fold-connection": b"Connection: keep-alive,\r\n Upgrade\r\n",
+                "/obs-fold-extension": b"X-Fixture: first\r\n second\r\n",
+            }[self.path]
+            head = (b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
+                    + folded + (b"" if self.path == "/obs-fold-length" else b"Content-Length: 2\r\n")
+                    + b"\r\n")
+            self.wfile.write(head + b"ok")
+            return
         if self.path in ("/comma-length-equal", "/comma-length-conflict",
                          "/signed-length", "/overflow-length"):
             self.send_response(200)
@@ -2412,6 +2427,10 @@ def main(binary, cancellation_probe):
             ("connection-upgrade-200", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
             ("conflict-framing", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
             ("duplicate-length", {"EGRESS_INVALID_FRAMING", "EGRESS_NETWORK_FAILURE"}),
+            ("obs-fold-length", {"EGRESS_INVALID_FRAMING"}),
+            ("obs-fold-encoding", {"EGRESS_INVALID_FRAMING"}),
+            ("obs-fold-connection", {"EGRESS_INVALID_FRAMING"}),
+            ("obs-fold-extension", {"EGRESS_INVALID_FRAMING"}),
             ("comma-length-equal", {"EGRESS_INVALID_FRAMING"}),
             ("comma-length-conflict", {"EGRESS_INVALID_FRAMING"}),
             ("signed-length", {"EGRESS_INVALID_FRAMING"}),
@@ -2497,7 +2516,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1203 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1207 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

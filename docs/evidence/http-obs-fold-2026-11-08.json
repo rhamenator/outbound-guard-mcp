@@ -1,0 +1,30 @@
+{
+  "assertions": [
+    "Each call reached only the expected approved HTTP fixture path.",
+    "Every folded response returned EGRESS_INVALID_FRAMING with no body_text; a plain approved control remained available.",
+    "The complete namespace suite passed its other DNS, proxy, timeout, response limit, budget and recovery assertions."
+  ],
+  "binary_sha256": "8c4e6922ebdf45f823acf2eac7345838c62b856e878e7704406fb9e655234872",
+  "cases": {
+    "obs-fold-connection": "EGRESS_INVALID_FRAMING",
+    "obs-fold-encoding": "EGRESS_INVALID_FRAMING",
+    "obs-fold-extension": "EGRESS_INVALID_FRAMING",
+    "obs-fold-length": "EGRESS_INVALID_FRAMING"
+  },
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "date_utc": "2026-11-08T01:43:05.990769+00:00",
+  "fixture_scope": "Disposable route-free Linux network namespace; allowed.test resolves to fixture-owned 11.0.0.1 only. Four raw HTTP/1.1 responses each contain CRLF followed by SP before an otherwise supported two-byte text body.",
+  "full_suite_decisions_reported": 2243,
+  "full_suite_log_sha256": "69785f8299b06fdc98843a4ddf2379c563a96adf760e6c55741b2b6cf29bf559",
+  "harness_sha256": {
+    "netns_adversarial_probe.py": "cb258e7348a08effe63a91c517176abae9056d8825e7f387fd322d436f94907c",
+    "netns_adversarial_probe.sh": "bf88393fc644413a56ba54dac1f589bdb4df49c3b04ae8302e9dd442c6d7165f"
+  },
+  "host_kernel": "7.0.0-42-generic",
+  "limitations": [
+    "Finite four-shape malformed HTTP fixture; no packet capture or independent HTTP implementation oracle.",
+    "The suite uses a direct MCP stdio driver, not a native Codex, Claude Code or Cursor session. Other native malformed-framing runs cover different response shapes.",
+    "This does not prove every parser state, TLS path, simultaneous load, traffic sent through other tools, or an official candidate. The four AI Scraping Defense repositories require their own tests."
+  ],
+  "source_main_sha": "51d85d239a40e9ed4bdf0e4b13456004664f3c98"
+}
