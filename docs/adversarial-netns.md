@@ -393,3 +393,16 @@ The [native-client evidence](evidence/native-client-dns-tcp-private-2026-11-08.j
 Reproduce with `python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-tcp-private --container-memory-mib 128 --sample-server-resources`, replacing `CLIENT` with `claude` or `codex` and using the evidence checksums. An initial exploratory run closed the fixture TCP DNS connection after its first framed query; the resolver then failed before receiving the private answer. The fixture was corrected to serve multiple framed queries per connection before the passing replays. No server code changed.
 
 No packet capture was retained for this mode. Fixture logs establish the observed queries and guarded decisions, while the fixture code specifies the answer bytes. This finite result does not prove arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or any of the four separate AI Scraping Defense gates.
+
+## Native truncated UDP to private TCP DNS packet capture — 2026-11-08
+
+The [packet evidence](evidence/native-client-dns-tcp-private-pcap-2026-11-08.json) retains [Claude](../tests/fixtures/packet-capture/native-dns-tcp-private-claude-2026-11-08.pcap) and [Codex](../tests/fixtures/packet-capture/native-dns-tcp-private-codex-2026-11-08.pcap) captures from separate route-free installed-client skill workflows. An independent `tshark` verifier checks each raw digest, zero-answer `TC=1` UDP A and AAAA responses, one TCP DNS fallback connection, a TCP A answer of `127.0.0.1`, an empty TCP AAAA answer, only two approved `allowed.test` HTTP requests, and no forbidden HTTP connection or off-fixture IP destination. Both clients returned exact `EGRESS_FORBIDDEN_ADDRESS` without denied body text and completed approved recovery. Package lifecycle and 128 MiB resource checks passed without OOM; a wrong digest was rejected.
+
+Reproduce with `OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-tcp-private-packet --container-memory-mib 128 --sample-server-resources`, using a new `.pcap` path in a caller-owned private directory and replacing `CLIENT` with `claude` or `codex`. Verify the captures with:
+
+```sh
+python3 tools/verify_native_dns_truncated_pcap.py tests/fixtures/packet-capture/native-dns-tcp-private-claude-2026-11-08.pcap c975323048be1c0ca2f153accfab0a3550df479cdecb207dbbc65827274ecbfe --scenario private-answer
+python3 tools/verify_native_dns_truncated_pcap.py tests/fixtures/packet-capture/native-dns-tcp-private-codex-2026-11-08.pcap ab0193e3e6a36cb95a654a6ec62929b2af652857ecb4cbd34edb8db714582a7f --scenario private-answer
+```
+
+An exploratory packet-summary check mistook a TCP DNS query for a UDP query; its UDP-only filter was corrected before these passing captures. The observations cover one finite resolver path inside the fixture namespace. They do not establish arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or the four separate AI Scraping Defense gates.

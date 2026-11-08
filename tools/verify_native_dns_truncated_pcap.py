@@ -19,20 +19,22 @@ def rows(path: Path, display_filter: str, *fields: str) -> list[list[str]]:
     return [line.split(";") for line in output.splitlines()]
 
 
-def verify(path: Path, digest: str) -> dict:
+def verify(path: Path, digest: str, scenario: str = "refused") -> dict:
+    assert scenario in ("refused", "private-answer")
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture size outside fixture limit"
     actual = hashlib.sha256(data).hexdigest()
     assert actual == digest, "capture SHA-256 mismatch"
 
-    queries = rows(path, "dns.flags.response == 0", "dns.qry.name", "dns.qry.type",
+    name = "truncated-private.test" if scenario == "private-answer" else "truncated.test"
+    queries = rows(path, "dns.flags.response == 0 && udp.dstport == 53", "dns.qry.name", "dns.qry.type",
                    "ip.dst", "udp.dstport")
     assert queries and all(ip == "127.0.0.1" and port == "53"
                            for _, _, ip, port in queries), queries
-    truncated_queries = [qtype for name, qtype, _, _ in queries if name == "truncated.test"]
+    truncated_queries = [qtype for queried, qtype, _, _ in queries if queried == name]
     assert len(truncated_queries) >= 2 and set(truncated_queries) == {"1", "28"}, truncated_queries
 
-    responses = rows(path, 'dns.flags.response == 1 && dns.qry.name == "truncated.test" && !icmp && !icmpv6',
+    responses = rows(path, f'dns.flags.response == 1 && dns.qry.name == "{name}" && udp.srcport == 53 && !icmp && !icmpv6',
                      "dns.qry.type", "dns.flags.truncated", "dns.count.answers",
                      "ip.src", "udp.srcport")
     assert len(responses) == len(truncated_queries), (responses, truncated_queries)
@@ -47,8 +49,17 @@ def verify(path: Path, digest: str) -> dict:
     assert set(connections) <= {("11.0.0.1", "80"), ("127.0.0.1", "53")}, connections
     dns_tcp_resets = rows(path, "tcp.srcport == 53 && tcp.flags.reset == 1",
                           "ip.src", "ip.dst")
-    assert dns_tcp_resets == [["127.0.0.1", "127.0.0.1"]], dns_tcp_resets
-    assert not rows(path, "dns && tcp.port == 53", "frame.number"), "unexpected TCP DNS payload"
+    tcp_answers = []
+    if scenario == "refused":
+        assert dns_tcp_resets == [["127.0.0.1", "127.0.0.1"]], dns_tcp_resets
+        assert not rows(path, "dns && tcp.port == 53", "frame.number"), "unexpected TCP DNS payload"
+    else:
+        assert not dns_tcp_resets, dns_tcp_resets
+        assert rows(path, "dns && tcp.dstport == 53", "frame.number"), "missing TCP DNS query"
+        tcp_answers = rows(path, f'dns.flags.response == 1 && dns.qry.name == "{name}" && tcp.srcport == 53',
+                           "dns.qry.type", "dns.a", "dns.count.answers", "dns.flags.truncated")
+        assert tcp_answers == [["1", "127.0.0.1", "1", "False"],
+                               ["28", "", "0", "False"]], tcp_answers
 
     requests = rows(path, "http.request", "http.host", "http.request.uri")
     assert requests == [["allowed.test", "/plain"], ["allowed.test", "/plain"]], requests
@@ -56,10 +67,12 @@ def verify(path: Path, digest: str) -> dict:
     addresses = {item for ipv4, ipv6 in destinations
                  for item in (ipv4 or ipv6).split(",") if item}
     assert addresses and addresses <= {"11.0.0.1", "127.0.0.1"}, addresses
-    return {"sha256": actual, "truncated_dns_query_types": sorted(truncated_queries),
+    return {"sha256": actual, "scenario": scenario,
+            "truncated_dns_query_types": sorted(truncated_queries),
             "truncated_dns_responses": responses,
             "tcp_dns_fallback_syn_count": connections.count(("127.0.0.1", "53")),
-            "tcp_dns_fallback_refused": True,
+            "tcp_dns_fallback_refused": scenario == "refused",
+            "tcp_dns_answers": tcp_answers,
             "tcp_syn_destinations": [f"{ip}:{port}" for ip, port in connections],
             "approved_http_requests": requests, "ip_destinations": sorted(addresses),
             "scope": "fixture namespace only"}
@@ -69,12 +82,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
+    parser.add_argument("--scenario", choices=("refused", "private-answer"), default="refused")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-dns-truncated-pcap-verify-") as directory:
         copy = Path(directory) / "fixture.pcap"
         shutil.copyfile(args.pcap, copy)
-        print(json.dumps(verify(copy, args.sha256), sort_keys=True))
+        print(json.dumps(verify(copy, args.sha256, args.scenario), sort_keys=True))
 
 
 if __name__ == "__main__":

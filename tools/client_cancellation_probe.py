@@ -309,10 +309,11 @@ def summarize_packet_capture():
   assert len(syn_destinations)>=2 and set(syn_destinations)==expected_syn_destinations, syn_destinations
  if tls_mode:assert len(syn_destinations)==2, syn_destinations
  if tls_slow_mode:assert len(syn_destinations)==4, syn_destinations
- dns_queries=fields('dns.flags.response == 0','ip.dst','ipv6.dst','udp.dstport')
+ dns_queries=fields('dns.flags.response == 0 && udp.dstport == 53','ip.dst','ipv6.dst','udp.dstport')
  dns_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in dns_queries]
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
- truncated_responses=fields('dns.flags.response == 1 && dns.qry.name == "truncated.test" && !icmp && !icmpv6',
+ truncated_name='truncated-private.test' if dns_tcp_private_mode else 'truncated.test'
+ truncated_responses=fields(f'dns.flags.response == 1 && dns.qry.name == "{truncated_name}" && udp.srcport == 53 && !icmp && !icmpv6',
                             'dns.flags.truncated','dns.count.answers','dns.qry.type') if dns_truncated_mode else []
  if dns_truncated_mode:
   assert len(truncated_responses)>=2, truncated_responses

@@ -1,0 +1,366 @@
+{
+  "command_template": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-tcp-private-packet --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T08:40:07.214225+00:00",
+  "findings": [
+    "Independent tshark checks of both retained raw captures confirmed zero-answer TC=1 UDP A/AAAA responses, one TCP DNS fallback SYN, a TCP A answer of 127.0.0.1, an empty TCP AAAA answer, two approved HTTP requests and no forbidden HTTP connection. The verifier rejected a wrong capture digest.",
+    "Both native installed-client workflows returned exact EGRESS_FORBIDDEN_ADDRESS without denied body text, then completed approved recovery.",
+    "Both 128 MiB Debian package install, removal and residue runs passed without OOM. An exploratory packet-summary failure counted a TCP DNS query in a UDP-only destination check; the harness filter was corrected before the passing retained captures. No server code changed."
+  ],
+  "fixture": "Route-free controlled DNS/HTTP namespace. For truncated-private.test, UDP A/AAAA replies set TC=1 with zero answers. A TCP DNS listener on fixture loopback port 53 returns A=127.0.0.1 and an empty AAAA answer. Each native skill workflow requests approved plain GET, truncated-private GET, approved recovery GET.",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "629dbc8eea6dbf43d77971dc61a35d519661dfd0fa16af69ae9c53d902899c08",
+    "tools/client_cancellation_probe.py": "f0fc03d6b47195fe617e64907b58bc72f7b165d57cb347f01d73b79fac95ae53",
+    "tools/debian_native_container_probe.py": "15e5ff02bdd0b34d5476829d2320691bfc9488a04ab1083d8efee8d51d23dd29",
+    "tools/netns_adversarial_probe.py": "a4a5c330d677494fca11a077c84d7f17001649fdd4e83328a9f1bc6cd1bb079a",
+    "tools/verify_native_dns_truncated_pcap.py": "e3eefc0952c5662c4133a4ffe498b27f523e6ee2fafc242ba670934833e0e1e2"
+  },
+  "limitations": [
+    "Captures cover only traffic inside each disposable fixture namespace. They do not observe native host-client traffic or traffic sent through other tools.",
+    "This finite libc/resolver fallback case does not establish behavior for arbitrary DNS truncation, resolver configurations or client versions. The server ran in Debian 12 amd64 containers; native CLIs ran on Ubuntu.",
+    "This is an unsigned experimental package, not a qualified official candidate. Other declared platforms, upgrade for this exact package, owner self-review and explicit residual-risk acceptance, and independent human review are not established. The four AI Scraping Defense repositories require separate adversarial evidence."
+  ],
+  "package_ci_run": 42460892609,
+  "package_sha256": "deb58f81abaed52ebbd546c284568063c6812f15d38b868c333a72b7317b93e5",
+  "runs": {
+    "claude": {
+      "capture_path": "tests/fixtures/packet-capture/native-dns-tcp-private-claude-2026-11-08.pcap",
+      "capture_sha256": "c975323048be1c0ca2f153accfab0a3550df479cdecb207dbbc65827274ecbfe",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_private_tcp_dns_denial",
+        "approved_recovery_after_forbidden_address",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17076224,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "independent_packet_verification": {
+        "approved_http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "private-answer",
+        "scope": "fixture namespace only",
+        "sha256": "c975323048be1c0ca2f153accfab0a3550df479cdecb207dbbc65827274ecbfe",
+        "tcp_dns_answers": [
+          [
+            "1",
+            "127.0.0.1",
+            "1",
+            "False"
+          ],
+          [
+            "28",
+            "",
+            "0",
+            "False"
+          ]
+        ],
+        "tcp_dns_fallback_refused": false,
+        "tcp_dns_fallback_syn_count": 1,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80",
+          "127.0.0.1:53",
+          "11.0.0.1:80"
+        ],
+        "truncated_dns_query_types": [
+          "1",
+          "28"
+        ],
+        "truncated_dns_responses": [
+          [
+            "1",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ],
+          [
+            "28",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ]
+        ]
+      },
+      "local_log_sha256": "70d97d4cd6623782dccf4ddaada8f42effda843190d9cf64100e61fe5aa47841",
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 54,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 52,
+        "pcap_sha256": "c975323048be1c0ca2f153accfab0a3550df479cdecb207dbbc65827274ecbfe",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80",
+          "127.0.0.1:53"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": [
+          [
+            "True",
+            "0",
+            "1"
+          ],
+          [
+            "True",
+            "0",
+            "28"
+          ]
+        ],
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3968,
+        "sample_interval_ms": 50,
+        "samples": 268,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tcp_private_dns_queries": [
+        [
+          "truncated-private.test",
+          1
+        ],
+        [
+          "truncated-private.test",
+          28
+        ]
+      ],
+      "udp_truncated_hostname_query_count": 2
+    },
+    "codex": {
+      "capture_path": "tests/fixtures/packet-capture/native-dns-tcp-private-codex-2026-11-08.pcap",
+      "capture_sha256": "ab0193e3e6a36cb95a654a6ec62929b2af652857ecb4cbd34edb8db714582a7f",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_private_tcp_dns_denial",
+        "approved_recovery_after_forbidden_address",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17027072,
+        "pids_peak": 10,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "independent_packet_verification": {
+        "approved_http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "private-answer",
+        "scope": "fixture namespace only",
+        "sha256": "ab0193e3e6a36cb95a654a6ec62929b2af652857ecb4cbd34edb8db714582a7f",
+        "tcp_dns_answers": [
+          [
+            "1",
+            "127.0.0.1",
+            "1",
+            "False"
+          ],
+          [
+            "28",
+            "",
+            "0",
+            "False"
+          ]
+        ],
+        "tcp_dns_fallback_refused": false,
+        "tcp_dns_fallback_syn_count": 1,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80",
+          "127.0.0.1:53",
+          "11.0.0.1:80"
+        ],
+        "truncated_dns_query_types": [
+          "1",
+          "28"
+        ],
+        "truncated_dns_responses": [
+          [
+            "1",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ],
+          [
+            "28",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ]
+        ]
+      },
+      "local_log_sha256": "ef384a85b7538f505704f1f86fa929327d54930127c1f2636710d52b95b3013f",
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 55,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 53,
+        "pcap_sha256": "ab0193e3e6a36cb95a654a6ec62929b2af652857ecb4cbd34edb8db714582a7f",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80",
+          "127.0.0.1:53"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": [
+          [
+            "True",
+            "0",
+            "1"
+          ],
+          [
+            "True",
+            "0",
+            "28"
+          ]
+        ],
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3952,
+        "sample_interval_ms": 50,
+        "samples": 179,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tcp_private_dns_queries": [
+        [
+          "truncated-private.test",
+          1
+        ],
+        [
+          "truncated-private.test",
+          28
+        ]
+      ],
+      "udp_truncated_hostname_query_count": 2
+    }
+  },
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+  "source_main_sha": "73b9f03117906dcda9307072d90ab100ce27a85f"
+}
