@@ -94,7 +94,7 @@ upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','
 interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 interim_slow_mode=upgrade_variant=='interim-slow'
-assert not packet_capture_requested or (dns_mode or dns_truncated_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, response-limit, or interim slow-drip replay'
+assert not packet_capture_requested or (dns_mode or dns_truncated_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, connect blackhole, TLS pinning, TLS slow HTTP, malformed framing, response-limit, or interim slow-drip replay'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
@@ -299,6 +299,7 @@ def report_cursor_plan_gate(events):
   'mcp_calls':sum(e.get('method')=='tools/call' for e in events)}}),flush=True)
 def summarize_packet_capture():
  assert packet_capture is not None and packet_capture.poll() is None and tcpdump_pid is not None, 'packet capture stopped early'
+ if connect_blackhole_mode:time.sleep(1.2)  # Let libpcap drain the final recovery request.
  subprocess.run(['sudo','-n','aa-exec','-p','tcpdump','/usr/bin/kill','-INT',str(tcpdump_pid)],check=True)
  packet_capture.wait(timeout=5)
  assert capture_path.stat().st_size>24, 'packet capture contains no packets'
@@ -313,7 +314,14 @@ def summarize_packet_capture():
  expected_syn_destinations=({('11.0.0.1','80'),('11.0.0.2','80')} if fallback_mode
                             else {('11.0.0.2','443'),('11.0.0.1','80')} if tls_mode
                             else {('11.0.0.1','443')} if tls_slow_mode else {('11.0.0.1','80')})
- if dns_truncated_mode:
+ if connect_blackhole_mode:
+  # OUTPUT drops precede tcpdump's packet tap; nft counts the blocked SYNs.
+  assert syn_destinations and set(syn_destinations)=={('11.0.0.1','80')}, syn_destinations
+  requests=fields('http.request','http.host','http.request.uri')
+  assert requests==[['allowed.test','/plain']]*2, requests
+  responses=fields('http.response','http.response.code')
+  assert responses==[['200']]*2, responses
+ elif dns_truncated_mode:
   assert syn_destinations.count(('11.0.0.1','80'))==2, syn_destinations
   assert set(syn_destinations)<={('11.0.0.1','80'),('127.0.0.1','53')}, syn_destinations
  else:
@@ -371,7 +379,7 @@ def summarize_packet_capture():
   tls_pinning_sni=hellos[0][0]
  ip_packets=fields('ip || ipv6','ip.dst','ipv6.dst')
  ip_destinations=[address for ipv4,ipv6 in ip_packets for address in (ipv4 or ipv6).split(',') if address]
- allowed_ip_destinations={'127.0.0.1','11.0.0.1'} | ({'11.0.0.2'} if (fallback_mode or tls_mode) else set())
+ allowed_ip_destinations={'127.0.0.1','11.0.0.1'} | ({'11.0.0.2'} if (fallback_mode or tls_mode) else set()) | ({'11.0.0.3'} if connect_blackhole_mode else set())
  assert ip_destinations and set(ip_destinations)<=allowed_ip_destinations, ip_destinations
  packets=fields('frame.number','frame.number')
  if packet_archive:
