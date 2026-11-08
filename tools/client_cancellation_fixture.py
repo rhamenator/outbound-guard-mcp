@@ -8,10 +8,12 @@ http=http.server.ThreadingHTTPServer((PUBLIC_FIXTURE,80),HTTP);http.daemon_threa
 for s in [dns,http]:threading.Thread(target=s.serve_forever,daemon=True).start()
 tls_sni=[]
 if os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1':
+ tls_slow=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_SLOW')=='1'
  def openssl(*args):subprocess.run(['openssl',*args],check=True,capture_output=True,timeout=10)
  openssl('req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',str(root/'ca.key'),'-out',str(root/'ca.pem'),'-subj','/CN=Fixture CA','-addext','basicConstraints=critical,CA:TRUE','-addext','keyUsage=critical,keyCertSign,cRLSign')
  openssl('req','-new','-newkey','rsa:2048','-nodes','-keyout',str(root/'leaf.key'),'-out',str(root/'leaf.csr'),'-subj','/CN=Fixture Leaf')
- for serial,host,address in ((1,'wrong.test','11.0.0.2'),(2,'tls-handshake.test',PUBLIC_FIXTURE)):
+ public_host='allowed.test' if tls_slow else 'tls-handshake.test'
+ for serial,host,address in ((1,'wrong.test','11.0.0.2'),(2,public_host,PUBLIC_FIXTURE)):
   (root/'extensions').write_text(f'subjectAltName=DNS:{host}\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n')
   openssl('x509','-req','-in',str(root/'leaf.csr'),'-CA',str(root/'ca.pem'),'-CAkey',str(root/'ca.key'),'-set_serial',str(serial),'-days','1','-extfile',str(root/'extensions'),'-out',str(root/(host+'.pem')))
   context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
