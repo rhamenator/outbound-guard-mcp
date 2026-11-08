@@ -1,0 +1,155 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-tcp-mixed-v6 --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T09:43:08.798871+00:00",
+  "findings": [
+    "Both native clients received exact EGRESS_FORBIDDEN_ADDRESS without denied body text despite the fixture providing a public A answer alongside a private IPv6 loopback AAAA answer over TCP DNS. Approved recovery succeeded.",
+    "The TCP fixture recorded A and AAAA queries for truncated-mixed-v6.test; the UDP fixture recorded two hostname queries. Only two approved /plain HTTP hits occurred per client.",
+    "Both clean Debian 12 amd64 package installs/removals and 128 MiB resource checks passed without OOM."
+  ],
+  "fixture": "Route-free controlled DNS/HTTP namespace. For truncated-mixed-v6.test, UDP A/AAAA replies set TC=1 with zero answers. A TCP DNS listener on fixture loopback port 53 returns A=11.0.0.1 and AAAA=::1. Both native companion-skill workflows request approved plain GET, truncated-mixed-v6 GET, approved recovery GET.",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "abd3d540d7e364b62a1d7feec8afca0fb204cc1381461f4d20d21eb73302af28",
+    "tools/client_cancellation_probe.py": "b7f9496e0c023e3570a352fa9929c7fcd4af70121db44efb1e24dbc6ec672493",
+    "tools/client_wire_bridge.py": "8e42b02f8469000ea054a6c4212a0d5475591dc330451c34dc8cc302c6d0cbf3",
+    "tools/debian_native_container_probe.py": "b70a160e73ce2026abff2917d386c288c592aa9a5e68d991d444784f02c2addb",
+    "tools/netns_adversarial_probe.py": "e6806f8c13d7ad6b79cd2e1c3767340c15069e853c1093aeaa8e7788fc3be26a"
+  },
+  "limitations": [
+    "No packet capture was retained for this mode. Fixture logs and code support the mixed-answer interpretation, but these runs do not independently establish DNS response bytes or every TCP destination.",
+    "This finite libc/resolver fallback case does not establish behavior for arbitrary DNS truncation, resolver configurations or client versions. The server ran in Debian 12 amd64 containers; native CLIs ran on Ubuntu.",
+    "Only guarded_fetch traffic in the disposable namespace was observed. Host-client traffic and traffic sent through other tools are outside scope.",
+    "This is an unsigned experimental package, not an official candidate. Other declared platforms, upgrade for this exact package, owner self-review and explicit residual-risk acceptance, and independent human review remain open. The four AI Scraping Defense repositories require separate adversarial evidence."
+  ],
+  "package_ci_run": 42464605160,
+  "package_sha256": "b59d35ecc190e19dc99a7af8a0cb5f1f42b211689d70b8cd94b350d3f1c4a728",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_mixed_v6_tcp_dns_denial",
+        "approved_recovery_after_forbidden_address",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17707008,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "local_log_sha256": "206083fc41b37acb11377c8848bda2e1bc7d7cdd2a6fa164fc4751b346db3ac0",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3964,
+        "sample_interval_ms": 50,
+        "samples": 269,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tcp_dns_queries": [
+        [
+          "truncated-mixed-v6.test",
+          1
+        ],
+        [
+          "truncated-mixed-v6.test",
+          28
+        ]
+      ],
+      "udp_truncated_hostname_query_count": 2
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_mixed_v6_tcp_dns_denial",
+        "approved_recovery_after_forbidden_address",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17108992,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "local_log_sha256": "ae93e04cef6dfc9777672582afcc93d89a603fb4e0128bc9aa1cbfa9a66d4101",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3896,
+        "sample_interval_ms": 50,
+        "samples": 193,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tcp_dns_queries": [
+        [
+          "truncated-mixed-v6.test",
+          1
+        ],
+        [
+          "truncated-mixed-v6.test",
+          28
+        ]
+      ],
+      "udp_truncated_hostname_query_count": 2
+    }
+  },
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+  "source_main_sha": "8a3d9b42c2f3a61b94b2ffdb8a6c6c92ba514425"
+}

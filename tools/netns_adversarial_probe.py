@@ -151,7 +151,7 @@ class DNS(socketserver.BaseRequestHandler):
             type(self).aaaa_names.append(name)
         if name == 'dns-stall.test' and not type(self).stall_release.wait(timeout=8):
             return
-        if name in ('truncated.test', 'truncated-private.test') and qtype in (1, 28):
+        if name in ('truncated.test', 'truncated-private.test', 'truncated-mixed-v6.test') and qtype in (1, 28):
             # Set TC for a complete question with no UDP answers. The fixture
             # deliberately has no TCP DNS listener, so fallback must fail closed.
             header = data[:2] + struct.pack('!HHHHH', 0x8380, 1, 0, 0, 0)
