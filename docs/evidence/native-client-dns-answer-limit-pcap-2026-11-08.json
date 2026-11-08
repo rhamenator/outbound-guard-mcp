@@ -1,0 +1,305 @@
+{
+  "artifact_manifest_sha256": "3d3bedd2b50ba40cf8b0cd58c65f4898d054a85c6536157653fba50b696e7906",
+  "client_versions": {
+    "claude": "2.1.319",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-08",
+  "harness_sha256": {
+    "client_cancellation_fixture.py": "abd3d540d7e364b62a1d7feec8afca0fb204cc1381461f4d20d21eb73302af28",
+    "client_cancellation_probe.py": "4bafd285f7c9977822209299a217d57617c2b8a88bf1cc037e36cbb8c404d9fd",
+    "client_wire_bridge.py": "b499f23cf3f85350b4e65bfbc8b9023cbfb5394f926498ae23e97d07c15464be",
+    "debian_native_container_probe.py": "0491c50e0b4a4d905ec5a479d8047df38372c04c322e73ed27a343a64a3d535b",
+    "verify_native_dns_answer_limit_corpus.py": "e911a0826c8a085546de3e672cca74610354433aafc3384b73013bad84579130",
+    "verify_native_dns_answer_limit_pcap.py": "946f0c1a43e463cadd70c0a17228959ce86fdb20823e36998a67d23c08b19089"
+  },
+  "limitations": "Two finite explicit native installed-skill workflows on Ubuntu with unsigned experimental Debian 12 amd64 package in disposable route-free containers. Retained fixture-namespace captures independently verify twenty public A records in one DNS answer and no extra TCP connection beyond two approved HTTP requests. No host-client or other-tool traffic, arbitrary resolver behavior, exact official candidate, automatic skill triggering, upgrade or other-platform qualification. 50 ms server samples can miss peaks; cgroup peaks include helpers. Owner self-review and residual-risk acceptance remain open; independent human review is absent. Four AI Scraping Defense repositories require separate evidence.",
+  "package_ci_run": 42522296739,
+  "package_sha256": "06a5726e8422cc2d53b2583c07d205d3ee0df8d61752990606bf5fb623cee040",
+  "package_source_main_sha": "a98644cf6d8b5fac6cba8f761309dbf8ed9d9598",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-answer-limit-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_dns_answer_limit_pcap.py RETAINED.pcap SHA256",
+  "result": "passed",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "twenty_public_dns_answers_denied_before_http",
+        "approved_recovery_after_dns_denial",
+        "no_extra_tcp_connection_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16822272,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "native_client": {
+        "explicit_skill_input_accepted": null,
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_turn_completed": null,
+        "skill_tool_result_success": true
+      },
+      "native_skill_loaded": true,
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 41,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 40,
+        "pcap_sha256": "bd5a49448c029f208b3ee4a67ebbebad92eba2eee188e48b7cd829079016f797",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 2,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "packet_verifier": {
+        "answer_count": 20,
+        "answers": [
+          "11.0.0.1",
+          "11.0.0.2",
+          "11.0.0.3",
+          "11.0.0.4",
+          "11.0.0.5",
+          "11.0.0.6",
+          "11.0.0.7",
+          "11.0.0.8",
+          "11.0.0.9",
+          "11.0.0.10",
+          "11.0.0.11",
+          "11.0.0.12",
+          "11.0.0.13",
+          "11.0.0.14",
+          "11.0.0.15",
+          "11.0.0.16",
+          "11.0.0.17",
+          "11.0.0.18",
+          "11.0.0.19",
+          "11.0.0.20"
+        ],
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test",
+          "many-answers.test"
+        ],
+        "dns_query_count": 7,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "http_response_codes": [
+          "200",
+          "200"
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "bd5a49448c029f208b3ee4a67ebbebad92eba2eee188e48b7cd829079016f797",
+        "tcp_syn_count": 2
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-dns-answer-limit-claude-2026-11-08.pcap",
+      "pcap_sha256": "bd5a49448c029f208b3ee4a67ebbebad92eba2eee188e48b7cd829079016f797",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_ANSWER_LIMIT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3884,
+        "sample_interval_ms": 50,
+        "samples": 253,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "twenty_public_dns_answers_denied_before_http",
+        "approved_recovery_after_dns_denial",
+        "no_extra_tcp_connection_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16769024,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "native_client": {
+        "explicit_skill_input_accepted": true,
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_turn_completed": true,
+        "skill_tool_result_success": null
+      },
+      "native_skill_loaded": true,
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 7,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 40,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 39,
+        "pcap_sha256": "1b7f7682a01b2f12e5bd485d3cd16e559c520d60c8c6a1e3f4347230032ec114",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 2,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "packet_verifier": {
+        "answer_count": 20,
+        "answers": [
+          "11.0.0.1",
+          "11.0.0.2",
+          "11.0.0.3",
+          "11.0.0.4",
+          "11.0.0.5",
+          "11.0.0.6",
+          "11.0.0.7",
+          "11.0.0.8",
+          "11.0.0.9",
+          "11.0.0.10",
+          "11.0.0.11",
+          "11.0.0.12",
+          "11.0.0.13",
+          "11.0.0.14",
+          "11.0.0.15",
+          "11.0.0.16",
+          "11.0.0.17",
+          "11.0.0.18",
+          "11.0.0.19",
+          "11.0.0.20"
+        ],
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test",
+          "many-answers.test"
+        ],
+        "dns_query_count": 7,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "http_response_codes": [
+          "200",
+          "200"
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "1b7f7682a01b2f12e5bd485d3cd16e559c520d60c8c6a1e3f4347230032ec114",
+        "tcp_syn_count": 2
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-dns-answer-limit-codex-2026-11-08.pcap",
+      "pcap_sha256": "1b7f7682a01b2f12e5bd485d3cd16e559c520d60c8c6a1e3f4347230032ec114",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_ANSWER_LIMIT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3812,
+        "sample_interval_ms": 50,
+        "samples": 240,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "scenario": "Retained native installed-skill twenty-address DNS answer-limit fixture captures",
+  "server_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+}
