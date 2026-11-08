@@ -372,3 +372,16 @@ The [native-client evidence](evidence/native-client-dns-truncated-2026-11-08.jso
 Reproduce with `python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-truncated --container-memory-mib 128 --sample-server-resources`, replacing `CLIENT` with `claude` or `codex` and using the checksums in the evidence record. An initial exploratory pair failed because the bridge's fixture-host allowlist lacked `truncated.test`; that harness error was fixed before the passing replays.
 
 No packet capture was retained, so the client logs do not independently prove the DNS response bits or a TCP fallback attempt. This finite result covers guarded calls in the controlled namespace, not host-client or other-tool traffic, arbitrary resolver behavior, a qualified official candidate, or the four separate AI Scraping Defense gates.
+
+## Native truncated DNS packet capture — 2026-11-08
+
+The [packet evidence](evidence/native-client-dns-truncated-pcap-2026-11-08.json) retains [Claude](../tests/fixtures/packet-capture/native-dns-truncated-claude-2026-11-08.pcap) and [Codex](../tests/fixtures/packet-capture/native-dns-truncated-codex-2026-11-08.pcap) route-free fixture captures from separate installed-client skill workflows. An independent `tshark` verifier checked each raw digest, A and AAAA UDP responses with `TC=1` and zero answers, one TCP SYN to fixture `127.0.0.1:53` followed by a reset and no TCP DNS payload, two approved `allowed.test` HTTP requests, and no off-fixture IP destination. Each native decision log records exact `EGRESS_DNS_FAILURE` without denied body text between approved controls. The package lifecycle and 128 MiB resource checks passed. The verifier rejected a wrong digest.
+
+Reproduce with `OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-truncated-packet --container-memory-mib 128 --sample-server-resources`, using a new `.pcap` path in a caller-owned private directory and replacing `CLIENT` with `claude` or `codex`. Verify the retained captures with:
+
+```sh
+python3 tools/verify_native_dns_truncated_pcap.py tests/fixtures/packet-capture/native-dns-truncated-claude-2026-11-08.pcap a1f6a8e327fdb15437f8c754e5a54c55341fb1ec68ed743c64f8b68434114ada
+python3 tools/verify_native_dns_truncated_pcap.py tests/fixtures/packet-capture/native-dns-truncated-codex-2026-11-08.pcap ba6f0744e57df587f5b0b123a07fb48198196b19f3aa4bbf20fbd97d10f23061
+```
+
+The first exploratory packet parser counted an ICMP quote of a DNS response as another response; excluding ICMP fixed that harness error before these passing captures. The captures show only this resolver's finite TCP fallback attempt inside the fixture namespace. They do not establish arbitrary resolver behavior, host-client or other-tool traffic, official-candidate readiness, or the four separate AI Scraping Defense gates.
