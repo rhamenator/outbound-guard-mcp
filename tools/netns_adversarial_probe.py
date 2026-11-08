@@ -85,6 +85,8 @@ RECORDS = {
     "rebind.test": [PUBLIC_FIXTURE],
     "mixed.test": [PUBLIC_FIXTURE, "127.0.0.1"],
     "many-answers.test": [f"11.0.0.{n}" for n in range(1, 21)],
+    "dns-limit-16.test": [f"11.0.0.{n}" for n in range(1, 17)],
+    "dns-limit-17.test": [f"11.0.0.{n}" for n in range(1, 18)],
     "private.test": ["127.0.0.1"],
     "alias-private.test": [],  # The CNAME branch below supplies its answer.
     "loop-dns.test": [],  # The DNS compression-loop branch supplies its answer.
@@ -2342,6 +2344,20 @@ def main(binary, cancellation_probe):
             assert HTTP.hits == hits, (host, path, HTTP.hits)
             if rule == "EGRESS_ALLOWED":
                 assert decision["body_text"] == "fixture-ok"
+        before_hits, before_names = len(HTTP.hits), len(DNS.a_names)
+        boundary = call_sequence(binary, [
+            ("dns-limit-16.test", "plain", "http"),
+            ("dns-limit-17.test", "plain", "http"),
+            ("allowed.test", "plain", "http"),
+        ])
+        assert [decision["rule"] for decision in boundary] == [
+            "EGRESS_ALLOWED", "EGRESS_DNS_ANSWER_LIMIT", "EGRESS_ALLOWED"], boundary
+        assert boundary[0]["body_text"] == boundary[2]["body_text"] == "fixture-ok"
+        assert "body_text" not in boundary[1], boundary[1]
+        assert HTTP.hits[before_hits:] == ["/plain", "/plain"], HTTP.hits[before_hits:]
+        assert {"dns-limit-16.test", "dns-limit-17.test"} <= set(DNS.a_names[before_names:])
+        print("DNS answer-cap boundary: 16 public A records allowed, 17 denied before HTTP, "
+              "approved same-process recovery")
         before_hits = len(HTTP.hits)
         first, rebound = call_sequence(binary, [("rebind.test", "plain", "http"),
                                                 ("rebind.test", "plain", "http")])
@@ -2549,7 +2565,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1209 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1212 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
