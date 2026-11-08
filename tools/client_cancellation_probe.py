@@ -52,6 +52,7 @@ assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
 attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
 dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
+dns_truncated_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_TRUNCATED')=='1'
 packet_capture_requested=os.environ.get('OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE')=='1'
 packet_archive=os.environ.get('OUTBOUND_GUARD_PACKET_ARCHIVE')
 assert not packet_archive or packet_capture_requested, 'packet archive requires capture mode'
@@ -90,8 +91,8 @@ saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
 cancel_phase=os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE','body')
 assert cancel_phase in ('body','headers'), 'unsupported cancellation phase'
 assert cancel_phase=='body' or not skill_zip, 'header cancellation uses the client control workflow'
-assert sum((attack_mode,dns_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,tls_slow_mode,slow_http_mode,upgrade_mode,html_quarantine_mode,saturation_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+assert sum((attack_mode,dns_mode,dns_truncated_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,tls_slow_mode,slow_http_mode,upgrade_mode,html_quarantine_mode,saturation_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
 unicode_marker='ｇｈｐ＿'+'Ａ'*20 if exfil_mode else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
@@ -211,6 +212,7 @@ if active_proxy_mode:
  assert (root/'proxy-flows.jsonl').exists(), 'positive proxy flow was not observed'
 bridge=[str(script_dir/'client_wire_bridge.py'),ns,binary,str(root/'wire.jsonl')]
 if dns_mode:bridge.append('allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test')
+if dns_truncated_mode:bridge.append('allowed.test,truncated.test')
 if exfil_mode:bridge.append('allowed.test,exfil.test')
 if rebind_mode:bridge.append('allowed.test,rebind.test')
 if frame_mode:bridge.extend(['allowed.test,private.test','mutate'])
@@ -386,6 +388,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these nine calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://private.test/plain ; GET http://alias-private.test/plain ; GET http://mixed.test/plain ; GET http://metadata.test/plain ; GET http://loop-dns.test/plain ; GET http://allowed.test/plain . The operator approved all six exact DNS names for this negative security test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules+=['EGRESS_FORBIDDEN_ADDRESS']*4+['EGRESS_DNS_FAILURE','EGRESS_ALLOWED']
    expected_methods+=['GET']*6
+  if dns_truncated_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://truncated.test/plain ; GET http://allowed.test/plain . The operator approved both exact hosts. The middle hostname sends DNS responses with the truncation bit set, but the fixture has no TCP DNS listener. Make every call once even when denied. Do not retry or use any other tool. Report the actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_DNS_FAILURE','EGRESS_ALLOWED']
+   expected_methods=['GET']*3
   if exfil_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled fixture, use ONLY guarded_fetch for these six calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://exfil.test/'+synthetic_marker+' ; GET http://exfil.test/'+unicode_marker+' ; GET http://allowed.test/plain . The two exfil.test paths are synthetic test markers, not real credentials. The operator approved both exact DNS hosts for this negative test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules+=['EGRESS_SECRET_DETECTED','EGRESS_INVALID_URL','EGRESS_ALLOWED']
@@ -541,16 +547,16 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='claude':
+  if (attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode:
+  if attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call' and not (saturation_mode and str(e.get('id','')).startswith('saturation-'))]
   if [e['http_method'] for e in fetches]!=expected_methods:
@@ -581,6 +587,13 @@ if skill_zip:
    assert {'alias-private.test','loop-dns.test'} <= set(dns_a_names), dns_a_names
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/head-ok','/plain'], hits
+  if dns_truncated_mode:
+   all_dns_names=json.loads((root/'dns-all.json').read_text())
+   assert 'truncated.test' in all_dns_names, all_dns_names
+   hits=json.loads((root/'hits.json').read_text())
+   assert hits==['/plain','/plain'], hits
+   denied=[e for e in events if e.get('rule') in ('EGRESS_DNS_FAILURE','EGRESS_DNS_TIMEOUT')]
+   assert len(denied)==1 and denied[0].get('body_text_present') is False, denied
   if exfil_mode:
    dns_names=json.loads((root/'dns.json').read_text())
    assert 'exfil.test' not in dns_names, dns_names
@@ -751,8 +764,8 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_truncated_mode':dns_truncated_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
    'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
     'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,
     'bounded_recovery_seconds':saturation_seconds,'injected_not_native':True} if saturation_mode else None,
@@ -768,6 +781,7 @@ if skill_zip:
    'tls_sni':tls_sni if (tls_mode or tls_slow_mode) else None,
    'proxy_flows':proxy_flows if active_proxy_mode else None,
    'forbidden_dns_names':sorted(set(dns_names)) if dns_mode else None,
+   'truncated_dns_queries':all_dns_names.count('truncated.test') if dns_truncated_mode else None,
    'alias_cname_a_queried':'alias-private.test' in dns_a_names if dns_mode else None,
    'compression_loop_a_queried':'loop-dns.test' in dns_a_names if dns_mode else None,
    'exfil_dns_queried':'exfil.test' in dns_names if exfil_mode else None,

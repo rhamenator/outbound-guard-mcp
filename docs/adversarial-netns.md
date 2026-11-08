@@ -364,3 +364,11 @@ python3 tools/verify_native_tls_pinning_pcap.py tests/fixtures/packet-capture/na
 ```
 
 The packet traces establish the TLS endpoint, SNI and network destinations; the guarded rules and fixture certificate setup support the hostname-validation interpretation. These finite captures do not establish arbitrary TLS behavior, host-client or other-tool traffic, a qualified official candidate, or the four separate AI Scraping Defense gates.
+
+## Native truncated DNS response — 2026-11-08
+
+The [native-client evidence](evidence/native-client-dns-truncated-2026-11-08.json) records separate Claude Code 2.1.319 and Codex CLI 0.151.0 skill workflows against a checksum-verified experimental Debian package in route-free, 128 MiB containers. The controlled UDP DNS fixture sends `truncated.test` A and AAAA replies with `TC=1`, one question and no answers; it has no TCP DNS listener. Each client made an approved plain GET, a truncated-host GET, then an approved recovery GET. Both received exact `EGRESS_DNS_FAILURE` without denied body text. The fixture recorded two `truncated.test` queries and only the two approved `/plain` HTTP hits per run. Clean package install, removal, residue and finite resource checks passed without OOM.
+
+Reproduce with `python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-truncated --container-memory-mib 128 --sample-server-resources`, replacing `CLIENT` with `claude` or `codex` and using the checksums in the evidence record. An initial exploratory pair failed because the bridge's fixture-host allowlist lacked `truncated.test`; that harness error was fixed before the passing replays.
+
+No packet capture was retained, so the client logs do not independently prove the DNS response bits or a TCP fallback attempt. This finite result covers guarded calls in the controlled namespace, not host-client or other-tool traffic, arbitrary resolver behavior, a qualified official candidate, or the four separate AI Scraping Defense gates.
