@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   retained-dns-packets:
-    name: Retained DNS packet evidence
+    name: Retained DNS and HTTP packet evidence
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -22,6 +22,8 @@ jobs:
           tshark --version
       - name: Recheck retained DNS capture digests and wire behavior
         run: python3 tools/verify_native_dns_corpus.py
+      - name: Recheck retained malformed HTTP capture digests and wire behavior
+        run: python3 tools/verify_native_http_framing_corpus.py
   sdk-audit:
     name: Locked ${{ matrix.probe.name }} npm audit
     strategy:
