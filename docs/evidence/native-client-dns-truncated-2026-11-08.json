@@ -1,0 +1,134 @@
+{
+  "command_template": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-truncated --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T05:43:08.789774+00:00",
+  "findings": [
+    "Both native installed-client workflows received exact EGRESS_DNS_FAILURE for the truncated-host call without denied body text; the approved HTTP controls before and after succeeded.",
+    "Each fixture log recorded two truncated.test DNS queries and only the two approved /plain HTTP hits.",
+    "Both 128 MiB container runs passed clean package install/removal/residue checks and reported no OOM. An initial exploratory pair exposed an omitted bridge allowlist entry; the harness was corrected before these passing replays."
+  ],
+  "fixture": "Route-free controlled DNS and HTTP namespace. For truncated.test A and AAAA, the UDP responder returns one complete question, no answers and TC=1; no TCP DNS listener is configured. Each native client makes approved GET, truncated-host GET, approved recovery GET through the installed server and companion skill.",
+  "harness_sha256": {
+    "tools/client_cancellation_probe.py": "938d4c20769cbcd24af7af321875f73391b73501f9ed8bb04d7638b2239aacfa",
+    "tools/client_wire_bridge.py": "e0d1955a69684a5997e5da4a77bf3670ba5a782d88a183593efff5b7e8601912",
+    "tools/debian_native_container_probe.py": "e92bc6b3ea81bf6bb27f709cd04686d0ae8b641d2cabc77ee103bb170350abe4",
+    "tools/netns_adversarial_probe.py": "a262a43648dbde1bb50c0712628743eab824809c87dfde914cf94f0aa80b5ce4"
+  },
+  "limitations": [
+    "No packet capture was retained. The fixture code sets TC=1, but these client logs do not independently establish the DNS response bits or whether the resolver attempted TCP fallback.",
+    "This finite A/AAAA case does not establish behavior for arbitrary DNS truncation, DNSSEC, resolver configurations, or all client versions. The server ran in Debian 12 amd64 containers; native CLIs ran on Ubuntu.",
+    "Only guarded_fetch traffic in the fixture namespace was observed. Host-client traffic and traffic sent through other tools are outside scope.",
+    "This is an experimental package, not a qualified official candidate. Upgrade, other declared platforms, owner self-review and residual-risk acceptance, and independent human review are not established by this replay. The four AI Scraping Defense repositories need separate adversarial evidence."
+  ],
+  "package_ci_run": 42448590738,
+  "package_sha256": "cd1d4eab00025b008e9f42a32bd4de4b78fc4fb775387c4752f124c24ae9a8ad",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_dns_denial",
+        "approved_recovery_after_dns_failure",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18067456,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "local_log_sha256": "04e07013b19c1d736cec5fd76ec87ff0af1ee238793510a9c72c0b8518efd04d",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3936,
+        "sample_interval_ms": 50,
+        "samples": 303,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "truncated_dns_queries": 2
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_dns_denial",
+        "approved_recovery_after_dns_failure",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 22065152,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "local_log_sha256": "d92ad93fe45a900d5f73a59e9490e20ace291b4523bfe7fdf9646e22cada5a4d",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3944,
+        "sample_interval_ms": 50,
+        "samples": 226,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "truncated_dns_queries": 2
+    }
+  },
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+  "source_main_sha": "3ecd4598b08aa03eca3d02ea0b2ba22942df43b8"
+}
