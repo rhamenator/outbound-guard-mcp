@@ -1,0 +1,324 @@
+{
+  "command_template": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode tls-slow-http-packet --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T03:37:20.089398+00:00",
+  "findings": [
+    "Both native-client workflows passed with exact allowed, slow-body, delayed-header and recovery rules; denied results contained no body text.",
+    "Each retained fixture-namespace pcap contains exactly four TCP SYNs to 11.0.0.1:443, four allowed.test TLS ClientHello SNI values, and client-direction FIN/RST on the second and third TLS streams.",
+    "All DNS queries target 127.0.0.1:53 and no IP packet targets an address outside 127.0.0.1 or 11.0.0.1 in either capture.",
+    "Both 128 MiB Debian container runs reported no OOM and passed package removal/residue checks."
+  ],
+  "fixture": "Route-free controlled DNS/TLS/HTTP namespace with ephemeral fixture CA and valid allowed.test certificate; one approved control, one-byte-per-second body, eleven-second delayed headers, approved recovery. Packet capture starts before the fixture and ends after all calls.",
+  "harness_sha256": {
+    "client_cancellation_fixture.py": "c78b930efad7be796625c6aa26bdae7cdac9aba1202c775bf52be8053aabe8ff",
+    "client_cancellation_probe.py": "c7545576785bf0bc1be37fcbb392f9491646d29da9fb0f8d9a5adb6bf3c4d398",
+    "client_wire_bridge.py": "c03e78e53e0701cdd3aaf6364c048ebe14abac844dd0b7289a6578c458048768",
+    "debian_native_container_probe.py": "192b910d95f22194331b621b1701bd1cb6f8dea4e6ac4bc1d438fdc258ef2e39",
+    "verify_native_tls_slow_pcap.py": "00e19fee36adedcd82c54a03d9ee2c3aaa49513f2e26dcb3cbc3a18c09aeef97"
+  },
+  "limitations": [
+    "TLS encrypts HTTP paths; mapping the second and third TLS streams to /drip and /delayed relies on the ordered fixture log and native workflow. The packet verifier independently checks streams, SNI, DNS, destination and client-direction closure.",
+    "A FIN/RST in finite fixture captures does not prove a strict close deadline, all socket cleanup paths or sustained resource bounds.",
+    "Captures are restricted to disposable fixture namespaces; host-client and other-tool traffic are not observed. No Cursor run or independent TLS implementation oracle is included.",
+    "This is an experimental package, not an exact official candidate. Owner residual-risk acceptance and independent human review are absent. The four AI Scraping Defense repositories require separate adversarial evidence."
+  ],
+  "package_ci_run": 42440408627,
+  "package_source_main_sha": "ecfaa9fab9700c270c3fb92da75aff9f5d69beb4",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "trusted_tls_handshake",
+        "tls_sni_preserved",
+        "tls_slow_drip_denial",
+        "tls_delayed_first_byte_denial",
+        "tls_client_hello_capture",
+        "timed_out_tcp_streams_closed",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 20955136,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "independent_pcap_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "2.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 11,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only; encrypted request paths are inferred from the ordered fixture log",
+        "sha256": "44d0e720d736de6ca4ff0254503faf7907823699f3f33e51490156f91ff22514",
+        "tcp_syn_count": 4,
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_sni": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ]
+      },
+      "local_log_sha256": "88ca3bebe27b08d2407aafbac2b4087e1189aa7d00c4b30e44f763533a8e46fe",
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "868703925119e3572cf85fc12334aec506bb0571ea5b7962dbaf2a113afe9bc1",
+        "revision": "ecfaa9fab9700c270c3fb92da75aff9f5d69beb4",
+        "version": "0.1.0~candidate.280+gecfaa9fab970"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 11,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 104,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 103,
+        "pcap_sha256": "44d0e720d736de6ca4ff0254503faf7907823699f3f33e51490156f91ff22514",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 4,
+        "tcp_syn_destinations": [
+          "11.0.0.1:443"
+        ],
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_client_hello_streams": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-tls-slow-claude-2026-11-08.pcap",
+      "pcap_sha256": "44d0e720d736de6ca4ff0254503faf7907823699f3f33e51490156f91ff22514",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4776,
+        "sample_interval_ms": 50,
+        "samples": 430,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+      "status_codes": [
+        200,
+        200
+      ],
+      "tls_sni": [
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ]
+      ]
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "trusted_tls_handshake",
+        "tls_sni_preserved",
+        "tls_slow_drip_denial",
+        "tls_delayed_first_byte_denial",
+        "tls_client_hello_capture",
+        "timed_out_tcp_streams_closed",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17395712,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "independent_pcap_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "2.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 11,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only; encrypted request paths are inferred from the ordered fixture log",
+        "sha256": "f1a9e727a37dea728a6084cedc766032c5da4702b05daa92e5a064f5cf017bf7",
+        "tcp_syn_count": 4,
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_sni": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ]
+      },
+      "local_log_sha256": "a9fe500725be31883452e2b1c204613b72b40871ff8e438ef66da6f9ebd2f3b9",
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "868703925119e3572cf85fc12334aec506bb0571ea5b7962dbaf2a113afe9bc1",
+        "revision": "ecfaa9fab9700c270c3fb92da75aff9f5d69beb4",
+        "version": "0.1.0~candidate.280+gecfaa9fab970"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 11,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 102,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 101,
+        "pcap_sha256": "f1a9e727a37dea728a6084cedc766032c5da4702b05daa92e5a064f5cf017bf7",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 4,
+        "tcp_syn_destinations": [
+          "11.0.0.1:443"
+        ],
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_client_hello_streams": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-tls-slow-codex-2026-11-08.pcap",
+      "pcap_sha256": "f1a9e727a37dea728a6084cedc766032c5da4702b05daa92e5a064f5cf017bf7",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4816,
+        "sample_interval_ms": 50,
+        "samples": 351,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+      "status_codes": [
+        200,
+        200
+      ],
+      "tls_sni": [
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ]
+      ]
+    }
+  }
+}
