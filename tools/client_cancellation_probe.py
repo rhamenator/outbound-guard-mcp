@@ -78,7 +78,7 @@ tls_slow_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_SLOW')=='1'
 active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
-assert not packet_capture_requested or (dns_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode), 'packet capture requires a DNS SSRF, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS slow HTTP, malformed framing, or response-limit replay'
+assert not packet_capture_requested or (dns_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode), 'packet capture requires a DNS SSRF, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, or response-limit replay'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim','interim-repeat','headers'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','headers')
@@ -295,8 +295,10 @@ def summarize_packet_capture():
  syns=fields('tcp.flags.syn == 1 && tcp.flags.ack == 0','ip.dst','ipv6.dst','tcp.dstport')
  syn_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in syns]
  expected_syn_destinations=({('11.0.0.1','80'),('11.0.0.2','80')} if fallback_mode
+                            else {('11.0.0.2','443'),('11.0.0.1','80')} if tls_mode
                             else {('11.0.0.1','443')} if tls_slow_mode else {('11.0.0.1','80')})
  assert len(syn_destinations)>=2 and set(syn_destinations)==expected_syn_destinations, syn_destinations
+ if tls_mode:assert len(syn_destinations)==2, syn_destinations
  if tls_slow_mode:assert len(syn_destinations)==4, syn_destinations
  dns_queries=fields('dns.flags.response == 0','ip.dst','ipv6.dst','udp.dstport')
  dns_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in dns_queries]
@@ -315,6 +317,7 @@ def summarize_packet_capture():
  if attack_mode:assert not redirect_queries, redirect_queries
  timed_out_streams_closed=None
  tls_client_hello_streams=None
+ tls_pinning_sni=None
  if slow_http_mode:
   requests=fields('http.request','http.request.uri','tcp.stream')
   timed_out_streams_closed={}
@@ -335,9 +338,13 @@ def summarize_packet_capture():
    closed=fields(f'tcp.stream == {stream} && tcp.dstport == 443 && (tcp.flags.fin == 1 || tcp.flags.reset == 1)','frame.number')
    assert closed, (path,stream)
    timed_out_streams_closed[path]=True
+ if tls_mode:
+  hellos=fields('tls.handshake.type == 1 && tcp.dstport == 443','tls.handshake.extensions_server_name','ip.dst')
+  assert hellos==[['tls-handshake.test','11.0.0.2']], hellos
+  tls_pinning_sni=hellos[0][0]
  ip_packets=fields('ip || ipv6','ip.dst','ipv6.dst')
  ip_destinations=[address for ipv4,ipv6 in ip_packets for address in (ipv4 or ipv6).split(',') if address]
- allowed_ip_destinations={'127.0.0.1','11.0.0.1'} | ({'11.0.0.2'} if fallback_mode else set())
+ allowed_ip_destinations={'127.0.0.1','11.0.0.1'} | ({'11.0.0.2'} if (fallback_mode or tls_mode) else set())
  assert ip_destinations and set(ip_destinations)<=allowed_ip_destinations, ip_destinations
  packets=fields('frame.number','frame.number')
  if packet_archive:
@@ -360,6 +367,7 @@ def summarize_packet_capture():
          'redirect_private_dns_query_count':len(redirect_queries) if attack_mode else None,
          'timed_out_streams_client_closed':timed_out_streams_closed,
          'tls_client_hello_streams':tls_client_hello_streams,
+         'tls_pinning_sni':tls_pinning_sni,
          'packet_count':len(packets),'ip_destination_entries':len(ip_destinations),
          'ip_destinations':sorted(set(ip_destinations)),'unexpected_ip_destinations':0,
          'unexpected_tcp_connection_attempts':0,
