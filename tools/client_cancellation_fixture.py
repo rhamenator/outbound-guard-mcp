@@ -1,11 +1,49 @@
 #!/usr/bin/env python3
 """Private helper: run only in the probe's disposable network namespace."""
-import sys,threading,socketserver,http.server,time,pathlib,json,os,ssl,subprocess
+import sys,threading,socketserver,http.server,time,pathlib,json,os,ssl,subprocess,struct,socket
 from netns_adversarial_probe import DNS,HTTP,PUBLIC_FIXTURE,QuietTLSHTTP
 root=pathlib.Path(sys.argv[1])
 dns=socketserver.ThreadingUDPServer(('127.0.0.1',53),DNS)
 http=http.server.ThreadingHTTPServer((PUBLIC_FIXTURE,80),HTTP);http.daemon_threads=True
 for s in [dns,http]:threading.Thread(target=s.serve_forever,daemon=True).start()
+tcp_dns_queries=[]
+if os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_TCP_PRIVATE')=='1':
+ class PrivateTCPDNS(socketserver.BaseRequestHandler):
+  def handle(self):
+   self.request.settimeout(3)
+   def read_exact(size):
+    result=b''
+    while len(result)<size:
+     try:part=self.request.recv(size-len(result))
+     except (TimeoutError,ConnectionResetError):return b''
+     if not part:return b''
+     result+=part
+    return result
+   while True:
+    prefix=read_exact(2)
+    if len(prefix)!=2:return
+    length=struct.unpack('!H',prefix)[0]
+    if not 17<=length<=512:return
+    data=read_exact(length)
+    if len(data)!=length:return
+    offset=12;labels=[]
+    while offset<len(data) and data[offset]:
+     size=data[offset];offset+=1
+     if size>63 or offset+size>len(data):return
+     labels.append(data[offset:offset+size].decode('ascii','ignore'));offset+=size
+    if offset+5>len(data):return
+    name='.'.join(labels).lower();qtype=struct.unpack('!H',data[offset+1:offset+3])[0]
+    if name!='truncated-private.test' or qtype not in (1,28):return
+    tcp_dns_queries.append((name,qtype))
+    question=data[12:offset+5]
+    answer=(b'\xc0\x0c'+struct.pack('!HHIH',1,1,60,4)+socket.inet_pton(socket.AF_INET,'127.0.0.1')) if qtype==1 else b''
+    response=data[:2]+struct.pack('!HHHHH',0x8180,1,int(qtype==1),0,0)+question+answer
+    self.request.sendall(struct.pack('!H',len(response))+response)
+ class ThreadedTCPDNS(socketserver.ThreadingMixIn,socketserver.TCPServer):
+  daemon_threads=True
+  allow_reuse_address=True
+ tcp_dns=ThreadedTCPDNS(('127.0.0.1',53),PrivateTCPDNS)
+ threading.Thread(target=tcp_dns.serve_forever,daemon=True).start()
 tls_sni=[]
 if os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1':
  tls_slow=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_SLOW')=='1'
@@ -31,6 +69,7 @@ last_rebind=None
 last_fallback=None
 last_tls_handshake=None
 last_tls_sni=None
+last_tcp_dns=None
 while True:
  hits=list(HTTP.hits)
  if hits!=last_hits:
@@ -79,6 +118,11 @@ while True:
   sni_tmp.write_text(json.dumps(tls_sni))
   os.replace(sni_tmp,root/'tls-sni.json')
   last_tls_sni=list(tls_sni)
+ if tcp_dns_queries!=last_tcp_dns:
+  tcp_tmp=root/'dns-tcp.json.tmp'
+  tcp_tmp.write_text(json.dumps(tcp_dns_queries))
+  os.replace(tcp_tmp,root/'dns-tcp.json')
+  last_tcp_dns=list(tcp_dns_queries)
  if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
  if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
  if (root/'reset-cancel').exists():
