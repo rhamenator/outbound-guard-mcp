@@ -79,7 +79,7 @@ tls_slow_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_SLOW')=='1'
 active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
-assert not packet_capture_requested or (dns_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode), 'packet capture requires a DNS SSRF, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, or response-limit replay'
+assert not packet_capture_requested or (dns_mode or dns_truncated_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, or response-limit replay'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim','interim-repeat','headers'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','headers')
@@ -299,12 +299,22 @@ def summarize_packet_capture():
  expected_syn_destinations=({('11.0.0.1','80'),('11.0.0.2','80')} if fallback_mode
                             else {('11.0.0.2','443'),('11.0.0.1','80')} if tls_mode
                             else {('11.0.0.1','443')} if tls_slow_mode else {('11.0.0.1','80')})
- assert len(syn_destinations)>=2 and set(syn_destinations)==expected_syn_destinations, syn_destinations
+ if dns_truncated_mode:
+  assert syn_destinations.count(('11.0.0.1','80'))==2, syn_destinations
+  assert set(syn_destinations)<={('11.0.0.1','80'),('127.0.0.1','53')}, syn_destinations
+ else:
+  assert len(syn_destinations)>=2 and set(syn_destinations)==expected_syn_destinations, syn_destinations
  if tls_mode:assert len(syn_destinations)==2, syn_destinations
  if tls_slow_mode:assert len(syn_destinations)==4, syn_destinations
  dns_queries=fields('dns.flags.response == 0','ip.dst','ipv6.dst','udp.dstport')
  dns_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in dns_queries]
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
+ truncated_responses=fields('dns.flags.response == 1 && dns.qry.name == "truncated.test" && !icmp && !icmpv6',
+                            'dns.flags.truncated','dns.count.answers','dns.qry.type') if dns_truncated_mode else []
+ if dns_truncated_mode:
+  assert len(truncated_responses)>=2, truncated_responses
+  assert all(tc=='True' and count=='0' for tc,count,_ in truncated_responses), truncated_responses
+  assert {qtype for _,_,qtype in truncated_responses}=={'1','28'}, truncated_responses
  rebind_a_queries=fields('dns.flags.response == 0 && dns.qry.name == "rebind.test" && dns.qry.type == 1','dns.qry.name') if rebind_mode else []
  if rebind_mode:assert len(rebind_a_queries)==2, rebind_a_queries
  rebind_a_answers=fields('dns.flags.response == 1 && dns.qry.name == "rebind.test" && dns.a','dns.a') if rebind_mode else []
@@ -361,6 +371,7 @@ def summarize_packet_capture():
  return {'capture_scope':'fixture network namespace only; host client network not captured',
          'tcp_syn_count':len(syn_destinations),'tcp_syn_destinations':[f'{ip}:{port}' for ip,port in sorted(set(syn_destinations))],
          'dns_query_count':len(dns_destinations),'dns_query_destinations':['127.0.0.1:53'],
+         'truncated_dns_responses':truncated_responses if dns_truncated_mode else None,
          'rebind_a_query_count':len(rebind_a_queries) if rebind_mode else None,
          'rebind_a_answers':[answer[0] for answer in rebind_a_answers] if rebind_mode else None,
          'fallback_a_query_count':len(fallback_a_queries) if fallback_mode else None,
