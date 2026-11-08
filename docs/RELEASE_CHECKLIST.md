@@ -250,4 +250,6 @@ A [changed-binary native package-upgrade replay](evidence/native-client-dns-tcp-
 
 The [retained DNS packet corpus verifier](adversarial-netns.md#continuous-retained-dns-packet-verification--2026-11-08) now rechecks all ten documented Claude/Codex truncated-DNS captures against evidence digests and independent wire assertions in CI. This detects altered captures or invalidated finite packet claims; it does not rerun the native clients or close the adversarial release gate.
 
+The [informational-response slow-drip fixture](adversarial-netns.md#configured-http-parser-and-stream-budgets) now sends small `103 Early Hints` heads every half second below the wire cap and requires a ten-second total-deadline denial with no body, followed by same-process approved recovery. CI runs this direct stdio MCP probe; native clients and host-client/other-tool traffic are not covered by this case.
+
 The same CI job now runs a [malformed HTTP packet corpus verifier](adversarial-netns.md#continuous-malformed-http-packet-verification--2026-11-08) for four retained Claude/Codex chunk and conflicting-framing captures. It binds their evidence digests, HTTP request paths and approved fixture-namespace TCP destinations to independent wire checks. It does not replay clients, observe host-client or other-tool traffic, cover other packet collections or close the release gate.

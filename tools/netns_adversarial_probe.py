@@ -398,6 +398,21 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
             return
+        if self.path == "/interim-slow-drip":
+            # Keep each informational head tiny and below the wire cap. A new
+            # head every half second must not renew the shared HTTP deadline.
+            self.protocol_version = "HTTP/1.1"
+            interim = b"HTTP/1.1 103 Early Hints\r\nLink: </hint>\r\n\r\n"
+            try:
+                for _ in range(24):
+                    self.wfile.write(interim)
+                    self.wfile.flush()
+                    time.sleep(0.5)
+                self.wfile.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
         if self.path in ("/redirect-loop", "/redirect-approved"):
             self.send_response(307)
             self.send_header("Location", "http://allowed.test/redirect-loop" if self.path == "/redirect-loop"
@@ -2427,6 +2442,18 @@ def main(binary, cancellation_probe):
         assert "body_text" not in interim_decision and time.monotonic() - started < 10
         assert HTTP.hits[-1] == "/interim-header-flood"
         framing_results["interim-header-flood"] = interim_decision["rule"]
+        started = time.monotonic()
+        drip, recovery = call_sequence(binary, [("allowed.test", "interim-slow-drip", "http"),
+                                                ("allowed.test", "plain", "http")])
+        assert drip["rule"] == "EGRESS_RESPONSE_TIMEOUT", drip
+        assert "body_text" not in drip and recovery["rule"] == "EGRESS_ALLOWED", (drip, recovery)
+        assert HTTP.hits[-2:] == ["/interim-slow-drip", "/plain"]
+        elapsed = time.monotonic() - started
+        assert 9 <= elapsed < 13
+        framing_results["interim-slow-drip"] = drip["rule"]
+        print(f"informational-response slow drip: 103 heads every 0.5s; "
+              f"denied at {elapsed:.2f}s with {drip['rule']}, no body, "
+              "same-process approved GET recovered")
         for path, accepted_rules in (
             ("switch-protocols", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
             ("upgrade-header-200", {"EGRESS_PROTOCOL_UPGRADE_DENIED"}),
@@ -2522,7 +2549,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1207 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1209 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

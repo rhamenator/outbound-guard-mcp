@@ -1,0 +1,21 @@
+{
+  "date_utc": "2026-11-08",
+  "base_source": "335de07afc32d6b73459740967c6815ba9a56910",
+  "scenario": "small HTTP/1.1 103 Early Hints responses every 0.5 seconds before a delayed final 200",
+  "fixture": "tools/netns_adversarial_probe.py:/interim-slow-drip",
+  "fixture_sha256": "b7ed01324ad91e990a1fc374fb51c0f5d3c4096768589fc0bdf81e3c27076c16",
+  "server_binary_sha256": "8c4e6922ebdf45f823acf2eac7345838c62b856e878e7704406fb9e655234872",
+  "client": "direct legacy stdio MCP harness in a disposable route-free network namespace",
+  "command": "OUTBOUND_GUARD_TEST_SDK_DIR=$PWD/tools/mcp-sdk-probe bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "tool_versions": {"python": "3.14.4", "node": "22.20.0", "rustc": "1.99.1"},
+  "result": "passed",
+  "observed": {
+    "denial_rule": "EGRESS_RESPONSE_TIMEOUT",
+    "elapsed_seconds": 10.02,
+    "denial_body_text_absent": true,
+    "same_process_recovery_rule": "EGRESS_ALLOWED",
+    "fixture_hit_order": ["/interim-slow-drip", "/plain"],
+    "full_netns_probe_decisions_reported": 3388
+  },
+  "limits": "Finite fixture test of direct stdio MCP and one server executable. It is not a native Claude/Codex replay, packet capture, host-client observation, other-tool traffic, arbitrary informational-response proof, or official candidate qualification."
+}
