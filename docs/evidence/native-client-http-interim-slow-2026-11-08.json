@@ -1,0 +1,133 @@
+{
+  "artifact_manifest_sha256": "b61fa664d6f21044dd01604dd562a6466ef344038cca95a6b075ef5e70bc6fc6",
+  "client_versions": {
+    "claude": "2.1.319",
+    "codex": "0.151.0"
+  },
+  "date_utc": "2026-11-08",
+  "harness_sha256": {
+    "client_cancellation_fixture.py": "abd3d540d7e364b62a1d7feec8afca0fb204cc1381461f4d20d21eb73302af28",
+    "client_cancellation_probe.py": "a222a0efbe9b68506b4705379c1c0fde63141b356fbf038a8086f34e0f886404",
+    "debian_native_container_probe.py": "2e298c1fcf5515fc9a51ef16c7a8e77c47479186f17fd4aa41cb636537bdad1a",
+    "netns_adversarial_probe.py": "b7ed01324ad91e990a1fc374fb51c0f5d3c4096768589fc0bdf81e3c27076c16"
+  },
+  "limitations": "Two finite explicit native skill workflows on Ubuntu with unsigned experimental Debian 12 amd64 package in disposable route-free containers. No packet capture, host-client or other-tool traffic, exact official candidate, arbitrary informational response proof, automatic skill triggering, or upgrade. 50 ms server samples can miss peaks; cgroup peaks include helpers. Owner self-review and residual-risk acceptance remain open; independent human review is absent. Four AI Scraping Defense repositories require separate evidence.",
+  "package_ci_run": 42497271032,
+  "package_sha256": "dc32632869d79ffba88c9f00279fe2b0e52842b38cac8fe5e5e68e36bd62ee96",
+  "package_source_main_sha": "cb54eb99971a7b8cad10fdd562228c2cede21b7b",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode http-interim-slow --container-memory-mib 128 --sample-server-resources",
+  "result": "passed",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "small_103_slow_drip_total_deadline_denial",
+        "approved_recovery_after_timeout",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 23072768,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/interim-slow-drip",
+        "/plain"
+      ],
+      "native_client": {
+        "explicit_skill_input_accepted": null,
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_turn_completed": null,
+        "skill_tool_result_success": true
+      },
+      "native_skill_loaded": true,
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TIMEOUT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3880,
+        "sample_interval_ms": 50,
+        "samples": 369,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "small_103_slow_drip_total_deadline_denial",
+        "approved_recovery_after_timeout",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17784832,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/interim-slow-drip",
+        "/plain"
+      ],
+      "native_client": {
+        "explicit_skill_input_accepted": true,
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_turn_completed": true,
+        "skill_tool_result_success": null
+      },
+      "native_skill_loaded": true,
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TIMEOUT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3924,
+        "sample_interval_ms": 50,
+        "samples": 364,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "scenario": "Native installed-skill HTTP 103 informational-response slow drip and recovery",
+  "server_binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d"
+}

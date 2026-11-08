@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -229,6 +229,7 @@ def main():
              "http-upgrade-headers": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "http-interim-flood": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "http-interim-repeat": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
+             "http-interim-slow": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE",
              "html-quarantine": "OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE",
              "queue-saturation": "OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION",
              "dns-ssrf": "OUTBOUND_GUARD_CLIENT_DNS_SSRF",
@@ -265,6 +266,8 @@ def main():
                 env[mode_variable] = "headers"
             elif args.fixture_mode == "http-interim-repeat":
                 env[mode_variable] = "interim-repeat"
+            elif args.fixture_mode == "http-interim-slow":
+                env[mode_variable] = "interim-slow"
         process = None
         success = False
         try:
@@ -437,6 +440,7 @@ def main():
                                     "http-upgrade-headers": ["http_101_upgrade_denial", "http_200_upgrade_header_denial", "http_200_connection_upgrade_denial"],
                                     "http-interim-flood": ["aggregate_103_wire_budget_denial"],
                                     "http-interim-repeat": ["four_sequential_103_wire_budget_denials", "approved_recovery_after_repeated_denial"],
+                                    "http-interim-slow": ["small_103_slow_drip_total_deadline_denial", "approved_recovery_after_timeout"],
                                     "html-quarantine": ["mislabeled_hidden_html_denial", "mislabeled_root_html_denial", "mislabeled_formfeed_html_denial", "ordinary_angle_text_allowed"],
                                     "queue-saturation": ["bridge_injected_busy_denial", "priority_cancellation_and_socket_close", "native_client_guarded_recovery"],
                                     "dns-truncated": ["truncated_udp_dns_denial", "approved_recovery_after_dns_failure"],

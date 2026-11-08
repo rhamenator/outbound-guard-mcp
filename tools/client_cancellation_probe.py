@@ -38,7 +38,8 @@ Set OUTBOUND_GUARD_CLIENT_SLOW_HTTP=1 for delayed-first-byte and slow-drip
 HTTP denials followed by an approved recovery GET.
 Set OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=1 for an HTTP 101 denial and recovery,
 or =interim for a 103 Early Hints header flood denial and recovery,
-or =interim-repeat for four sequential wire-budget denials and recovery.
+or =interim-repeat for four sequential wire-budget denials and recovery,
+or =interim-slow for a ten-second total-deadline denial and recovery.
 Set OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE=1 for mislabeled hidden HTML
 denials, ordinary angle-text acceptance, and approved recovery.
 Set OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION=1 to let the local bridge inject
@@ -86,10 +87,11 @@ assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap req
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
 assert not packet_capture_requested or (dns_mode or dns_truncated_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, TLS pinning, TLS slow HTTP, malformed framing, or response-limit replay'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
-assert upgrade_variant in (None,'1','interim','interim-repeat','headers'), 'unsupported HTTP upgrade replay mode'
-upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','headers')
+assert upgrade_variant in (None,'1','interim','interim-repeat','interim-slow','headers'), 'unsupported HTTP upgrade replay mode'
+upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','headers')
 interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
+interim_slow_mode=upgrade_variant=='interim-slow'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
@@ -455,7 +457,10 @@ if skill_zip:
    expected_rules=['EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_ALLOWED']
    expected_methods=['GET']*5
   if upgrade_mode:
-   if interim_repeat_mode:
+   if interim_slow_mode:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://allowed.test/interim-slow-drip ; GET http://allowed.test/plain . The middle response sends one small HTTP 103 Early Hints head every half second and delays its final response beyond the ten-second server deadline. The operator approved allowed.test. Make each call once even when the middle call is denied. Do not retry or use any other tool. Report the actual results.'
+    expected_rules=['EGRESS_ALLOWED','EGRESS_RESPONSE_TIMEOUT','EGRESS_ALLOWED']
+   elif interim_repeat_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/interim-header-flood ; GET http://allowed.test/plain . Each middle response attempts 150 HTTP 103 Early Hints header blocks. The operator approved allowed.test. Make every call once even when earlier calls fail. Do not retry or use any other tool. Report the actual results.'
     expected_rules=['EGRESS_ALLOWED']+['EGRESS_RESPONSE_WIRE_LIMIT']*4+['EGRESS_ALLOWED']
    elif interim_mode:
@@ -645,6 +650,7 @@ if skill_zip:
    assert len(denied)==3 and all(e.get('body_text_present') is False for e in denied), denied
   if upgrade_mode:
    expected_hits=(['/plain']+['/interim-header-flood']*4+['/plain'] if interim_repeat_mode else
+                  ['/plain','/interim-slow-drip','/plain'] if interim_slow_mode else
                   ['/plain','/interim-header-flood','/plain'] if interim_mode else
                   ['/plain','/switch-protocols','/upgrade-header-200','/connection-upgrade-200','/plain'] if upgrade_headers_mode else
                   ['/plain','/switch-protocols','/plain'])
@@ -653,7 +659,7 @@ if skill_zip:
     if hits==expected_hits:break
     time.sleep(.01)
    assert hits==expected_hits, hits
-   denied=[e for e in events if e.get('rule')==('EGRESS_RESPONSE_WIRE_LIMIT' if interim_mode else 'EGRESS_PROTOCOL_UPGRADE_DENIED')]
+   denied=[e for e in events if e.get('rule')==('EGRESS_RESPONSE_TIMEOUT' if interim_slow_mode else 'EGRESS_RESPONSE_WIRE_LIMIT' if interim_mode else 'EGRESS_PROTOCOL_UPGRADE_DENIED')]
    assert len(denied)==(4 if interim_repeat_mode else 3 if upgrade_headers_mode else 1) and all(e.get('body_text_present') is False for e in denied), denied
   if html_quarantine_mode:
    expected_hits=['/plain','/html-mislabeled','/html-root-div','/html-formfeed','/plain-angle-text','/plain']
@@ -787,7 +793,7 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
    'fixture_hits':hits if (attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
    'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
     'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,
