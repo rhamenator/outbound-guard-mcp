@@ -351,3 +351,16 @@ python3 tools/verify_native_tls_slow_pcap.py tests/fixtures/packet-capture/nativ
 ```
 
 TLS encrypts the HTTP paths, so stream-to-path mapping uses the ordered fixture log; packet contents independently establish SNI, destination and client-direction closure. These finite captures do not prove a strict close deadline, general socket cleanup, host-client or other-tool traffic behavior, Cursor coverage, sustained resource bounds, or official-candidate readiness. The four AI Scraping Defense repositories need their own tests.
+
+## Native TLS hostname and DNS-flip packet capture — 2026-11-08
+
+The [packet evidence](evidence/native-client-tls-pinning-pcap-2026-11-08.json) retains separate route-free fixture captures for native Claude and Codex skill workflows. A trusted fixture CA signs a certificate for `wrong.test` at `11.0.0.2:443`, while the requested hostname is `tls-handshake.test`. The DNS fixture first answers with `11.0.0.2` and `11.0.0.1`, then changes to `127.0.0.1` on the next A query. Both clients received exact `EGRESS_NETWORK_FAILURE` and `EGRESS_FORBIDDEN_ADDRESS` denials without body text from the installed experimental Debian package, then approved `http://allowed.test/plain` recovery. An independent `tshark` verifier confirms in each capture the two A answer sets, one `tls-handshake.test` ClientHello sent only to `11.0.0.2:443`, no TLS fallback connection to `11.0.0.1:443`, and only the approved recovery TCP connection to `11.0.0.1:80`. All observed DNS and IP destinations remain inside each fixture namespace.
+
+Reproduce with `OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode tls-handshake-packet --container-memory-mib 128 --sample-server-resources`, replacing `CLIENT` with `claude` or `codex` and using a new `.pcap` path in a caller-owned private directory. Verify the retained captures with:
+
+```sh
+python3 tools/verify_native_tls_pinning_pcap.py tests/fixtures/packet-capture/native-tls-pinning-claude-2026-11-08.pcap 45d900403e0a7107ac4a4d943dc0e51794e7b20d5475ddc70bd6689e58ec5592
+python3 tools/verify_native_tls_pinning_pcap.py tests/fixtures/packet-capture/native-tls-pinning-codex-2026-11-08.pcap f2b0d57f83cc871f8922851b78d14910511eb0adb6d4ac735dc3f5782f946b38
+```
+
+The packet traces establish the TLS endpoint, SNI and network destinations; the guarded rules and fixture certificate setup support the hostname-validation interpretation. These finite captures do not establish arbitrary TLS behavior, host-client or other-tool traffic, a qualified official candidate, or the four separate AI Scraping Defense gates.
