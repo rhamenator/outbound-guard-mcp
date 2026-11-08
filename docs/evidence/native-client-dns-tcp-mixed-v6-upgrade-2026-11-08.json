@@ -1,0 +1,305 @@
+{
+  "command_template": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT NEW_DEB NEW_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --old-package OLD_DEB --old-sha256 OLD_SHA256 --fixture-mode dns-tcp-mixed-v6-packet --container-memory-mib 128 --sample-server-resources",
+  "date_utc": "2026-11-08T11:39:31.035972+00:00",
+  "findings": [
+    "Both Debian package upgrades, old pre-upgrade MCP loopback denials, new installed-client guarded workflows, package removal and residue checks passed under 128 MiB without OOM.",
+    "Both native clients returned EGRESS_ALLOWED, EGRESS_FORBIDDEN_ADDRESS, EGRESS_ALLOWED; no denied body text and only approved HTTP hits.",
+    "Each retained capture independently confirms UDP truncation, TCP public A and private IPv6 AAAA answer bytes, and no forbidden HTTP socket."
+  ],
+  "fixture": "Debian 12 amd64 128 MiB package upgrade from experimental revision 287 to 288 in separate disposable containers, then native skill replay in a route-free controlled DNS/HTTP namespace. UDP truncated-mixed-v6.test A/AAAA returns TC=1 and zero answers; TCP DNS returns public A=11.0.0.1 and private AAAA=::1.",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "abd3d540d7e364b62a1d7feec8afca0fb204cc1381461f4d20d21eb73302af28",
+    "tools/client_cancellation_probe.py": "b7f9496e0c023e3570a352fa9929c7fcd4af70121db44efb1e24dbc6ec672493",
+    "tools/client_wire_bridge.py": "8e42b02f8469000ea054a6c4212a0d5475591dc330451c34dc8cc302c6d0cbf3",
+    "tools/debian_native_container_probe.py": "f21e7e53f1c63e6d364bfbd616aee2b4740a8fd6577fd654da9d107fe51ca86e",
+    "tools/netns_adversarial_probe.py": "e6806f8c13d7ad6b79cd2e1c3767340c15069e853c1093aeaa8e7788fc3be26a",
+    "tools/verify_native_dns_truncated_pcap.py": "a6915a2bbfbbe1419c055b05f4683272f8d7d6381c9aac717d150442091e04e1"
+  },
+  "limitations": [
+    "The two package revisions contain the same server executable bytes. This qualifies the package upgrade mechanics and post-upgrade guarded behavior for this exact transition, not a changed-server-binary upgrade.",
+    "Captures observe the disposable fixture namespace only. Host-client and other-tool traffic are outside scope; arbitrary resolver behavior and other platforms remain unproven.",
+    "These are unsigned experimental packages, not an official candidate. Owner self-review and explicit residual-risk acceptance are pending; independent human review has not occurred. Each of the four AI Scraping Defense repositories needs separate adversarial evidence."
+  ],
+  "new_package_sha256": "9e76d72831d73162ccaca8530365ded219da4f250f77408d07742caf945dfe07",
+  "old_package_ci": 42469118027,
+  "old_package_sha256": "6e8b5d28745119e2125edbba02a1d69f08c64a98bd1a43b8b8a72363134cfcc6",
+  "runs": {
+    "claude": {
+      "capture_path": "tests/fixtures/packet-capture/native-dns-tcp-mixed-v6-upgrade-claude-2026-11-08.pcap",
+      "capture_sha256": "7e85cf8b7b112ef44d91145242017c70cc2544771361a64155f80ce76928d10e",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_mixed_v6_tcp_dns_denial",
+        "approved_recovery_after_forbidden_address",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 21585920,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "independent_packet_verification": {
+        "approved_http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "mixed-v6",
+        "scope": "fixture namespace only",
+        "sha256": "7e85cf8b7b112ef44d91145242017c70cc2544771361a64155f80ce76928d10e",
+        "tcp_dns_answers": [
+          [
+            "1",
+            "11.0.0.1",
+            "",
+            "1",
+            "False"
+          ],
+          [
+            "28",
+            "",
+            "::1",
+            "1",
+            "False"
+          ]
+        ],
+        "tcp_dns_fallback_refused": false,
+        "tcp_dns_fallback_syn_count": 1,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80",
+          "127.0.0.1:53",
+          "11.0.0.1:80"
+        ],
+        "truncated_dns_query_types": [
+          "1",
+          "28"
+        ],
+        "truncated_dns_responses": [
+          [
+            "1",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ],
+          [
+            "28",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ]
+        ]
+      },
+      "local_log_sha256": "5512582ab062a8631fdcbc8c63a4eed36a9aa01699662748d3c71851e2e5e905",
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "9e76d72831d73162ccaca8530365ded219da4f250f77408d07742caf945dfe07",
+        "revision": "4439ae60abd17506b9889d4051eda5e3bae0b9c8",
+        "version": "0.1.0~candidate.288+g4439ae60abd1"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "6e8b5d28745119e2125edbba02a1d69f08c64a98bd1a43b8b8a72363134cfcc6",
+        "revision": "258dfdca140ebb3b5be05b0271c918c1859c6f49",
+        "version": "0.1.0~candidate.287+g258dfdca140e"
+      },
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 4004,
+        "sample_interval_ms": 50,
+        "samples": 234,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tcp_dns_queries": [
+        [
+          "truncated-mixed-v6.test",
+          1
+        ],
+        [
+          "truncated-mixed-v6.test",
+          28
+        ]
+      ]
+    },
+    "codex": {
+      "capture_path": "tests/fixtures/packet-capture/native-dns-tcp-mixed-v6-upgrade-codex-2026-11-08.pcap",
+      "capture_sha256": "5ad764cda16cf90828cf4c6efd27ed438fcd21d7e4c79382e5183147ad7d4645",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "truncated_udp_mixed_v6_tcp_dns_denial",
+        "approved_recovery_after_forbidden_address",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18739200,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "independent_packet_verification": {
+        "approved_http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "mixed-v6",
+        "scope": "fixture namespace only",
+        "sha256": "5ad764cda16cf90828cf4c6efd27ed438fcd21d7e4c79382e5183147ad7d4645",
+        "tcp_dns_answers": [
+          [
+            "1",
+            "11.0.0.1",
+            "",
+            "1",
+            "False"
+          ],
+          [
+            "28",
+            "",
+            "::1",
+            "1",
+            "False"
+          ]
+        ],
+        "tcp_dns_fallback_refused": false,
+        "tcp_dns_fallback_syn_count": 1,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80",
+          "127.0.0.1:53",
+          "11.0.0.1:80"
+        ],
+        "truncated_dns_query_types": [
+          "1",
+          "28"
+        ],
+        "truncated_dns_responses": [
+          [
+            "1",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ],
+          [
+            "28",
+            "True",
+            "0",
+            "127.0.0.1",
+            "53"
+          ]
+        ]
+      },
+      "local_log_sha256": "0ecb1dc3d3b1b03c5c8b58b2f80f7f9364faf633869baf889911d32ddd2a69b7",
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "9e76d72831d73162ccaca8530365ded219da4f250f77408d07742caf945dfe07",
+        "revision": "4439ae60abd17506b9889d4051eda5e3bae0b9c8",
+        "version": "0.1.0~candidate.288+g4439ae60abd1"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "6e8b5d28745119e2125edbba02a1d69f08c64a98bd1a43b8b8a72363134cfcc6",
+        "revision": "258dfdca140ebb3b5be05b0271c918c1859c6f49",
+        "version": "0.1.0~candidate.287+g258dfdca140e"
+      },
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3860,
+        "sample_interval_ms": 50,
+        "samples": 200,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tcp_dns_queries": [
+        [
+          "truncated-mixed-v6.test",
+          1
+        ],
+        [
+          "truncated-mixed-v6.test",
+          28
+        ]
+      ]
+    }
+  },
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+  "source_new_main_ci": 42473090977,
+  "source_new_main_codeql": 42473090910
+}
