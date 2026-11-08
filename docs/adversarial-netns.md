@@ -170,6 +170,17 @@ attempted final `200 OK`. The route-free fixture's guarded call returns
 checks that repeated informational responses share one transport read
 budget; it does not establish general HTTP parser or native-client coverage.
 
+The [interim slow-drip record](evidence/http-interim-slow-drip-2026-11-08.json)
+uses a route that sends one small `103 Early Hints` response every
+half second and withholds the final `200 OK` until after the ten-second HTTP
+deadline. The route-free stdio MCP probe requires `EGRESS_RESPONSE_TIMEOUT`
+with no body in 9–13 seconds, then an approved GET in the same server process.
+Unlike the flood case, the small heads stay below the wire cap: this tests
+that progress through informational responses cannot renew the total deadline.
+The CI netns probe runs both cases. This is a controlled fixture and direct
+MCP harness, not a native Claude/Codex replay, a packet capture, or a claim
+about traffic sent through other tools.
+
 Six additional MCP decisions bring the full controlled corpus to 1,973 plus two library cancellation calls: an encoded Unicode path exceeding the serialized request budget (no DNS/HTTP), 20,000 one-byte chunks whose framing exceeds the HTTP budget despite a small decoded body, unsupported response trailers, and raw header blocks of 16,383/16,384/16,385 bytes. The first two header controls return `ok`; the over-limit header fails within parsing. Oversized/invalid heads now return `EGRESS_INVALID_FRAMING`; Hyper's client API does not publicly distinguish every parser size error, so tests require this deterministic general framing rule instead of claiming a precise cause. Other framing/metadata denials remain explicit where observable. Denials return no body.
 
 The synchronous library API rejects invocation inside an already active Tokio runtime with `EGRESS_CLIENT_FAILURE` before validation/network work, avoiding nested-runtime panic. Async embeddings must use a blocking worker. A regression verifies this fail-closed behavior. Header/TLS buffers still belong to the maintained libraries; these stream budgets are not a process-wide memory quota. Remaining protocol/client/release acceptance criteria are not waived.
