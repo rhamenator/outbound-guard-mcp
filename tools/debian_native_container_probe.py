@@ -144,6 +144,8 @@ def main():
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
                         help="Sample server file descriptors and RSS during native calls")
+    parser.add_argument("--cancel-cycles", type=int, choices=(2, 3), default=2,
+                        help="Cycles for client-control-repeated-cancellation (default: 2)")
     args = parser.parse_args()
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
@@ -204,7 +206,7 @@ def main():
         if args.fixture_mode in ("client-control-header-cancellation", "client-control-repeated-cancellation"):
             env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         if args.fixture_mode == "client-control-repeated-cancellation":
-            env["OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"] = "2"
+            env["OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"] = str(args.cancel_cycles)
         if args.fixture_mode in ("dns-ssrf-packet", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil-packet", "redirect-encoded-packet", "slow-http-packet", "malformed-http-packet", "framing-http-packet", "response-body-limit-packet", "response-header-limit-packet"):
             env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
         mode_variable = {"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
@@ -296,21 +298,18 @@ def main():
                 if args.fixture_mode in ("client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"):
                     control_result = json.loads(harness_output.splitlines()[-1])
                     assert control_result["cancel_phase"] == ("body" if args.fixture_mode == "client-control-cancellation" else "headers")
-                    assert control_result["cancel_cycles"] == (2 if args.fixture_mode == "client-control-repeated-cancellation" else 1)
+                    assert control_result["cancel_cycles"] == (args.cancel_cycles if args.fixture_mode == "client-control-repeated-cancellation" else 1)
                     assert control_result["live_client"] and control_result["client_control_acknowledged"]
                     assert control_result["socket_closed"] and control_result["recovery_allowed"]
                     if args.fixture_mode == "client-control-repeated-cancellation":
-                        assert control_result["fetches"] == 6
-                        assert control_result["fixture_paths"] == ["/cancel-silent-headers-long", "/plain",
-                                                                   "/cancel-silent-headers-long", "/plain", "/head-ok"]
+                        assert control_result["fetches"] == 2 * args.cancel_cycles + 2
+                        assert control_result["fixture_paths"] == ["/cancel-silent-headers-long", "/plain"] * args.cancel_cycles + ["/head-ok"]
                         if args.client == "claude":
-                            assert control_result["cancel_notifications"] == 2
+                            assert control_result["cancel_notifications"] == args.cancel_cycles
                             assert control_result["matching_wire_cancellation"]
                         else:
                             assert control_result["cancel_notifications"] == 0
-                            assert control_result["rules"] == ["EGRESS_NETWORK_FAILURE", "EGRESS_ALLOWED",
-                                                               "EGRESS_NETWORK_FAILURE", "EGRESS_ALLOWED",
-                                                               "EGRESS_INVALID_HOST", "EGRESS_ALLOWED"]
+                            assert control_result["rules"] == ["EGRESS_NETWORK_FAILURE", "EGRESS_ALLOWED"] * args.cancel_cycles + ["EGRESS_INVALID_HOST", "EGRESS_ALLOWED"]
                     if control_result["matching_wire_cancellation"]:
                         assert not control_result["cancelled_fetch_replied"]
                     else:
@@ -386,7 +385,7 @@ def main():
     cancellation_checks = (["client_interrupt_acknowledged",
                             "matching_mcp_cancel_and_socket_close" if control_result["matching_wire_cancellation"]
                             else "missing_mcp_cancel_server_timeout_and_socket_close",
-                            *(["two_same_process_cancel_recovery_cycles"] if control_result["cancel_cycles"] == 2 else [])]
+                            *(["repeated_same_process_cancel_recovery_cycles"] if control_result["cancel_cycles"] > 1 else [])]
                            if control_result else [])
     print(json.dumps({"result": "passed", "client": args.client,
                       "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
