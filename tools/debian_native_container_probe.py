@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -192,7 +192,7 @@ def main():
         wrapper.write_text(source)
         wrapper.chmod(0o700)
         env = os.environ.copy()
-        for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_TLS_SLOW", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP", "OUTBOUND_GUARD_CLIENT_CONNECT_BLACKHOLE",
+        for mode_name in ("OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE", "OUTBOUND_GUARD_CLIENT_TLS_SLOW", "OUTBOUND_GUARD_CLIENT_SLOW_HTTP", "OUTBOUND_GUARD_CLIENT_CONNECT_BLACKHOLE", "OUTBOUND_GUARD_CLIENT_DNS_ANSWER_LIMIT",
                           "OUTBOUND_GUARD_CLIENT_MALFORMED", "OUTBOUND_GUARD_CLIENT_FRAMING", "OUTBOUND_GUARD_CLIENT_TRAPS",
                           "OUTBOUND_GUARD_CLIENT_DNS_SSRF", "OUTBOUND_GUARD_CLIENT_DNS_TRUNCATED", "OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE", "OUTBOUND_GUARD_CLIENT_REBIND", "OUTBOUND_GUARD_CLIENT_PINNED_FALLBACK",
                           "OUTBOUND_GUARD_CLIENT_EXFIL", "OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION",
@@ -218,6 +218,7 @@ def main():
              "slow-http-packet": "OUTBOUND_GUARD_CLIENT_SLOW_HTTP",
              "connect-blackhole": "OUTBOUND_GUARD_CLIENT_CONNECT_BLACKHOLE",
              "connect-blackhole-packet": "OUTBOUND_GUARD_CLIENT_CONNECT_BLACKHOLE",
+             "dns-answer-limit": "OUTBOUND_GUARD_CLIENT_DNS_ANSWER_LIMIT",
              "malformed-http": "OUTBOUND_GUARD_CLIENT_MALFORMED",
              "malformed-http-packet": "OUTBOUND_GUARD_CLIENT_MALFORMED",
              "framing-http": "OUTBOUND_GUARD_CLIENT_FRAMING",
@@ -426,6 +427,7 @@ def main():
                                     "slow-http": ["slow_drip_denial", "delayed_first_byte_denial"],
                                     "connect-blackhole": ["dropped_syn_connect_denial", "shared_connect_deadline_no_fallback", "approved_recovery_after_timeout"],
                                     "connect-blackhole-packet": ["dropped_syn_connect_denial", "shared_connect_deadline_no_fallback", "approved_recovery_after_timeout", "fixture_namespace_no_fallback_capture"],
+                                    "dns-answer-limit": ["twenty_public_dns_answers_denied_before_http", "approved_recovery_after_dns_denial"],
                                     "tls-slow-http": ["trusted_tls_handshake", "tls_sni_preserved", "tls_slow_drip_denial", "tls_delayed_first_byte_denial"],
                                     "tls-slow-http-packet": ["trusted_tls_handshake", "tls_sni_preserved", "tls_slow_drip_denial", "tls_delayed_first_byte_denial", "tls_client_hello_capture", "timed_out_tcp_streams_closed", "fixture_namespace_tcp_syn_capture"],
                                     "slow-http-packet": ["slow_drip_denial", "delayed_first_byte_denial",
