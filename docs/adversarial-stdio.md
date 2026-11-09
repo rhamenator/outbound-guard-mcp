@@ -35,6 +35,8 @@ A [separate Claude capture replay](evidence/native-claude-missing-lf-eof-pcap-20
 
 The [native active-HTTP EOF replay](evidence/native-active-http-missing-lf-eof-2026-11-09.json) adds `OUTBOUND_GUARD_CLIENT_FRAME_EOF=active` and the `eof-mcp-frame-active` package mode. The bridge uses each native client's guarded call ID and metadata to start one approved body-pending fetch in a route-free fixture, waits for the HTTP fixture to start, then sends a complete private-host JSON frame without LF and closes stdin. The server rejects the frame, closes the pending approved socket, returns neither call, and emits only the fixed redacted diagnostic. The native transcript shows one guarded call and no retry. These are fixture and process observations without a packet capture; the bridge generates the malformed transport bytes.
 
+Separate retained [Codex](evidence/native-codex-active-http-eof-pcap-2026-11-09.json) and [Claude](evidence/native-claude-active-http-eof-pcap-2026-11-09.json) fixture captures add an independent packet check for the active HTTP case. Each has one allowed request, response bytes and a later client FIN on the same stream; DNS targets the local resolver and no private-host packet appears. The CI verifier binds each capture hash to its evidence record and the prior installed-package run. This is fixture-namespace wire evidence, not a host-client trace or proof about traffic through other tools.
+
 
 ## Inspector era selection and fallback
 

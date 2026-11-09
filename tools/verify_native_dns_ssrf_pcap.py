@@ -28,7 +28,7 @@ def verify(path: Path, digest: str, scenario: str = "dns-ssrf") -> dict:
     syns = rows(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0",
                 "ip.dst", "ipv6.dst", "tcp.dstport")
     destinations = [(ipv4 or ipv6, port) for ipv4, ipv6, port in syns]
-    expected_syns = 1 if scenario == "eof-frame" else 3
+    expected_syns = 1 if scenario in ("eof-frame", "eof-active") else 3
     assert len(destinations) == expected_syns and set(destinations) == {("11.0.0.1", "80")}, destinations
 
     queries = rows(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
@@ -46,24 +46,38 @@ def verify(path: Path, digest: str, scenario: str = "dns-ssrf") -> dict:
             assert b"private.test" not in data, "private target appeared in EOF capture"
 
     requests = rows(path, "http.request", "http.host", "http.request.uri")
-    expected_requests = ([["allowed.test", "/plain"]] if scenario == "eof-frame" else
+    expected_requests = ([["allowed.test", "/cancel-silent-body"]] if scenario == "eof-active" else
+                         [["allowed.test", "/plain"]] if scenario == "eof-frame" else
                          [["allowed.test", "/plain"], ["allowed.test", "/head-ok"],
                           ["allowed.test", "/plain"]])
     assert requests == expected_requests, requests
+
+    active_close = None
+    if scenario == "eof-active":
+        request_frames = rows(path, "http.request", "frame.number", "tcp.stream")
+        response_frames = rows(path, "tcp.srcport == 80 && tcp.len > 0", "frame.number", "tcp.stream")
+        close_frames = rows(path, "tcp.dstport == 80 && (tcp.flags.fin == 1 || tcp.flags.reset == 1)",
+                            "frame.number", "tcp.stream")
+        assert len(request_frames) == 1 and len(response_frames) >= 1 and len(close_frames) == 1
+        stream = request_frames[0][1]
+        assert all(row[1] == stream for row in response_frames + close_frames)
+        assert int(request_frames[0][0]) < int(response_frames[0][0]) < int(close_frames[0][0])
+        active_close = {"response_data_before_client_close": True, "client_close_count": 1}
 
     destinations_all = rows(path, "ip || ipv6", "ip.dst", "ipv6.dst")
     addresses = {item for ipv4, ipv6 in destinations_all for item in (ipv4 or ipv6).split(",") if item}
     assert addresses and addresses <= {"11.0.0.1", "127.0.0.1"}, addresses
     return {"sha256": actual, "scenario": scenario, "tcp_syn_count": len(syns), "dns_query_count": len(queries),
             "dns_names": sorted(names), "http_requests": requests,
-            "ip_destinations": sorted(addresses), "scope": "fixture namespace only"}
+            "ip_destinations": sorted(addresses), "active_close": active_close,
+            "scope": "fixture namespace only"}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--scenario", choices=("dns-ssrf", "synthetic-exfil", "eof-frame"), default="dns-ssrf")
+    parser.add_argument("--scenario", choices=("dns-ssrf", "synthetic-exfil", "eof-frame", "eof-active"), default="dns-ssrf")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-pcap-verify-") as directory:
