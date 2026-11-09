@@ -1,0 +1,41 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "client": "Claude Code 2.1.319 stream-json with explicit project skill invocation",
+  "platform": "Debian 12 amd64 installed server package in a route-free DNS/HTTP fixture namespace",
+  "candidate": {
+    "revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+    "deb_sha256": "11bd3b2149f78477525e6756b3030e31c98a194fd455769af0645970d095ca3d",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  },
+  "upgrade_from": {
+    "revision": "175041b91c61eb29d8bed518967baa9f02a18de0",
+    "deb_sha256": "d66b52d74b94df3a8614113a318612ae5b3c30964d2f6308b070e5e9d6e3f432",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74"
+  },
+  "reproduction": "umask 077; python3 tools/debian_native_container_probe.py claude NEW.deb NEW_SHA SKILL.zip SKILL_SHA --old-package OLD.deb --old-sha256 OLD_SHA --fixture-mode eof-mcp-frame --container-memory-mib 128 --sample-server-resources",
+  "injection": "A transparent bridge forwarded the first native guarded_fetch call and response. It replaced the second native call with syntactically complete JSON-RPC for private.test, omitted only LF, and closed server stdin.",
+  "observations": {
+    "native_skill_invoked": true,
+    "native_guarded_tool_use_ids_through_result": 2,
+    "native_result_is_error": false,
+    "first_rule": "EGRESS_ALLOWED",
+    "approved_http_hits": ["/plain"],
+    "server_nonzero_exit": true,
+    "fixed_redacted_eof_diagnostic": "Input frame ended without LF delimiter",
+    "incomplete_private_call_reply": false,
+    "private_dns_queries": 0,
+    "native_retry_calls": 0,
+    "container_memory_limit_mib": 128,
+    "container_memory_peak_bytes": 21770240,
+    "container_oom_events": 0,
+    "container_pids_peak": 9,
+    "server_fd_max_sampled": 3,
+    "server_rss_max_sampled_kib": 3852,
+    "server_samples": 85,
+    "server_sample_interval_ms": 50
+  },
+  "lifecycle_checks": ["artifact checksum", "clean dpkg install", "old package launch and loopback denial", "same-binary package upgrade", "native skill and guarded calls", "approved control before EOF", "incomplete frame rejection", "no private DNS or reply", "package removal and residue"],
+  "limits": "The bridge, not Claude Code, generated the missing-LF frame after observing a native tool call. This is one malformed transport sequence through a real client session, not normal client behavior or complete MCP conformance. No packet capture or host-client network trace was taken in this run; HTTP and DNS observations are fixture records. Resource readings are finite samples. The upgrade reused identical executable bytes. Traffic sent via other tools and the four AI Scraping Defense repositories are outside this result. This is experimental evidence, not official candidate or owner release approval."
+}
