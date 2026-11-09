@@ -11,7 +11,10 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 CAPTURES = ROOT / "tests/fixtures/packet-capture"
-EVIDENCE = ROOT / "docs/evidence/native-dns-spoof-id-2026-11-09.json"
+EVIDENCE = (
+    ROOT / "docs/evidence/native-dns-spoof-id-2026-11-09.json",
+    ROOT / "docs/evidence/native-dns-spoof-id-upgrade-2026-11-09.json",
+)
 
 
 def rows(path, display_filter, *fields):
@@ -56,25 +59,35 @@ def verify(path, digest):
 
 
 def main():
-    document = json.loads(EVIDENCE.read_text())
-    assert set(document["runs"]) == {"codex", "claude"}
     results = {}
-    for client, run in document["runs"].items():
-        assert run["rules"] == ["EGRESS_ALLOWED", "EGRESS_DNS_TIMEOUT", "EGRESS_ALLOWED"]
-        assert run["fixture_hits"] == ["/plain", "/plain"]
-        assert run["dns_pairs"] == {"query_count": 2, "forged_response_count": 2,
-                                    "all_ids_mismatched": True}
-        assert run["tcp_syn_destinations"] == ["11.0.0.1:80"]
-        assert run["skill_loaded"] and run["native_turn_or_skill_completed"]
-        assert {"clean_dpkg_install", "package_remove", "residue"} <= set(
-            run["install_remove_residue_checks"])
-        path = (ROOT / run["capture_path"]).resolve(strict=True)
-        assert path.is_relative_to(CAPTURES)
-        # The local tshark profile reads fixture captures from /tmp.
-        with tempfile.TemporaryDirectory(prefix="outbound-dns-spoof-verify-") as directory:
-            copy = Path(directory) / "fixture.pcap"
-            shutil.copyfile(path, copy)
-            results[client] = verify(copy, run["capture_sha256"])
+    for evidence in EVIDENCE:
+        document = json.loads(evidence.read_text())
+        assert set(document["runs"]) == {"codex", "claude"}
+        upgrade = "upgrade" in evidence.stem
+        if upgrade:
+            previous = document["previous_package"]
+            current = document["current_package"]
+            assert previous["binary_sha256"] != current["binary_sha256"]
+            assert previous["revision"] != current["revision"]
+            assert document["source_revision"] == current["revision"]
+        for client, run in document["runs"].items():
+            assert run["rules"] == ["EGRESS_ALLOWED", "EGRESS_DNS_TIMEOUT", "EGRESS_ALLOWED"]
+            assert run["fixture_hits"] == ["/plain", "/plain"]
+            assert run["dns_pairs"] == {"query_count": 2, "forged_response_count": 2,
+                                        "all_ids_mismatched": True}
+            assert run["tcp_syn_destinations"] == ["11.0.0.1:80"]
+            assert run["skill_loaded"] and run["native_turn_or_skill_completed"]
+            required = {"clean_dpkg_install", "package_remove", "residue"}
+            if upgrade:
+                required |= {"package_upgrade", "old_package_launch_and_loopback_denial"}
+            assert required <= set(run["install_remove_residue_checks"])
+            path = (ROOT / run["capture_path"]).resolve(strict=True)
+            assert path.is_relative_to(CAPTURES)
+            # The local tshark profile reads fixture captures from /tmp.
+            with tempfile.TemporaryDirectory(prefix="outbound-dns-spoof-verify-") as directory:
+                copy = Path(directory) / "fixture.pcap"
+                shutil.copyfile(path, copy)
+                results[f"{evidence.stem}:{client}"] = verify(copy, run["capture_sha256"])
     print(json.dumps(results, sort_keys=True))
 
 
