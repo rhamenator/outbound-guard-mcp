@@ -4,7 +4,7 @@ set -euo pipefail
 : "${LIBFUZZER_RUNTIME:?Set LIBFUZZER_RUNTIME to libclang_rt.fuzzer_no_main-x86_64.a}"
 : "${POLICY_FUZZ_OUTPUT:?Set POLICY_FUZZ_OUTPUT to a dedicated evidence directory}"
 target="${POLICY_FUZZ_TARGET:-policy}"
-case "$target" in policy|frame|rpc|json) ;; *) exit 2 ;; esac
+case "$target" in policy|frame|rpc|json|http) ;; *) exit 2 ;; esac
 seconds="${POLICY_FUZZ_SECONDS:-60}"
 case "$seconds" in 60|300|600) ;; *) exit 2 ;; esac
 cpu_seconds=$((seconds + 30))
@@ -34,6 +34,19 @@ p=Path(sys.argv[1])
 (p/'oversize').write_bytes(b'x'*65537+b'\nping\n')
 SEEDS
   max_len=131072
+elif [ "$target" = http ]; then
+  python3 - "$POLICY_FUZZ_OUTPUT/corpus" <<'SEEDS'
+from pathlib import Path
+import sys
+p=Path(sys.argv[1])
+(p/'length').write_bytes(b'\x01\x00' + b'18446744073709551615')
+(p/'overflow').write_bytes(b'\x01\x00' + b'18446744073709551616')
+(p/'duplicate').write_bytes(b'\x02\x00' + b'1\xff2')
+(p/'conflict').write_bytes(b'\x01\x01' + b'1\xffchunked')
+(p/'chunked').write_bytes(b'\x00\x01' + b'chunked')
+(p/'stacked').write_bytes(b'\x00\x01' + b'gzip, chunked')
+SEEDS
+  max_len=512
 elif [ "$target" = json ]; then
   python3 - "$POLICY_FUZZ_OUTPUT/corpus" <<'SEEDS'
 from pathlib import Path

@@ -19,13 +19,17 @@ assert added and int(added[1]) > 0, 'no feedback-guided corpus growth'
 assert not list((root / 'artifacts').iterdir()), 'crash/timeout artifact present'
 corpus = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
           for p in sorted((root / 'corpus').iterdir())}
+scope = {
+    'policy': 'validate only, stub DNS; no sockets, HTTP parser or MCP transport',
+    'frame': 'actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets',
+    'json': 'actual JSON response scanner versus canonical-value recursive key oracle; duplicate-key, invalid-JSON and Value-private-number collision seeds; oracle cannot classify Value parse errors; no HTTP transport or MCP client',
+    'rpc': 'actual MCP dispatch/session transitions and tool validation; empty allowlist; no DNS, sockets, queues or cancellation timing',
+    'http': 'parsed HTTP HeaderMap framing decision versus independent checked-decimal oracle; no raw HTTP parser, sockets, DNS, cancellation or native clients',
+}[target]
 report = {'seed': 306373022, 'executions': int(match[1]), 'coverage_counters': int(match[2]),
           'features': int(match[3]), 'new_units_added': int(added[1]), 'corpus': corpus,
           'target_seconds': seconds,
           'limits': f'{seconds}s target; 2s/input; hard 1GiB address space/64 FDs/{seconds + 30}s CPU; no ASan',
-          'scope': ('validate only, stub DNS; no sockets, HTTP parser or MCP transport' if target == 'policy'
-                    else ('actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets' if target == 'frame'
-                          else ('actual JSON response scanner versus canonical-value recursive key oracle; duplicate-key, invalid-JSON and Value-private-number collision seeds; oracle cannot classify Value parse errors; no HTTP transport or MCP client'
-                                if target == 'json' else 'actual MCP dispatch/session transitions and tool validation; empty allowlist; no DNS, sockets, queues or cancellation timing')))}
+          'scope': scope}
 (root / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
 print(json.dumps({k: v for k, v in report.items() if k != 'corpus'}))

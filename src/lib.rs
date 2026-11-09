@@ -908,6 +908,102 @@ fn guarded_fetch_inner(args: &Value, allowed_hosts: &[String], cancel: &AtomicBo
     })
 }
 
+fn response_framing_denial(headers: &hyper::HeaderMap) -> Option<Denial> {
+    if headers.get_all(header::CONTENT_LENGTH).iter().count() > 1
+        || (headers.contains_key(header::CONTENT_LENGTH)
+            && headers.contains_key(header::TRANSFER_ENCODING))
+    {
+        return Some(Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a response with unambiguous HTTP message framing.",
+        ));
+    }
+    if headers.get(header::CONTENT_LENGTH).is_some_and(|value| {
+        value.as_bytes().is_empty()
+            || !value.as_bytes().iter().all(u8::is_ascii_digit)
+            || value
+                .to_str()
+                .ok()
+                .and_then(|value| value.parse::<u64>().ok())
+                .is_none()
+    }) {
+        return Some(Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a response with one decimal Content-Length value.",
+        ));
+    }
+    if headers.get_all(header::TRANSFER_ENCODING).iter().count() > 1
+        || headers
+            .get(header::TRANSFER_ENCODING)
+            .is_some_and(|value| !value.as_bytes().eq_ignore_ascii_case(b"chunked"))
+    {
+        return Some(Denial::new(
+            "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+            "Use a response with only chunked transfer coding or no transfer coding.",
+        ));
+    }
+    None
+}
+
+// Development-only differential oracle for the production response-framing decision.
+// HeaderMap construction models headers after Hyper has parsed the wire bytes;
+// raw HTTP parsing and network behavior remain separate test boundaries.
+#[cfg(feature = "policy-fuzz")]
+pub fn fuzz_response_framing(input: &[u8]) {
+    use hyper::header::HeaderValue;
+
+    let mut headers = hyper::HeaderMap::new();
+    let cl_count = input.first().copied().unwrap_or(0) as usize % 3;
+    let te_count = input.get(1).copied().unwrap_or(0) as usize % 3;
+    let mut parts = input.get(2..).unwrap_or(&[]).split(|byte| *byte == 0xff);
+    let mut cl_values = Vec::new();
+    let mut te_values = Vec::new();
+    for _ in 0..cl_count {
+        let value = parts.next().unwrap_or(&[]);
+        let Ok(value) = HeaderValue::from_bytes(value) else {
+            return;
+        };
+        cl_values.push(value);
+    }
+    for _ in 0..te_count {
+        let value = parts.next().unwrap_or(&[]);
+        let Ok(value) = HeaderValue::from_bytes(value) else {
+            return;
+        };
+        te_values.push(value);
+    }
+    for value in &cl_values {
+        headers.append(header::CONTENT_LENGTH, value.clone());
+    }
+    for value in &te_values {
+        headers.append(header::TRANSFER_ENCODING, value.clone());
+    }
+    let expected = if cl_values.len() > 1 || (!cl_values.is_empty() && !te_values.is_empty()) {
+        Some("EGRESS_INVALID_FRAMING")
+    } else if cl_values.first().is_some_and(|value| {
+        let bytes = value.as_bytes();
+        bytes.is_empty()
+            || bytes.iter().any(|byte| !byte.is_ascii_digit())
+            || bytes
+                .iter()
+                .try_fold(0u64, |n, byte| {
+                    n.checked_mul(10)?.checked_add(u64::from(*byte - b'0'))
+                })
+                .is_none()
+    }) {
+        Some("EGRESS_INVALID_FRAMING")
+    } else if te_values.len() > 1
+        || te_values
+            .first()
+            .is_some_and(|value| !value.as_bytes().eq_ignore_ascii_case(b"chunked"))
+    {
+        Some("EGRESS_UNSUPPORTED_TRANSFER_CODING")
+    } else {
+        None
+    };
+    assert_eq!(response_framing_denial(&headers).map(|d| d.rule), expected);
+}
+
 async fn guarded_http_fetch(
     target: &Target,
     extra_ca: &Option<CertificateDer<'static>>,
@@ -965,56 +1061,8 @@ async fn guarded_http_fetch(
         )
         .value();
     }
-    if response
-        .headers()
-        .get_all(header::CONTENT_LENGTH)
-        .iter()
-        .count()
-        > 1
-        || (response.headers().contains_key(header::CONTENT_LENGTH)
-            && response.headers().contains_key(header::TRANSFER_ENCODING))
-    {
-        return Denial::new(
-            "EGRESS_INVALID_FRAMING",
-            "Use a response with unambiguous HTTP message framing.",
-        )
-        .value();
-    }
-    if response
-        .headers()
-        .get(header::CONTENT_LENGTH)
-        .is_some_and(|value| {
-            value.as_bytes().is_empty()
-                || !value.as_bytes().iter().all(u8::is_ascii_digit)
-                || value
-                    .to_str()
-                    .ok()
-                    .and_then(|value| value.parse::<u64>().ok())
-                    .is_none()
-        })
-    {
-        return Denial::new(
-            "EGRESS_INVALID_FRAMING",
-            "Use a response with one decimal Content-Length value.",
-        )
-        .value();
-    }
-    if response
-        .headers()
-        .get_all(header::TRANSFER_ENCODING)
-        .iter()
-        .count()
-        > 1
-        || response
-            .headers()
-            .get(header::TRANSFER_ENCODING)
-            .is_some_and(|value| !value.as_bytes().eq_ignore_ascii_case(b"chunked"))
-    {
-        return Denial::new(
-            "EGRESS_UNSUPPORTED_TRANSFER_CODING",
-            "Use a response with only chunked transfer coding or no transfer coding.",
-        )
-        .value();
+    if let Some(denial) = response_framing_denial(response.headers()) {
+        return denial.value();
     }
     if response
         .headers()
@@ -1210,6 +1258,50 @@ async fn guarded_http_fetch(
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicBool;
+
+    #[test]
+    fn response_framing_decision_keeps_conflicts_and_overflow_closed() {
+        use hyper::header::HeaderValue;
+
+        let cases: &[(&[&str], &[&str], Option<&str>)] = &[
+            (&[], &[], None),
+            (&["18446744073709551615"], &[], None),
+            (
+                &["18446744073709551616"],
+                &[],
+                Some("EGRESS_INVALID_FRAMING"),
+            ),
+            (&["1", "1"], &[], Some("EGRESS_INVALID_FRAMING")),
+            (&["1"], &["chunked"], Some("EGRESS_INVALID_FRAMING")),
+            (&[], &["chunked"], None),
+            (
+                &[],
+                &["gzip, chunked"],
+                Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"),
+            ),
+            (
+                &[],
+                &["chunked", "chunked"],
+                Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"),
+            ),
+        ];
+        for (lengths, codings, expected) in cases {
+            let mut headers = hyper::HeaderMap::new();
+            for value in *lengths {
+                headers.append(
+                    header::CONTENT_LENGTH,
+                    HeaderValue::from_str(value).unwrap(),
+                );
+            }
+            for value in *codings {
+                headers.append(
+                    header::TRANSFER_ENCODING,
+                    HeaderValue::from_str(value).unwrap(),
+                );
+            }
+            assert_eq!(response_framing_denial(&headers).map(|d| d.rule), *expected);
+        }
+    }
     #[test]
     fn rolling_transfer_rate_expires_bursts_and_has_bounded_state() {
         let mut rate = TransferRate::default();
