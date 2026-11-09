@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recheck both retained native synthetic-exfiltration upgrade captures in CI."""
+"""Recheck retained native synthetic-exfiltration captures in CI."""
 
 import json
 from pathlib import Path
@@ -19,8 +19,13 @@ FIELDS = ("sha256", "scenario", "tcp_syn_count", "dns_query_count",
 
 def main() -> None:
     captures = set()
-    for client in ("claude", "codex"):
-        evidence = ROOT / "docs/evidence" / f"native-{client}-exfil-upgrade-pcap-2026-11-07.json"
+    cases = (
+        ("claude-upgrade", "native-claude-exfil-upgrade-pcap-2026-11-07.json"),
+        ("codex-upgrade", "native-codex-exfil-upgrade-pcap-2026-11-07.json"),
+        ("claude-current", "native-claude-exfil-current-2026-11-09.json"),
+    )
+    for client, filename in cases:
+        evidence = ROOT / "docs/evidence" / filename
         run = json.loads(evidence.read_text())
         assert run["result"] == "passed" and run["fixture_mode"] == "synthetic-exfil-packet"
         assert run["rules"] == EXPECTED_RULES
@@ -41,8 +46,8 @@ def main() -> None:
             text=True, timeout=25))
         for field in FIELDS:
             assert checked[field] == run["packet_verifier"][field], (client, field)
-    assert len(captures) == 2
-    print(json.dumps({"verified_clients": ["claude", "codex"],
+    assert len(captures) == len(cases)
+    print(json.dumps({"verified_clients": [client for client, _ in cases],
                       "capture_count": len(captures)}, sort_keys=True))
 
 
