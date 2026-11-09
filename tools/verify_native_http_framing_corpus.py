@@ -10,18 +10,21 @@ import subprocess
 ROOT = Path(__file__).resolve().parent.parent
 CAPTURE_ROOT = ROOT / "tests/fixtures/packet-capture"
 CASES = (
-    ("claude", "malformed", "tools/verify_native_malformed_http_pcap.py"),
-    ("codex", "malformed", "tools/verify_native_malformed_http_pcap.py"),
-    ("claude", "framing", "tools/verify_native_framing_http_pcap.py"),
-    ("codex", "framing", "tools/verify_native_framing_http_pcap.py"),
+    ("claude", "malformed", "tools/verify_native_malformed_http_pcap.py", "2026-11-07", ()),
+    ("codex", "malformed", "tools/verify_native_malformed_http_pcap.py", "2026-11-07", ()),
+    ("claude", "framing", "tools/verify_native_framing_http_pcap.py", "2026-11-07", ()),
+    ("codex", "framing", "tools/verify_native_framing_http_pcap.py", "2026-11-07", ()),
+    ("claude", "comma", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "comma")),
+    ("codex", "comma", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "comma")),
 )
 
 
 def main() -> None:
     results = []
     seen = set()
-    for client, kind, verifier in CASES:
-        filename = f"native-{client}-{kind}-http-upgrade-pcap-2026-11-07.json"
+    for client, kind, verifier, date, options in CASES:
+        filename = (f"native-{client}-{kind}-http-pcap-{date}.json" if kind == "comma" else
+                    f"native-{client}-{kind}-http-upgrade-pcap-{date}.json")
         document = json.loads((ROOT / "docs/evidence" / filename).read_text())
         assert document["result"] == "passed", filename
         assert client in document["client"].lower(), filename
@@ -33,7 +36,7 @@ def main() -> None:
         digest = document["pcap_sha256"]
         assert re.fullmatch(r"[0-9a-f]{64}", digest), digest
         checked = json.loads(subprocess.check_output(
-            ["python3", str(ROOT / verifier), str(capture), digest],
+            ["python3", str(ROOT / verifier), str(capture), digest, *options],
             text=True, timeout=25))
         recorded = document["packet_verifier"]
         for field in ("sha256", "http_requests", "ip_destinations", "tcp_syn_count"):

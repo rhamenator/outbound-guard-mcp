@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "dns-answer-limit-packet", "dns-answer-boundary-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-spoof-packet", "dns-spoof-busy-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "eof-mcp-frame", "eof-mcp-frame-active", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "dns-answer-limit-packet", "dns-answer-boundary-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-comma-packet", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-spoof-packet", "dns-spoof-busy-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "eof-mcp-frame", "eof-mcp-frame-active", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -211,7 +211,7 @@ def main():
             env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         if args.fixture_mode == "client-control-repeated-cancellation":
             env["OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"] = str(args.cancel_cycles)
-        if args.fixture_mode in ("dns-ssrf-packet", "dns-spoof-packet", "dns-spoof-busy-packet", "dns-truncated-packet", "dns-tcp-private-packet", "dns-tcp-mixed-v6-packet", "dns-rebind-packet", "dns-answer-limit-packet", "dns-answer-boundary-packet", "pinned-fallback-packet", "synthetic-exfil-packet", "redirect-encoded-packet", "slow-http-packet", "connect-blackhole-packet", "tls-handshake-packet", "tls-slow-http-packet", "malformed-http-packet", "framing-http-packet", "response-body-limit-packet", "response-header-limit-packet", "http-interim-slow-packet"):
+        if args.fixture_mode in ("dns-ssrf-packet", "dns-spoof-packet", "dns-spoof-busy-packet", "dns-truncated-packet", "dns-tcp-private-packet", "dns-tcp-mixed-v6-packet", "dns-rebind-packet", "dns-answer-limit-packet", "dns-answer-boundary-packet", "pinned-fallback-packet", "synthetic-exfil-packet", "redirect-encoded-packet", "slow-http-packet", "connect-blackhole-packet", "tls-handshake-packet", "tls-slow-http-packet", "malformed-http-packet", "framing-http-packet", "framing-http-comma-packet", "response-body-limit-packet", "response-header-limit-packet", "http-interim-slow-packet"):
             env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
         mode_variable = {"tls": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
              "tls-active-proxy": "OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE",
@@ -230,6 +230,7 @@ def main():
              "framing-http": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-packet": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-comma": "OUTBOUND_GUARD_CLIENT_FRAMING",
+             "framing-http-comma-packet": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-coding": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "framing-http-obs-fold": "OUTBOUND_GUARD_CLIENT_FRAMING",
              "redirect-encoded": "OUTBOUND_GUARD_CLIENT_TRAPS",
@@ -271,7 +272,7 @@ def main():
         if mode_variable:
             env[mode_variable] = ("busy" if args.fixture_mode == "dns-spoof-busy-packet" else
                                   "boundary" if args.fixture_mode == "dns-answer-boundary-packet" else
-                                  "comma" if args.fixture_mode == "framing-http-comma" else
+                                  "comma" if args.fixture_mode in ("framing-http-comma", "framing-http-comma-packet") else
                                   "coding" if args.fixture_mode == "framing-http-coding" else
                                   "private" if args.fixture_mode in ("dns-tcp-private", "dns-tcp-private-packet") else
                                   "mixed-v6" if args.fixture_mode in ("dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet") else
@@ -454,6 +455,7 @@ def main():
                                     "framing-http": ["conflicting_length_transfer_denial", "duplicate_length_denial", "stacked_transfer_denial", "duplicate_transfer_denial"],
                                     "framing-http-packet": ["conflicting_length_transfer_denial", "duplicate_length_denial", "stacked_transfer_denial", "duplicate_transfer_denial", "fixture_namespace_tcp_syn_capture"],
                                     "framing-http-comma": ["equal_comma_length_denial", "conflicting_comma_length_denial", "repeated_chunked_coding_denial"],
+                                    "framing-http-comma-packet": ["equal_comma_length_denial", "conflicting_comma_length_denial", "repeated_chunked_coding_denial", "fixture_namespace_tcp_syn_capture"],
                                     "framing-http-coding": ["seeded_stacked_coding_denial", "seeded_parameterized_coding_denial", "seeded_unknown_coding_denial"],
                                     "framing-http-obs-fold": ["folded_length_denial", "folded_encoding_denial", "folded_connection_denial", "folded_extension_denial", "no_denied_body_text"],
                                     "redirect-encoded": ["loopback_denial", "redirect_denial", "encoded_response_denial"],

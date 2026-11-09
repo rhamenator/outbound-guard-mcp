@@ -1,0 +1,148 @@
+{
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "no_upgrade",
+    "native_skill_and_guarded_calls",
+    "equal_comma_length_denial",
+    "conflicting_comma_length_denial",
+    "repeated_chunked_coding_denial",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "client": "Claude Code 2.1.319",
+  "client_version_source": "Host CLI --version checked after native replay on 2026-11-09; probe used the same CLI installation.",
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 128,
+    "memory_peak_bytes": 18452480,
+    "pids_peak": 9,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "explicit_skill_input_accepted": null,
+  "fixture_hits": [
+    "/plain",
+    "/comma-length-equal",
+    "/comma-length-conflict",
+    "/repeated-chunked-coding",
+    "/plain"
+  ],
+  "fixture_mode": "framing-http-comma-packet",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limitations": [
+    "Fixture namespace only; host-client and other-tool traffic are not captured.",
+    "Three finite framing shapes and a 128 MiB cgroup run do not prove arbitrary parsing or exhaustion resistance.",
+    "This run tested clean install and uninstall; upgrade was not exercised.",
+    "Unsigned experimental package is not an owner-approved official candidate.",
+    "Independent human review is not claimed; four AI Scraping Defense repositories require separate evidence."
+  ],
+  "native_skill_discovered": null,
+  "native_skill_invoked": true,
+  "native_skill_loaded": true,
+  "native_turn_completed": null,
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "746124033593d2a65fd311420dda700d5a829dd9de5f7e1ac8834280c0e6d87f",
+    "revision": "8f7831a074415548b13db70e78f239b5a5a5825c",
+    "version": "0.1.0~candidate.323+g8f7831a07441"
+  },
+  "observed_at_utc": "2026-11-09T22:38:36.590445+00:00",
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "dns_query_count": 11,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "packet_count": 84,
+    "pcap_sha256": "67e3ad5f6a2e09e12802cda5515dd2e98fc786c70754b8568bafe986f6e5bbae",
+    "raw_pcap_retained": true,
+    "tcp_syn_count": 5,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0
+  },
+  "packet_verifier": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 11,
+    "framing_metadata_and_body": {
+      "/comma-length-conflict": true,
+      "/comma-length-equal": true,
+      "/repeated-chunked-coding": true
+    },
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/comma-length-equal"
+      ],
+      [
+        "allowed.test",
+        "/comma-length-conflict"
+      ],
+      [
+        "allowed.test",
+        "/repeated-chunked-coding"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "67e3ad5f6a2e09e12802cda5515dd2e98fc786c70754b8568bafe986f6e5bbae",
+    "tcp_syn_count": 5
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-comma-http-2026-11-09.pcap",
+  "pcap_sha256": "67e3ad5f6a2e09e12802cda5515dd2e98fc786c70754b8568bafe986f6e5bbae",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_DIR/claude.pcap python3 tools/debian_native_container_probe.py claude PACKAGE.deb PACKAGE_SHA SKILL.zip SKILL_SHA --fixture-mode framing-http-comma-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_framing_http_pcap.py RETAINED.pcap SHA --mode comma",
+  "result": "passed",
+  "rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_UNSUPPORTED_TRANSFER_CODING",
+    "EGRESS_ALLOWED"
+  ],
+  "scenario": "native claude comma Content-Length and repeated chunked coding denial, then approved recovery",
+  "server_resource_observation": {
+    "max_sampled_fd": 4,
+    "max_sampled_rss_kib": 4032,
+    "sample_interval_ms": 50,
+    "samples": 301,
+    "scope": "Finite sampled server observations; sampling can miss transient peaks."
+  },
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "status_codes": [
+    200,
+    200
+  ]
+}

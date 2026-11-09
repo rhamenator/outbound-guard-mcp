@@ -27,7 +27,7 @@ def server_payload(path: Path, stream: str) -> bytes:
     return b"".join(bytes.fromhex(segment) for [segment] in segments)
 
 
-def verify(path: Path, digest: str) -> dict:
+def verify(path: Path, digest: str, mode: str = "framing") -> dict:
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture size outside fixture limit"
     actual = hashlib.sha256(data).hexdigest()
@@ -35,18 +35,20 @@ def verify(path: Path, digest: str) -> dict:
 
     syns = rows(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0",
                 "ip.dst", "ipv6.dst", "tcp.dstport")
-    assert len(syns) == 6 and {(ipv4 or ipv6, port) for ipv4, ipv6, port in syns} == {
+    assert len(syns) == (5 if mode == "comma" else 6) and {(ipv4 or ipv6, port) for ipv4, ipv6, port in syns} == {
         ("11.0.0.1", "80")}, syns
 
     queries = rows(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
-    assert len(queries) == 13 and all(ip == "127.0.0.1" and port == "53"
+    assert len(queries) == (11 if mode == "comma" else 13) and all(ip == "127.0.0.1" and port == "53"
                                       for _, ip, port in queries), queries
     names = {name for name, _, _ in queries}
     assert "allowed.test" in names and names <= {"allowed.test", "1.0.0.11.in-addr.arpa"}, names
 
     requests = rows(path, "http.request", "http.host", "http.request.uri", "tcp.stream")
-    expected_paths = ["/plain", "/conflict-framing", "/duplicate-length",
-                      "/stacked-transfer-coding", "/duplicate-transfer-coding", "/plain"]
+    expected_paths = (["/plain", "/comma-length-equal", "/comma-length-conflict",
+                       "/repeated-chunked-coding", "/plain"] if mode == "comma" else
+                      ["/plain", "/conflict-framing", "/duplicate-length",
+                       "/stacked-transfer-coding", "/duplicate-transfer-coding", "/plain"])
     assert [(host, uri) for host, uri, _ in requests] == [
         ("allowed.test", uri) for uri in expected_paths], requests
 
@@ -59,6 +61,13 @@ def verify(path: Path, digest: str) -> dict:
         "/duplicate-transfer-coding": ([b"Transfer-Encoding: chunked"] * 2,
                                        b"2\r\nok\r\n0\r\n\r\n"),
     }
+    if mode == "comma":
+        expected_metadata = {
+            "/comma-length-equal": ([b"Content-Length: 2, 2"], b"ok"),
+            "/comma-length-conflict": ([b"Content-Length: 2, 3"], b"ok"),
+            "/repeated-chunked-coding": ([b"Transfer-Encoding: chunked, chunked"],
+                                          b"2\r\nok\r\n0\r\n\r\n"),
+        }
     verified = {}
     for uri, (expected_headers, expected_body) in expected_metadata.items():
         streams = {stream for _, request_uri, stream in requests if request_uri == uri}
@@ -87,12 +96,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
+    parser.add_argument("--mode", choices=("framing", "comma"), default="framing")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-framing-pcap-verify-") as directory:
         copy = Path(directory) / "fixture.pcap"
         shutil.copyfile(args.pcap, copy)
-        print(json.dumps(verify(copy, args.sha256), sort_keys=True))
+        print(json.dumps(verify(copy, args.sha256, args.mode), sort_keys=True))
 
 
 if __name__ == "__main__":
