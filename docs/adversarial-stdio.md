@@ -25,6 +25,8 @@ The former reader treated a nonempty final slice at EOF as a complete frame. A s
 
 The route-free `tools/netns_adversarial_probe.sh` now also starts a modern MCP `guarded_fetch` against a controlled HTTP response that sends headers and holds its body open. While that socket is active, it sends a second syntactically complete `tools/call` to an allowlisted private-answer host without LF, then closes stdin. The fixture requires nonzero server exit with the fixed redacted EOF diagnostic, no reply for either pending call, no DNS query for the incomplete call, exactly the one approved HTTP hit, and peer-observed closure of the active socket. This tests cancellation after a transport failure in one disposable namespace. It does not prove a native client will send this exact malformed sequence, a universal socket-close latency, or traffic outside this server's guarded tool.
 
+The [installed Codex CLI EOF replay](evidence/native-codex-missing-lf-eof-2026-11-09.json) adds a real Codex 0.151.0 skill session around that boundary. A transparent bridge forwards the client's first approved `guarded_fetch`, then replaces its second tool call with complete private-host JSON lacking LF and closes server stdin. It requires the fixed redacted EOF diagnostic, nonzero server exit, no reply or private DNS, exactly one approved HTTP hit, and no native retry before the turn completes. The bridge creates the malformed bytes; this does not show that Codex normally emits them. This run has no packet capture and cannot prove absence of host-client or other-tool traffic.
+
 
 ## Inspector era selection and fallback
 

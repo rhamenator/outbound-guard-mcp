@@ -7,8 +7,9 @@ ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
 assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,truncated-mixed-v6.test','allowed.test,fallback-pin.test','allowed.test,syn-stall.test','allowed.test,many-answers.test','allowed.test,dns-limit-16.test,dns-limit-17.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
-assert mutation in (None,'mutate','inject-arguments','active-proxy','queue-saturate')
+assert mutation in (None,'mutate','mutate-eof','inject-arguments','active-proxy','queue-saturate')
 mutant_enabled=mutation=='mutate'
+eof_enabled=mutation=='mutate-eof'
 argument_enabled=mutation=='inject-arguments'
 saturation_enabled=mutation=='queue-saturate'
 server_env=['PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts]
@@ -18,7 +19,7 @@ if mutation=='active-proxy':
  proxy='http://127.0.0.1:3128'
  server_env += [name+'='+proxy for name in ('HTTP_PROXY','http_proxy','HTTPS_PROXY','https_proxy','ALL_PROXY','all_proxy')]
  server_env += ['NO_PROXY=','no_proxy=']
-p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i',*server_env,binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=sys.stderr.buffer)
+p=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'env','-i',*server_env,binary],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE if eof_enabled else sys.stderr.buffer)
 lock=threading.Lock()
 mutant_pending=threading.Event()
 saturation_replies=queue.Queue()
@@ -77,7 +78,29 @@ def outgoing():
 t=threading.Thread(target=outgoing,daemon=True);t.start()
 try:
  mutant_sent=False
+ eof_calls=0
  for line in sys.stdin.buffer:
+  if eof_enabled:
+   try:
+    client_message=json.loads(line)
+   except ValueError:
+    client_message={}
+   if client_message.get('method')=='tools/call':
+    eof_calls+=1
+    if eof_calls==2:
+     params={'name':'guarded_fetch','arguments':{'url':'http://private.test/plain'}}
+     meta=client_message.get('params',{}).get('_meta')
+     if meta is not None:params['_meta']=meta
+     frame={'jsonrpc':'2.0','id':'eof-private','method':'tools/call','params':params}
+     payload=json.dumps(frame).encode()  # Complete JSON, deliberately no LF.
+     record('in',payload);record_event('eof_frame_sent')
+     p.stdin.write(payload);p.stdin.close()
+     assert p.wait(timeout=10)!=0, 'server accepted an incomplete stdio frame'
+     diagnostic=p.stderr.read(4096)
+     assert b'Input frame ended without LF delimiter' in diagnostic, 'missing fixed EOF diagnostic'
+     assert b'private.test' not in diagnostic, 'private target leaked in diagnostic'
+     record_event('eof_server_rejected')
+     break
   if (mutant_enabled or argument_enabled or saturation_enabled) and not mutant_sent:
    try:client_message=json.loads(line);method=client_message.get('method')
    except ValueError:client_message={};method=None
@@ -137,7 +160,7 @@ try:
     p.stdin.flush()
   record('in',line);p.stdin.write(line);p.stdin.flush()
 finally:
- p.stdin.close()
+ if not p.stdin.closed:p.stdin.close()
  try:p.wait(timeout=15)
  except subprocess.TimeoutExpired:p.kill();p.wait()
  t.join(timeout=2)
