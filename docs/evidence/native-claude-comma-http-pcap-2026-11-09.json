@@ -29,6 +29,7 @@
     "pids_peak": 9,
     "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
   },
+  "explicit_skill_input_accepted": null,
   "fixture_hits": [
     "/plain",
     "/comma-length-equal",
@@ -48,6 +49,7 @@
   "native_skill_discovered": null,
   "native_skill_invoked": true,
   "native_skill_loaded": true,
+  "native_turn_completed": null,
   "new_package": {
     "app_version": "0.1.0",
     "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
@@ -137,5 +139,10 @@
     "samples": 301,
     "scope": "Finite sampled server observations; sampling can miss transient peaks."
   },
-  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "status_codes": [
+    200,
+    200
+  ]
 }
