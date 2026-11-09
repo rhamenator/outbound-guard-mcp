@@ -22,6 +22,12 @@ def main() -> None:
     for client, filename, call_count_field in CASES:
         run = json.loads((ROOT / "docs/evidence" / filename).read_text())
         assert run["client"].startswith("Codex CLI" if client == "codex" else "Claude Code")
+        prior_path = (ROOT / run["prior_package_replay"]).resolve(strict=True)
+        assert prior_path.is_relative_to(ROOT / "docs/evidence"), prior_path
+        prior = json.loads(prior_path.read_text())
+        assert prior["result"] == "passed"
+        assert prior["candidate"]["binary_sha256"] == run["server_binary_sha256"]
+        assert prior["candidate"]["skill_zip_sha256"] == run["skill_zip_sha256"]
         assert run["result"] == "passed" and run["observations"]["server_rejected_missing_lf"]
         assert run["observations"][call_count_field] == 2
         assert run["observations"]["incomplete_frame_reply"] is False
