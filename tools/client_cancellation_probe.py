@@ -103,7 +103,7 @@ upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','
 interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 interim_slow_mode=upgrade_variant=='interim-slow'
-assert not packet_capture_requested or (dns_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode), 'packet capture requires a DNS, rebinding, pinned fallback, exfiltration, redirect/encoding, slow HTTP, connect blackhole, TLS pinning, TLS slow HTTP, malformed framing, response-limit, or interim slow-drip replay'
+assert not packet_capture_requested or (dns_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode or frame_eof_mode), 'packet capture requires an explicit adversarial native replay'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
@@ -351,6 +351,8 @@ def summarize_packet_capture():
  elif dns_truncated_mode:
   assert syn_destinations.count(('11.0.0.1','80'))==2, syn_destinations
   assert set(syn_destinations)<={('11.0.0.1','80'),('127.0.0.1','53')}, syn_destinations
+ elif frame_eof_mode:
+  assert syn_destinations==[('11.0.0.1','80')], syn_destinations
  else:
   assert len(syn_destinations)>=2 and set(syn_destinations)==expected_syn_destinations, syn_destinations
  if tls_mode:assert len(syn_destinations)==2, syn_destinations
@@ -358,6 +360,10 @@ def summarize_packet_capture():
  dns_queries=fields('dns.flags.response == 0 && udp.dstport == 53','ip.dst','ipv6.dst','udp.dstport')
  dns_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in dns_queries]
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
+ eof_requests=fields('http.request','http.host','http.request.uri') if frame_eof_mode else []
+ if frame_eof_mode:
+  assert eof_requests==[['allowed.test','/plain']], eof_requests
+  assert not fields('dns.flags.response == 0 && dns.qry.name == "private.test"','dns.qry.name'), 'private DNS packet observed'
  truncated_name=dns_tcp_name if dns_tcp_private_mode else 'truncated.test'
  truncated_responses=fields(f'dns.flags.response == 1 && dns.qry.name == "{truncated_name}" && udp.srcport == 53 && !icmp && !icmpv6',
                             'dns.flags.truncated','dns.count.answers','dns.qry.type') if dns_truncated_mode else []
@@ -428,6 +434,7 @@ def summarize_packet_capture():
          'fallback_a_answers':[answer[0] for answer in fallback_a_answers] if fallback_mode else None,
          'exfil_dns_query_count':len(exfil_queries) if exfil_mode else None,
          'redirect_private_dns_query_count':len(redirect_queries) if attack_mode else None,
+         'eof_approved_http_requests':eof_requests if frame_eof_mode else None,
          'timed_out_streams_client_closed':timed_out_streams_closed,
          'tls_client_hello_streams':tls_client_hello_streams,
          'tls_pinning_sni':tls_pinning_sni,
@@ -605,10 +612,12 @@ if skill_zip:
    assert len([e for e in events if e.get('method')=='tools/call'])==2, 'bridge observed unexpected tool calls'
    assert json.loads((root/'hits.json').read_text())==['/plain'], 'unexpected HTTP request after EOF'
    assert 'private.test' not in json.loads((root/'dns.json').read_text()), 'private DNS query after EOF'
+   packet_summary=summarize_packet_capture() if packet_capture_requested else None
    print(json.dumps({'client':'codex','native_skill_discovered':True,'explicit_skill_input_accepted':True,
     'first_rule':'EGRESS_ALLOWED','approved_http_hits':['/plain'],'private_dns_queries':0,
     'incomplete_frame_reply':False,'server_rejected_missing_lf':True,
-    'native_turn_completed':True,'scope':'bridge-injected EOF frame in a native Codex skill session; fixture namespace only'}),flush=True)
+    'native_turn_completed':True,'packet_capture':packet_summary,
+    'scope':'bridge-injected EOF frame in a native Codex skill session; fixture namespace only'}),flush=True)
    sys.exit(0)
 
   deadline=time.monotonic()+80

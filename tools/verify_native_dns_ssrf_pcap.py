@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recheck retained route-free native DNS-SSRF or exfil fixture captures with tshark."""
+"""Recheck retained route-free native DNS, exfil, or EOF fixture captures with tshark."""
 
 import argparse
 import hashlib
@@ -28,7 +28,8 @@ def verify(path: Path, digest: str, scenario: str = "dns-ssrf") -> dict:
     syns = rows(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0",
                 "ip.dst", "ipv6.dst", "tcp.dstport")
     destinations = [(ipv4 or ipv6, port) for ipv4, ipv6, port in syns]
-    assert len(destinations) == 3 and set(destinations) == {("11.0.0.1", "80")}, destinations
+    expected_syns = 1 if scenario == "eof-frame" else 3
+    assert len(destinations) == expected_syns and set(destinations) == {("11.0.0.1", "80")}, destinations
 
     queries = rows(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
     assert queries and all(ip == "127.0.0.1" and port == "53" for _, ip, port in queries), queries
@@ -39,11 +40,16 @@ def verify(path: Path, digest: str, scenario: str = "dns-ssrf") -> dict:
     else:
         assert "allowed.test" in names, names
         assert names <= {"allowed.test", "1.0.0.11.in-addr.arpa"}, names
-        assert b"ghp_" not in data and b"exfil.test" not in data, "synthetic marker or exfil host in capture"
+        if scenario == "synthetic-exfil":
+            assert b"ghp_" not in data and b"exfil.test" not in data, "synthetic marker or exfil host in capture"
+        else:
+            assert b"private.test" not in data, "private target appeared in EOF capture"
 
     requests = rows(path, "http.request", "http.host", "http.request.uri")
-    assert requests == [["allowed.test", "/plain"], ["allowed.test", "/head-ok"],
-                        ["allowed.test", "/plain"]], requests
+    expected_requests = ([["allowed.test", "/plain"]] if scenario == "eof-frame" else
+                         [["allowed.test", "/plain"], ["allowed.test", "/head-ok"],
+                          ["allowed.test", "/plain"]])
+    assert requests == expected_requests, requests
 
     destinations_all = rows(path, "ip || ipv6", "ip.dst", "ipv6.dst")
     addresses = {item for ipv4, ipv6 in destinations_all for item in (ipv4 or ipv6).split(",") if item}
@@ -57,7 +63,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--scenario", choices=("dns-ssrf", "synthetic-exfil"), default="dns-ssrf")
+    parser.add_argument("--scenario", choices=("dns-ssrf", "synthetic-exfil", "eof-frame"), default="dns-ssrf")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-pcap-verify-") as directory:
