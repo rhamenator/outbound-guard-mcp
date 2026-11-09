@@ -60,6 +60,7 @@ assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
 attack_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')=='1'
 dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
+dns_spoof_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SPOOF')=='1'
 dns_truncated_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_TRUNCATED')
 assert dns_truncated_variant in (None,'1','private','mixed-v6'), 'unsupported truncated DNS replay mode'
 dns_truncated_mode=dns_truncated_variant in ('1','private','mixed-v6')
@@ -107,15 +108,15 @@ upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','
 interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 interim_slow_mode=upgrade_variant=='interim-slow'
-assert not packet_capture_requested or (dns_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode or frame_eof_mode), 'packet capture requires an explicit adversarial native replay'
+assert not packet_capture_requested or (dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode or frame_eof_mode), 'packet capture requires an explicit adversarial native replay'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
 cancel_phase=os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE','body')
 assert cancel_phase in ('body','headers'), 'unsupported cancellation phase'
 assert cancel_phase=='body' or not skill_zip, 'header cancellation uses the client control workflow'
-assert sum((attack_mode,dns_mode,dns_truncated_mode,dns_answer_limit_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,frame_eof_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,tls_slow_mode,slow_http_mode,connect_blackhole_mode,upgrade_mode,html_quarantine_mode,saturation_mode))<=1, 'choose one opt-in skill replay mode'
-assert not (attack_mode or dns_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or frame_eof_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
+assert sum((attack_mode,dns_mode,dns_spoof_mode,dns_truncated_mode,dns_answer_limit_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,frame_eof_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,tls_slow_mode,slow_http_mode,connect_blackhole_mode,upgrade_mode,html_quarantine_mode,saturation_mode))<=1, 'choose one opt-in skill replay mode'
+assert not (attack_mode or dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or frame_eof_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
 assert not frame_eof_mode or sys.argv[1] in ('codex','claude'), 'EOF replay supports Codex CLI and Claude Code'
 synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
 unicode_marker='ｇｈｐ＿'+'Ａ'*20 if exfil_mode else None
@@ -243,6 +244,7 @@ if active_proxy_mode:
  assert (root/'proxy-flows.jsonl').exists(), 'positive proxy flow was not observed'
 bridge=[str(script_dir/'client_wire_bridge.py'),ns,binary,str(root/'wire.jsonl')]
 if dns_mode:bridge.append('allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test')
+if dns_spoof_mode:bridge.append('allowed.test,spoof-id.test')
 if dns_truncated_mode:bridge.append('allowed.test,'+dns_tcp_name if dns_tcp_private_mode else 'allowed.test,truncated.test')
 if exfil_mode:bridge.append('allowed.test,exfil.test')
 if rebind_mode:bridge.append('allowed.test,rebind.test')
@@ -378,6 +380,15 @@ def summarize_packet_capture():
   assert all(row[1]==stream for row in response_frames+close_frames), 'active HTTP stream mismatch'
   assert int(request_frames[0][0])<int(response_frames[0][0])<int(close_frames[0][0]), 'active HTTP close order wrong'
   eof_active_close={'response_data_before_client_close':True,'client_close_count':1}
+ spoof_pairs=None
+ if dns_spoof_mode:
+  rows=fields('dns.qry.name == "spoof-id.test" && udp.port == 53','dns.id','dns.flags.response','dns.qry.type')
+  queries={(int(id_,16),qtype) for id_,response,qtype in rows if response=='False'}
+  replies={(int(id_,16),qtype) for id_,response,qtype in rows if response=='True'}
+  assert queries and replies and {qtype for _,qtype in queries}=={'1','28'}, rows
+  assert all(((id_+1)&0xffff,qtype) in replies for id_,qtype in queries), rows
+  assert not queries & replies, rows
+  spoof_pairs={'query_count':len(queries),'forged_response_count':len(replies),'all_ids_mismatched':True}
  truncated_name=dns_tcp_name if dns_tcp_private_mode else 'truncated.test'
  truncated_responses=fields(f'dns.flags.response == 1 && dns.qry.name == "{truncated_name}" && udp.srcport == 53 && !icmp && !icmpv6',
                             'dns.flags.truncated','dns.count.answers','dns.qry.type') if dns_truncated_mode else []
@@ -442,6 +453,7 @@ def summarize_packet_capture():
          'tcp_syn_count':len(syn_destinations),'tcp_syn_destinations':[f'{ip}:{port}' for ip,port in sorted(set(syn_destinations))],
          'dns_query_count':len(dns_destinations),'dns_query_destinations':['127.0.0.1:53'],
          'truncated_dns_responses':truncated_responses if dns_truncated_mode else None,
+         'spoofed_dns_transaction_ids':spoof_pairs,
          'rebind_a_query_count':len(rebind_a_queries) if rebind_mode else None,
          'rebind_a_answers':[answer[0] for answer in rebind_a_answers] if rebind_mode else None,
          'fallback_a_query_count':len(fallback_a_queries) if fallback_mode else None,
@@ -471,6 +483,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these nine calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://private.test/plain ; GET http://alias-private.test/plain ; GET http://mixed.test/plain ; GET http://metadata.test/plain ; GET http://loop-dns.test/plain ; GET http://allowed.test/plain . The operator approved all six exact DNS names for this negative security test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules+=['EGRESS_FORBIDDEN_ADDRESS']*4+['EGRESS_DNS_FAILURE','EGRESS_ALLOWED']
    expected_methods+=['GET']*6
+  if dns_spoof_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for three calls in order: GET http://allowed.test/plain ; GET http://spoof-id.test/plain ; GET http://allowed.test/plain . The middle hostname sends private DNS answers with forged transaction IDs. The operator approved both exact hosts. Make every call once even after a denial. Do not retry or use any other tool. Report actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_DNS_TIMEOUT','EGRESS_ALLOWED']
+   expected_methods=['GET']*3
   if dns_truncated_mode:
    skill_prompt=('First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://truncated-private.test/plain ; GET http://allowed.test/plain . The operator approved both exact hosts. The middle hostname first sends truncated UDP DNS responses, then a private loopback A answer over TCP DNS. Make every call once even when denied. Do not retry or use any other tool. Report the actual results.' if dns_tcp_private_mode else
     'First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://truncated.test/plain ; GET http://allowed.test/plain . The operator approved both exact hosts. The middle hostname sends DNS responses with the truncation bit set, but the fixture has no TCP DNS listener. Make every call once even when denied. Do not retry or use any other tool. Report the actual results.')
@@ -723,16 +739,16 @@ if skill_zip:
      'native_tool_statuses':[c.get('status') for c in calls.values()],
      'skill_path_seen':source in json.dumps(messages)}}),flush=True)
    assert reads,'native project skill read not observed'
-  if (attack_mode or dns_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='claude':
+  if (attack_mode or dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='claude':
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().rsplit('\n',1)[0].splitlines()]
     if any(m.get('type')=='result' for m in messages):break
     time.sleep(.05)
    assert any(m.get('type')=='result' for m in messages), 'Claude skill turn did not complete'
-  elif (attack_mode or dns_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='cursor':
+  elif (attack_mode or dns_mode or dns_spoof_mode or dns_truncated_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or upgrade_mode or html_quarantine_mode or saturation_mode) and name=='cursor':
    response(3)
-  if attack_mode or dns_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode:
+  if attack_mode or dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode:
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
   fetches=[e for e in events if e.get('method')=='tools/call' and not (saturation_mode and str(e.get('id','')).startswith('saturation-'))]
   if [e['http_method'] for e in fetches]!=expected_methods:
@@ -763,6 +779,17 @@ if skill_zip:
    assert {'alias-private.test','loop-dns.test'} <= set(dns_a_names), dns_a_names
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/head-ok','/plain'], hits
+  if dns_spoof_mode:
+   all_dns_names=json.loads((root/'dns-all.json').read_text())
+   assert 'spoof-id.test' in all_dns_names, all_dns_names
+   hits=json.loads((root/'hits.json').read_text())
+   assert hits==['/plain','/plain'], hits
+   attempts=json.loads((root/'dns-spoof.json').read_text())
+   assert attempts and {qtype for _,_,qtype in attempts}=={1,28}, attempts
+   assert all(requested!=forged and forged==(requested+1)&0xffff for requested,forged,_ in attempts), attempts
+   assert any(e.get('event')=='spoof_recovery_delayed_12s' for e in events), events
+   denied=[e for e in events if e.get('rule')=='EGRESS_DNS_TIMEOUT']
+   assert len(denied)==1 and denied[0].get('body_text_present') is False, denied
   if dns_truncated_mode:
    all_dns_names=json.loads((root/'dns-all.json').read_text())
    assert (dns_tcp_name if dns_tcp_private_mode else 'truncated.test') in all_dns_names, all_dns_names
@@ -975,8 +1002,8 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_answer_limit_mode':dns_answer_limit_mode, 'dns_answer_boundary_mode':dns_boundary_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'connect_blackhole_mode':connect_blackhole_mode, 'blackhole_connect_seconds':blackhole_connect_seconds, 'blackhole_dropped_packets':blackhole_drops, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
-   'fixture_hits':hits if (attack_mode or dns_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_spoof_mode':dns_spoof_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_answer_limit_mode':dns_answer_limit_mode, 'dns_answer_boundary_mode':dns_boundary_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'connect_blackhole_mode':connect_blackhole_mode, 'blackhole_connect_seconds':blackhole_connect_seconds, 'blackhole_dropped_packets':blackhole_drops, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
+   'fixture_hits':hits if (attack_mode or dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
    'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
     'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,
     'bounded_recovery_seconds':saturation_seconds,'injected_not_native':True} if saturation_mode else None,
@@ -992,6 +1019,7 @@ if skill_zip:
    'tls_sni':tls_sni if (tls_mode or tls_slow_mode) else None,
    'proxy_flows':proxy_flows if active_proxy_mode else None,
    'forbidden_dns_names':sorted(set(dns_names)) if dns_mode else None,
+   'spoofed_dns_attempts':attempts if dns_spoof_mode else None,
    'truncated_dns_queries':all_dns_names.count(dns_tcp_name if dns_tcp_private_mode else 'truncated.test') if dns_truncated_mode else None,
    'tcp_private_dns_queries':tcp_dns_queries if dns_tcp_private_mode else None,
    'alias_cname_a_queried':'alias-private.test' in dns_a_names if dns_mode else None,
