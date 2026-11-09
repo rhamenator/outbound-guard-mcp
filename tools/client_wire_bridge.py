@@ -7,7 +7,7 @@ ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
 assert hosts in ('allowed.test','allowed.test,spoof-id.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,truncated-mixed-v6.test','allowed.test,fallback-pin.test','allowed.test,syn-stall.test','allowed.test,many-answers.test','allowed.test,dns-limit-16.test,dns-limit-17.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
-assert mutation in (None,'mutate','mutate-eof','mutate-eof-active','inject-arguments','active-proxy','queue-saturate')
+assert mutation in (None,'mutate','mutate-eof','mutate-eof-active','inject-arguments','active-proxy','queue-saturate','spoof-busy')
 mutant_enabled=mutation=='mutate'
 eof_enabled=mutation in ('mutate-eof','mutate-eof-active')
 active_eof=mutation=='mutate-eof-active'
@@ -184,7 +184,7 @@ try:
    except ValueError:spoof_call=False
    if spoof_call:
     spoof_calls+=1
-    if spoof_calls==3:
+    if spoof_calls==(4 if mutation=='spoof-busy' else 3):
      record_event('spoof_recovery_delayed_12s')
      time.sleep(12)  # Let the OS resolver finish its unanswered transaction.
   record('in',line);p.stdin.write(line);p.stdin.flush()
