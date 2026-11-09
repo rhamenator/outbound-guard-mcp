@@ -182,6 +182,10 @@ sudo('tee','/etc/netns/'+ns+'/resolv.conf',input='nameserver 127.0.0.1\noptions 
 capture_path=root/'fixture.pcap'
 if packet_capture_requested:
  assert shutil.which('tcpdump') and shutil.which('tshark') and shutil.which('aa-exec'), 'tcpdump, tshark and aa-exec required for packet capture'
+ # Keep ownership with the ordinary probe user when root tcpdump truncates
+ # the capture. The parent directory is private (0700); umask 077 must not
+ # prevent the probe from hashing or optionally archiving its own capture.
+ capture_path.touch(mode=0o600)
  packet_capture=subprocess.Popen(['sudo','-n','ip','netns','exec',ns,'tcpdump','-Z','root','-i','any','-U','-w',str(capture_path)],
   stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
  for _ in range(200):
@@ -311,10 +315,11 @@ def summarize_packet_capture():
  packet_capture.wait(timeout=5)
  assert capture_path.stat().st_size>24, 'packet capture contains no packets'
  def fields(display_filter,*names):
-  command=['sudo','-n','tshark','-n','-r',str(capture_path),'-Y',display_filter,
+  command=['tshark','-n','-r',str(capture_path),'-Y',display_filter,
            '-T','fields','-E','separator=;']
   for name in names:command.extend(['-e',name])
-  result=subprocess.run(command,capture_output=True,text=True,check=True,timeout=10)
+  result=subprocess.run(command,capture_output=True,text=True,timeout=10)
+  assert result.returncode==0, ('tshark failed',result.returncode,result.stderr[:300])
   return [line.split(';') for line in result.stdout.splitlines()]
  syns=fields('tcp.flags.syn == 1 && tcp.flags.ack == 0','ip.dst','ipv6.dst','tcp.dstport')
  syn_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in syns]

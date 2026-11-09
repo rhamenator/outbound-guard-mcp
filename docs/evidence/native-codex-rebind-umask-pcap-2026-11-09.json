@@ -1,0 +1,43 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "client": "Codex CLI 0.151.0, installed Debian package and explicit skill",
+  "platform": "Debian 12 amd64 container joined to a route-free hostile DNS/HTTP fixture namespace",
+  "candidate": {
+    "revision": "9a416b06ce2c6983cc6a954e5e3c9527f1b48346",
+    "deb_sha256": "ea3babd19d5b0f79deddcf9a8507b00813f29224d04266c6241ee595c2c95128",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  },
+  "upgrade_from": {
+    "revision": "f19748ad835f7ae6cb47588f2c6ce9beabacc851",
+    "deb_sha256": "f640fdf132f4daa66b258b3222d243a29674094c9ff5ee17a7e6de9adbe7110a",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74"
+  },
+  "replay": "umask 077; python3 tools/debian_native_container_probe.py codex <candidate.deb> <candidate-sha256> <skill.zip> <skill-sha256> --old-package <old.deb> --old-sha256 <old-sha256> --fixture-mode dns-rebind-packet --container-memory-mib 128 --sample-server-resources",
+  "checks": ["artifact checksums", "clean dpkg install", "old package launch and loopback denial", "same-binary package upgrade", "native skill and guarded calls", "first public DNS answer allowed", "second private DNS answer denied", "fixture namespace packet capture", "approved recovery", "package removal and residue"],
+  "observations": {
+    "rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_FORBIDDEN_ADDRESS", "EGRESS_ALLOWED"],
+    "fixture_http_hits": ["/plain", "/plain", "/plain"],
+    "rebind_a_query_count": 2,
+    "rebind_a_answers_in_order": ["11.0.0.1", "127.0.0.1"],
+    "tcp_syn_count": 3,
+    "tcp_syn_destinations": ["11.0.0.1:80"],
+    "dns_query_count": 9,
+    "dns_query_destinations": ["127.0.0.1:53"],
+    "unexpected_ip_destinations": 0,
+    "packet_count": 56,
+    "pcap_sha256": "2f63400533afd146a874e6cf6db9a0f66f1419c58cd57aded9cd255c3f4c60c3",
+    "raw_pcap_retained": false,
+    "container_memory_limit_mib": 128,
+    "container_memory_peak_bytes": 19841024,
+    "container_oom_events": 0,
+    "container_pids_peak": 9,
+    "server_fd_max_sampled": 3,
+    "server_rss_max_sampled_kib": 3928,
+    "server_samples": 208,
+    "server_sample_interval_ms": 50
+  },
+  "harness_issue_and_fix": "The initial umask 077 run reached all native calls but failed when the ordinary probe could not hash root-owned 0600 capture bytes. Pre-creating the capture as the probe owner fixed that read, but privileged tshark could not open the private user-owned capture. Reading it with ordinary-user tshark inside the private probe directory fixed the parser; the final identical restrictive-umask replay passed. Each failed run cleaned up its owned container and namespace.",
+  "limits": "The capture was confined to the fixture namespace and then deleted; the hash is a record, not independently inspectable retained evidence. It excludes host-client and other-tool traffic. Two deterministic answers do not prove all rebinding schedules or resolver behavior. The package upgrade changed package metadata but not executable bytes, so it is not a changed-binary compatibility test. RSS/FD observations are finite samples. This does not qualify an official release candidate, the owner's residual-risk acceptance, or any of the four AI Scraping Defense repositories."
+}
