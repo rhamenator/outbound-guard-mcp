@@ -174,6 +174,10 @@ def main():
         monitor = root / "resource-monitor.sh"
         monitor.write_text(RESOURCE_MONITOR)
         state = root / "container"
+        # The privileged bridge truncates this file; keep ownership with the
+        # unprivileged parent so cleanup can always read the container ID.
+        state.touch(mode=0o600)
+        (root / "container.proxy-verified").touch(mode=0o600)
         source = BRIDGE
         for old, new in (("__PACKAGE__", shlex.quote(str(package))),
                          ("__OLD_PACKAGE__", shlex.quote(str(old_package)) if old_package else "''"),

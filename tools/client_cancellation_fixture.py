@@ -68,6 +68,14 @@ if os.environ.get('OUTBOUND_GUARD_CLIENT_TLS_HANDSHAKE')=='1':
   server.socket=context.wrap_socket(server.socket,server_side=True)
   threading.Thread(target=server.serve_forever,daemon=True).start()
 (root/'ready').touch()
+def snapshot(name, value):
+ tmp=root/(name+'.tmp')
+ tmp.write_text(json.dumps(value))
+ # The parent probe reads these root-written snapshots as its ordinary user.
+ # The probe directory remains private (0700), even with a restrictive umask.
+ tmp.chmod(0o644)
+ os.replace(tmp,root/name)
+
 last_hits=None
 last_dns=None
 last_dns_a=None
@@ -80,55 +88,37 @@ last_tcp_dns=None
 while True:
  hits=list(HTTP.hits)
  if hits!=last_hits:
-  hits_tmp=root/'hits.json.tmp'
-  hits_tmp.write_text(json.dumps(hits))
-  os.replace(hits_tmp,root/'hits.json')
+  snapshot('hits.json',hits)
   last_hits=hits
  names=[name for name in DNS.names if name in ('private.test','alias-private.test','mixed.test','metadata.test','loop-dns.test','exfil.test')]
  if names!=last_dns:
-  dns_tmp=root/'dns.json.tmp'
-  dns_tmp.write_text(json.dumps(names))
-  os.replace(dns_tmp,root/'dns.json')
+  snapshot('dns.json',names)
   last_dns=names
  a_names=list(DNS.a_names)
  if a_names!=last_dns_a:
-  dns_a_tmp=root/'dns-a.json.tmp'
-  dns_a_tmp.write_text(json.dumps(a_names))
-  os.replace(dns_a_tmp,root/'dns-a.json')
+  snapshot('dns-a.json',a_names)
   last_dns_a=a_names
  all_names=list(DNS.names)
  if all_names!=last_dns_all:
-  dns_all_tmp=root/'dns-all.json.tmp'
-  dns_all_tmp.write_text(json.dumps(all_names))
-  os.replace(dns_all_tmp,root/'dns-all.json')
+  snapshot('dns-all.json',all_names)
   last_dns_all=all_names
  rebind=DNS.rebind_a_queries
  if rebind!=last_rebind:
-  rebind_tmp=root/'rebind.json.tmp'
-  rebind_tmp.write_text(json.dumps(rebind))
-  os.replace(rebind_tmp,root/'rebind.json')
+  snapshot('rebind.json',rebind)
   last_rebind=rebind
  fallback=DNS.fallback_a_queries
  if fallback!=last_fallback:
-  fallback_tmp=root/'fallback.json.tmp'
-  fallback_tmp.write_text(json.dumps(fallback))
-  os.replace(fallback_tmp,root/'fallback.json')
+  snapshot('fallback.json',fallback)
   last_fallback=fallback
  tls_handshake=DNS.tls_handshake_a_queries
  if tls_handshake!=last_tls_handshake:
-  tls_tmp=root/'tls-handshake.json.tmp'
-  tls_tmp.write_text(json.dumps(tls_handshake))
-  os.replace(tls_tmp,root/'tls-handshake.json')
+  snapshot('tls-handshake.json',tls_handshake)
   last_tls_handshake=tls_handshake
  if tls_sni!=last_tls_sni:
-  sni_tmp=root/'tls-sni.json.tmp'
-  sni_tmp.write_text(json.dumps(tls_sni))
-  os.replace(sni_tmp,root/'tls-sni.json')
+  snapshot('tls-sni.json',tls_sni)
   last_tls_sni=list(tls_sni)
  if tcp_dns_queries!=last_tcp_dns:
-  tcp_tmp=root/'dns-tcp.json.tmp'
-  tcp_tmp.write_text(json.dumps(tcp_dns_queries))
-  os.replace(tcp_tmp,root/'dns-tcp.json')
+  snapshot('dns-tcp.json',tcp_dns_queries)
   last_tcp_dns=list(tcp_dns_queries)
  if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
  if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
