@@ -14,6 +14,7 @@ CAPTURES = ROOT / "tests/fixtures/packet-capture"
 EVIDENCE = (
     ROOT / "docs/evidence/native-dns-spoof-id-2026-11-09.json",
     ROOT / "docs/evidence/native-dns-spoof-id-upgrade-2026-11-09.json",
+    ROOT / "docs/evidence/native-dns-spoof-busy-2026-11-09.json",
 )
 
 
@@ -49,6 +50,11 @@ def verify(path, digest):
     dns_destinations = rows(path, "dns.flags.response == 0 && udp.dstport == 53",
                             "ip.dst", "udp.dstport")
     assert dns_destinations and set(map(tuple, dns_destinations)) == {("127.0.0.1", "53")}
+    questions = rows(path, "dns.flags.response == 0 && udp.dstport == 53",
+                     "dns.qry.name", "dns.qry.type")
+    assert sorted(questions) == sorted([["1.0.0.11.in-addr.arpa", "12"]] +
+                                       [[name, qtype] for name in ("allowed.test", "spoof-id.test")
+                                        for qtype in ("1", "28") for _ in range(2)]), questions
     destinations = rows(path, "ip || ipv6", "ip.dst", "ipv6.dst")
     addresses = {address for ipv4, ipv6 in destinations
                  for address in (ipv4 or ipv6).split(",") if address}
@@ -64,6 +70,7 @@ def main():
         document = json.loads(evidence.read_text())
         assert set(document["runs"]) == {"codex", "claude"}
         upgrade = "upgrade" in evidence.stem
+        busy = "busy" in evidence.stem
         if upgrade:
             previous = document["previous_package"]
             current = document["current_package"]
@@ -71,7 +78,13 @@ def main():
             assert previous["revision"] != current["revision"]
             assert document["source_revision"] == current["revision"]
         for client, run in document["runs"].items():
-            assert run["rules"] == ["EGRESS_ALLOWED", "EGRESS_DNS_TIMEOUT", "EGRESS_ALLOWED"]
+            expected_rules = (["EGRESS_ALLOWED", "EGRESS_DNS_TIMEOUT", "EGRESS_DNS_BUSY",
+                               "EGRESS_ALLOWED"] if busy else
+                              ["EGRESS_ALLOWED", "EGRESS_DNS_TIMEOUT", "EGRESS_ALLOWED"])
+            assert run["rules"] == expected_rules
+            if busy:
+                assert run["http_methods"] == ["GET"] * 4
+                assert run["dns_query_count"] == 9
             assert run["fixture_hits"] == ["/plain", "/plain"]
             assert run["dns_pairs"] == {"query_count": 2, "forged_response_count": 2,
                                         "all_ids_mismatched": True}
@@ -80,6 +93,9 @@ def main():
             required = {"clean_dpkg_install", "package_remove", "residue"}
             if upgrade:
                 required |= {"package_upgrade", "old_package_launch_and_loopback_denial"}
+            if busy:
+                required |= {"live_resolver_worker_busy_denial",
+                             "approved_recovery_after_worker_exits"}
             assert required <= set(run["install_remove_residue_checks"])
             path = (ROOT / run["capture_path"]).resolve(strict=True)
             assert path.is_relative_to(CAPTURES)

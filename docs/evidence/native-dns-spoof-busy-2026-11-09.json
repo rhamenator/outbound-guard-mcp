@@ -1,0 +1,124 @@
+{
+  "bridge_delay_seconds": 12,
+  "bridge_delayed_call_number": 4,
+  "clients": {
+    "claude": "2.1.319 (Claude Code)",
+    "codex": "codex-cli 0.151.0"
+  },
+  "date_utc": "2026-11-09",
+  "limitations": [
+    "The immediate third guarded call was denied EGRESS_DNS_BUSY without a DNS question or HTTP hit; the fourth was delayed by the replay bridge, not by either native client.",
+    "Packet captures cover only the disposable fixture namespace, not host-client traffic or requests through other tools.",
+    "The finite forged-ID fixture does not prove DNS spoofing resistance or resolver-worker timing on every OS or resolver implementation.",
+    "The replay checks install, launch, native calls, removal and residue; it does not exercise upgrade, saved configuration migration or another platform.",
+    "No official release candidate or independent human review is claimed."
+  ],
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "6e91bdd537c35085b3f25c845f3649186686f45d2400969ef8d9ce9f1e079d92",
+    "package_sha256": "f22b60c32fe476142eb08bb9f78ca72ca46d2c1c0f68e60b4a48f02066aabb5d",
+    "revision": "3e5983fc2fd1bfc252b2a274d9368ed6cd3e1370",
+    "version": "0.1.0~candidate.319+g3e5983fc2fd1"
+  },
+  "platform": "Debian 12 amd64 disposable container joined to route-free fixture namespace; native clients on Ubuntu host",
+  "runs": {
+    "claude": {
+      "capture_path": "tests/fixtures/packet-capture/native-claude-dns-spoof-busy-2026-11-09.pcap",
+      "capture_sha256": "fefc6a9566dd78b46c825fcc685c5d75c8f427ac434ce87022bd5b2cda7a7bea",
+      "container_memory_peak_bytes": 17608704,
+      "dns_pairs": {
+        "all_ids_mismatched": true,
+        "forged_response_count": 2,
+        "query_count": 2
+      },
+      "dns_query_count": 9,
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "install_remove_residue_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "forged_transaction_id_dns_timeout",
+        "live_resolver_worker_busy_denial",
+        "approved_recovery_after_worker_exits",
+        "fixture_namespace_dns_id_and_tcp_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "memory_limit_mib": 128,
+      "native_turn_or_skill_completed": true,
+      "packet_count": 44,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_TIMEOUT",
+        "EGRESS_DNS_BUSY",
+        "EGRESS_ALLOWED"
+      ],
+      "server_sampled_rss_kib": 3948,
+      "skill_loaded": true,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ]
+    },
+    "codex": {
+      "capture_path": "tests/fixtures/packet-capture/native-codex-dns-spoof-busy-2026-11-09.pcap",
+      "capture_sha256": "5ca2714fe676a19d552ddb58d44e28533861d1ee0d79b0b09764c4a79bdd58db",
+      "container_memory_peak_bytes": 17371136,
+      "dns_pairs": {
+        "all_ids_mismatched": true,
+        "forged_response_count": 2,
+        "query_count": 2
+      },
+      "dns_query_count": 9,
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "install_remove_residue_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "forged_transaction_id_dns_timeout",
+        "live_resolver_worker_busy_denial",
+        "approved_recovery_after_worker_exits",
+        "fixture_namespace_dns_id_and_tcp_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "memory_limit_mib": 128,
+      "native_turn_or_skill_completed": true,
+      "packet_count": 43,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_TIMEOUT",
+        "EGRESS_DNS_BUSY",
+        "EGRESS_ALLOWED"
+      ],
+      "server_sampled_rss_kib": 3916,
+      "skill_loaded": true,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ]
+    }
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_revision": "3e5983fc2fd1bfc252b2a274d9368ed6cd3e1370"
+}
