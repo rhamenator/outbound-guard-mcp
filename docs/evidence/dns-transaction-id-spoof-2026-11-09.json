@@ -1,0 +1,43 @@
+{
+  "date_utc": "2026-11-09T16:45:58.127152+00:00",
+  "baseline_main": "e0ff2afb95dd8a3a2ff8ffdb1179deda30c88437",
+  "subject": "Controlled forged DNS transaction-ID response during guarded MCP fetch",
+  "environment": {
+    "host": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "strace": "strace -- version 6.19",
+    "resolver": "Ubuntu glibc 2.43; private netns resolv.conf search search-trap.test, ndots:5, timeout:1, attempts:1; no external route"
+  },
+  "reproduce": "cargo build --locked; bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "input_sha256": {
+    "server_binary": "a325f896e12c7d04889cac23bdb4f4b62a28d24b8ac7467f94f320043d872a7a",
+    "fixture": "85b18f6825a2034329055c81a976d2631f594e9e7804d2107fe476cb3376ca7f",
+    "namespace_launcher": "bf88393fc644413a56ba54dac1f589bdb4df49c3b04ae8302e9dd442c6d7165f"
+  },
+  "retained_log": {
+    "path": "docs/evidence/dns-transaction-id-spoof-2026-11-09.log.gz",
+    "sha256": "e296d9234c2d5d196a914cfbfe09e941c978325cdcbc94c1ee6af42cdea7a43b"
+  },
+  "attack": {
+    "name": "spoof-id.test",
+    "query_types": [
+      "A",
+      "AAAA"
+    ],
+    "payload": "Plausible loopback A/AAAA answer with matching question and a transaction ID incremented modulo 65536; matching-ID answer is never sent",
+    "expected": "Resolver ignores forged answers; guarded_fetch returns EGRESS_DNS_FAILURE without transport socket"
+  },
+  "observed": {
+    "direct_legacy_stdio": "2 mismatched private DNS responses ignored; EGRESS_DNS_FAILURE, no HTTP hit or returned body, approved GET recovered in the same process",
+    "strace_legacy": "2 mismatched IDs; no extra AF_INET/AF_INET6 SOCK_STREAM socket after approved positive TCP control",
+    "strace_modern": "2 mismatched IDs; no extra AF_INET/AF_INET6 SOCK_STREAM socket after approved positive TCP control",
+    "full_probe_mcp_decisions": 2252,
+    "netns_cleanup": "no outbound-guard-probe namespace remained"
+  },
+  "limitations": [
+    "Finite local glibc resolver fixture; it does not prove all resolver implementations reject forged responses.",
+    "Raw strace traces were checked by the live harness but not retained; the compressed run log and source assertions are retained.",
+    "This direct stdio probe is not an installed native Codex/Claude/Cursor client replay. It does not cover host-client traffic or traffic sent through other tools.",
+    "No official candidate, owner residual-risk acceptance, or AI Scraping Defense repository gate is implied."
+  ]
+}
