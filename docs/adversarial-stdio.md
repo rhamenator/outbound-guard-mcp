@@ -23,6 +23,8 @@ The initial local debug replay passed on 2026-10-21. The later EOF policy change
 
 The former reader treated a nonempty final slice at EOF as a complete frame. A syntactically valid JSON-RPC request without LF could therefore execute even though the transport frame was unfinished. The reader now returns a fixed `UnexpectedEof` diagnostic and terminates without dispatching that slice. Empty EOF remains clean; a frame already over 64 KiB still receives the bounded size error. The Rust fragmentation oracle and the executable boundary probe exercise these cases, including a complete JSON ping missing only LF. Delimited LF and CRLF requests still receive replies and recover after malformed frames. This tightens the stdio contract and can disconnect a custom client that relied on EOF as its final delimiter; such clients must append LF. It does not alter traffic sent through other tools or establish full protocol conformance.
 
+The route-free `tools/netns_adversarial_probe.sh` now also starts a modern MCP `guarded_fetch` against a controlled HTTP response that sends headers and holds its body open. While that socket is active, it sends a second syntactically complete `tools/call` to an allowlisted private-answer host without LF, then closes stdin. The fixture requires nonzero server exit with the fixed redacted EOF diagnostic, no reply for either pending call, no DNS query for the incomplete call, exactly the one approved HTTP hit, and peer-observed closure of the active socket. This tests cancellation after a transport failure in one disposable namespace. It does not prove a native client will send this exact malformed sequence, a universal socket-close latency, or traffic outside this server's guarded tool.
+
 
 ## Inspector era selection and fallback
 

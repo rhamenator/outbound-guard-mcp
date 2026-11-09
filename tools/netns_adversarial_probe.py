@@ -1943,6 +1943,48 @@ def test_repeated_cancellation(binary):
     return 2 * (cycles*2 + 1)
 
 
+def test_unterminated_eof_cancels_active_fetch(binary):
+    """An incomplete final tool frame cannot execute or retain an active socket."""
+    env = {k:v for k,v in os.environ.items() if not k.startswith('OUTBOUND_GUARD_')}
+    env['OUTBOUND_GUARD_ALLOWED_HOSTS'] = 'allowed.test,private.test'
+    meta = {'io.modelcontextprotocol/protocolVersion':'2026-07-28',
+            'io.modelcontextprotocol/clientCapabilities':{}}
+    def call(id_, host, path):
+        return json.dumps({'jsonrpc':'2.0','id':id_,'method':'tools/call','params':{
+            '_meta':meta,'name':'guarded_fetch',
+            'arguments':{'url':f'http://{host}/{path}'}}})
+    HTTP.cancel_started.clear()
+    HTTP.cancel_closed.clear()
+    before_hits = len(HTTP.hits)
+    before_private_dns = DNS.names.count('private.test')
+    child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, env=env)
+    try:
+        child.stdin.write(call('active', 'allowed.test', 'cancel-silent-body') + '\n')
+        child.stdin.flush()
+        assert HTTP.cancel_started.wait(4), 'active HTTP fixture did not start'
+        # This is valid JSON but lacks the transport delimiter. The first call
+        # remains pending while the reader reaches EOF on the second frame.
+        child.stdin.write(call('incomplete-private', 'private.test', 'plain'))
+        child.stdin.close()
+        assert child.wait(timeout=4) != 0, 'unterminated frame was accepted'
+        assert child.stdout.read() == '', 'an incomplete or cancelled call received a reply'
+        diagnostic = child.stderr.read()
+        assert 'Input frame ended without LF delimiter' in diagnostic, diagnostic
+        assert 'private.test' not in diagnostic and 'incomplete-private' not in diagnostic
+        assert HTTP.cancel_closed.wait(2), 'active HTTP socket stayed open after EOF failure'
+        assert DNS.names.count('private.test') == before_private_dns, 'incomplete frame reached DNS'
+        assert HTTP.hits[before_hits:] == ['/cancel-silent-body'], HTTP.hits[before_hits:]
+        print('unterminated EOF during active HTTP: no incomplete-frame dispatch, private DNS, '
+              'reply or retained fixture socket; fixed redacted diagnostic')
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        for handle in (child.stdin, child.stdout, child.stderr):
+            handle.close()
+
+
 def test_descriptor_exhaustion(binary):
     # Set limits in a separate exec wrapper, never preexec_fn in this threaded parent.
     wrapper = ('import os,resource,sys; n=int(sys.argv[1]); '
@@ -2556,6 +2598,7 @@ def main(binary, cancellation_probe):
         sdk_cases += test_sdk_overload(binary)
         silent_cases = test_silent_transport_cancellation(binary)
         repeated_cases = test_repeated_cancellation(binary)
+        test_unterminated_eof_cancels_active_fetch(binary)
         descriptor_cases = test_descriptor_exhaustion(binary)
         connect_cases = test_connect_blackhole(binary)
         post_dns_cases = test_post_dns_syscalls(binary)
