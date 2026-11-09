@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "dns-answer-limit-packet", "dns-answer-boundary-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "dns-answer-limit-packet", "dns-answer-boundary-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-coding", "framing-http-obs-fold", "redirect-encoded", "redirect-encoded-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "eof-mcp-frame", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -262,6 +262,7 @@ def main():
              "response-header-limit": "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
              "response-header-limit-packet": "OUTBOUND_GUARD_CLIENT_HEADER_LIMIT",
              "malformed-mcp-frame": "OUTBOUND_GUARD_CLIENT_FRAME_MUTATION",
+             "eof-mcp-frame": "OUTBOUND_GUARD_CLIENT_FRAME_EOF",
              "json-injection": "OUTBOUND_GUARD_CLIENT_JSON_INJECTION",
              "json-duplicate": "OUTBOUND_GUARD_CLIENT_JSON_INJECTION"}.get(args.fixture_mode)
         if mode_variable:
@@ -495,10 +496,11 @@ def main():
                                                                      "parser_header_limit_denial", "no_denied_body_text",
                                                                      "fixture_namespace_tcp_syn_capture"],
                                     "malformed-mcp-frame": ["malformed_frame_parse_error", "no_forbidden_dns_or_http"],
+                                    "eof-mcp-frame": ["native_client_second_call_intercepted", "missing_lf_eof_rejected", "no_private_dns_or_reply"],
                                     "json-injection": ["instruction_response_denial", "no_instruction_echo"],
                                     "json-duplicate": ["duplicate_key_json_denial", "no_instruction_echo"]}
                                    [args.fixture_mode]),
-                                 "approved_recovery",
+                                 "approved_control_before_eof" if args.fixture_mode == "eof-mcp-frame" else "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
 
 

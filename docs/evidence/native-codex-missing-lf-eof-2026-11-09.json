@@ -1,0 +1,41 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "client": "Codex CLI 0.151.0 app-server with explicit installed skill input",
+  "platform": "Debian 12 amd64 installed server package in a route-free DNS/HTTP fixture namespace",
+  "candidate": {
+    "revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+    "deb_sha256": "11bd3b2149f78477525e6756b3030e31c98a194fd455769af0645970d095ca3d",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  },
+  "upgrade_from": {
+    "revision": "175041b91c61eb29d8bed518967baa9f02a18de0",
+    "deb_sha256": "d66b52d74b94df3a8614113a318612ae5b3c30964d2f6308b070e5e9d6e3f432",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74"
+  },
+  "reproduction": "umask 077; python3 tools/debian_native_container_probe.py codex NEW.deb NEW_SHA SKILL.zip SKILL_SHA --old-package OLD.deb --old-sha256 OLD_SHA --fixture-mode eof-mcp-frame --container-memory-mib 128 --sample-server-resources",
+  "injection": "The transparent bridge forwarded the native client's first approved guarded_fetch GET and its reply. It replaced the second native tools/call with a syntactically complete JSON-RPC guarded_fetch request to private.test, copied the native request metadata, omitted only the LF delimiter, and closed server stdin.",
+  "observations": {
+    "native_skill_discovered": true,
+    "native_turn_completed": true,
+    "native_tool_calls_before_bridge_replacement": 2,
+    "approved_first_rule": "EGRESS_ALLOWED",
+    "approved_http_hits": ["/plain"],
+    "server_nonzero_exit": true,
+    "fixed_redacted_eof_diagnostic": "Input frame ended without LF delimiter",
+    "incomplete_private_call_reply": false,
+    "private_dns_queries": 0,
+    "native_retry_calls": 0,
+    "container_memory_limit_mib": 128,
+    "container_memory_peak_bytes": 19034112,
+    "container_oom_events": 0,
+    "container_pids_peak": 9,
+    "server_fd_max_sampled": 4,
+    "server_rss_max_sampled_kib": 3960,
+    "server_samples": 128,
+    "server_sample_interval_ms": 50
+  },
+  "lifecycle_checks": ["artifact checksum", "clean dpkg install", "old package launch and loopback denial", "same-binary package upgrade", "native skill and guarded calls", "approved control before EOF", "incomplete frame rejection", "no private DNS or reply", "package removal and residue"],
+  "limits": "The bridge, not Codex CLI itself, generated the missing-LF frame after observing a native tool call. This tests one deliberately malformed transport sequence through a real client session, not normal client behavior or complete MCP conformance. The private-DNS and HTTP assertions are fixture observations; no packet capture or host-client network trace was taken in this run. Resource readings are finite samples. The upgrade reused identical executable bytes. No traffic sent via other tools or AI Scraping Defense repository is covered. This is experimental evidence, not official candidate or owner release approval."
+}
