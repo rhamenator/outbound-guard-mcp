@@ -1,0 +1,46 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "client": "Codex CLI 0.151.0 app-server with explicit installed skill input",
+  "server_candidate_revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+  "server_binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "prior_package_replay": "docs/evidence/native-codex-missing-lf-eof-2026-11-09.json",
+  "reproduction": "umask 077; OUTBOUND_GUARD_CLIENT_FRAME_EOF=1 OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 OUTBOUND_GUARD_PACKET_ARCHIVE=ABSOLUTE_PRIVATE_DIRECTORY/native-codex-missing-lf-eof-2026-11-09.pcap python3 tools/client_cancellation_probe.py codex PACKAGE_BINARY SKILL_ZIP",
+  "observations": {
+    "native_skill_discovered": true,
+    "first_rule": "EGRESS_ALLOWED",
+    "approved_http_hits": ["/plain"],
+    "native_mcp_tool_starts_through_turn_completion": 2,
+    "server_rejected_missing_lf": true,
+    "incomplete_frame_reply": false,
+    "private_dns_queries": 0,
+    "native_turn_completed": true
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-codex-missing-lf-eof-2026-11-09.pcap",
+  "pcap_sha256": "6c3c328f4d770a3abf3f864bfffdb249354302a68dfd4f91e839688183b3667f",
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "tcp_syn_count": 1,
+    "tcp_syn_destinations": ["11.0.0.1:80"],
+    "dns_query_count": 3,
+    "dns_query_destinations": ["127.0.0.1:53"],
+    "eof_approved_http_requests": [["allowed.test", "/plain"]],
+    "packet_count": 20,
+    "ip_destinations": ["11.0.0.1", "127.0.0.1"],
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0,
+    "pcap_sha256": "6c3c328f4d770a3abf3f864bfffdb249354302a68dfd4f91e839688183b3667f",
+    "raw_pcap_retained": true
+  },
+  "packet_verifier": {
+    "scenario": "eof-frame",
+    "tcp_syn_count": 1,
+    "dns_query_count": 3,
+    "dns_names": ["1.0.0.11.in-addr.arpa", "allowed.test"],
+    "http_requests": [["allowed.test", "/plain"]],
+    "ip_destinations": ["11.0.0.1", "127.0.0.1"],
+    "scope": "fixture namespace only"
+  },
+  "limits": "The bridge generated the missing-LF frame after observing a native call. This capture sees only its controlled network namespace and the first approved HTTP request. Parser rejection, absence of a reply, and absence of native retries are separate process/transcript assertions, not facts visible in the pcap. The capture cannot establish host-client or other-tool behavior, general MCP conformance, official candidate readiness, or evidence for any AI Scraping Defense repository. The prior package upgrade reused identical executable bytes; owner self-review and residual-risk acceptance remain open."
+}
