@@ -1,0 +1,37 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "clients": ["Codex CLI 0.151.0 app-server with explicit installed skill input", "Claude Code 2.1.319 with native Skill invocation"],
+  "platform": "Debian 12 amd64 installed server package in a route-free DNS/HTTP fixture namespace, run separately for each native client",
+  "candidate": {
+    "revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+    "deb_sha256": "11bd3b2149f78477525e6756b3030e31c98a194fd455769af0645970d095ca3d",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  },
+  "upgrade_from": {
+    "revision": "175041b91c61eb29d8bed518967baa9f02a18de0",
+    "deb_sha256": "d66b52d74b94df3a8614113a318612ae5b3c30964d2f6308b070e5e9d6e3f432",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74"
+  },
+  "reproduction": "umask 077; python3 tools/debian_native_container_probe.py codex|claude NEW.deb NEW_SHA SKILL.zip SKILL_SHA --old-package OLD.deb --old-sha256 OLD_SHA --fixture-mode eof-mcp-frame-active --container-memory-mib 128 --sample-server-resources (run once per client with real paths and recorded hashes)",
+  "injection": "A transparent bridge used one native guarded_fetch call's ID and metadata to send an approved body-pending HTTP request. After the fixture acknowledged the open request, the bridge wrote syntactically complete private-host JSON without LF and closed server stdin.",
+  "observations": {
+    "each_client": {
+      "native_guarded_tool_starts": 1,
+      "approved_http_hits": ["/cancel-silent-body"],
+      "approved_call_reply": false,
+      "incomplete_private_call_reply": false,
+      "server_nonzero_exit": true,
+      "fixed_redacted_eof_diagnostic": "Input frame ended without LF delimiter",
+      "active_http_socket_closed": true,
+      "private_dns_queries": 0,
+      "native_retry_calls": 0,
+      "native_turn_completed": true,
+      "package_install_upgrade_remove_residue": "passed"
+    },
+    "codex_container": {"memory_limit_mib": 128, "memory_peak_bytes": 18681856, "oom_events": 0, "pids_peak": 9, "server_fd_max_sampled": 7, "server_rss_max_sampled_kib": 3884, "server_samples": 125, "sample_interval_ms": 50},
+    "claude_container": {"memory_limit_mib": 128, "memory_peak_bytes": 19574784, "oom_events": 0, "pids_peak": 9, "server_fd_max_sampled": 3, "server_rss_max_sampled_kib": 3416, "server_samples": 77, "sample_interval_ms": 50}
+  },
+  "limits": "The bridge, not either client, generated the incomplete frame. The test proves server fail-closed behavior for one pending approved HTTP body in each real native skill session; it does not prove that either client normally sends such bytes. DNS, HTTP and socket-closure observations came from the controlled fixture, not a packet capture or host-client network trace. Resource readings are finite samples. The package upgrade reused identical executable bytes. No traffic sent via other tools or AI Scraping Defense repository is covered. This is experimental evidence, not an official candidate or owner release approval."
+}
