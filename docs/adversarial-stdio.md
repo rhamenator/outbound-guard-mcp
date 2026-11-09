@@ -29,6 +29,8 @@ The [installed Codex CLI EOF replay](evidence/native-codex-missing-lf-eof-2026-1
 
 A [separate native replay](evidence/native-codex-missing-lf-eof-pcap-2026-11-09.json) retains its controlled [fixture-namespace pcap](../tests/fixtures/packet-capture/native-codex-missing-lf-eof-2026-11-09.pcap). Run the same client probe with `OUTBOUND_GUARD_CLIENT_FRAME_EOF=1`, `OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1`, and `OUTBOUND_GUARD_PACKET_ARCHIVE` set to an absolute `.pcap` path under a private caller-owned directory. The capture and CI verifier require one approved HTTP connection, local DNS only, and no private-host traffic. The server EOF and no-retry findings come from process and client-transcript assertions. Neither replay captures host-client or other-tool traffic.
 
+The [installed Claude Code 2.1.319 EOF replay](evidence/native-claude-missing-lf-eof-2026-11-09.json) uses the same `OUTBOUND_GUARD_CLIENT_FRAME_EOF=1` bridge mode with `tools/debian_native_container_probe.py claude ... --fixture-mode eof-mcp-frame`. It requires one native Skill invocation, two unique guarded tool-use IDs through the final native result, the approved first response, fixed server EOF rejection, and no private DNS or reply. It separately checks clean install, same-binary upgrade, removal and residue under `umask 077`. This run did not take a packet capture; the bridge synthesized the malformed frame, and traffic outside the fixture namespace remains unobserved.
+
 
 ## Inspector era selection and fallback
 

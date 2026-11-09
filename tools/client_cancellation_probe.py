@@ -20,7 +20,7 @@ Set OUTBOUND_GUARD_CLIENT_FRAMING=coding for seeded unsupported transfer-coding 
 Set OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 for fixed-length and chunked body caps.
 Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
 before an otherwise valid native-client tool call and observe recovery.
-Set OUTBOUND_GUARD_CLIENT_FRAME_EOF=1 for a Codex CLI skill replay with an
+Set OUTBOUND_GUARD_CLIENT_FRAME_EOF=1 for a Codex CLI or Claude Code skill replay with an
 injected complete private-host JSON call lacking LF before transport EOF.
 Set OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION=1 to inject synthetic secret-bearing
 unsupported header/body arguments during a valid native-client session.
@@ -112,7 +112,7 @@ assert cancel_phase in ('body','headers'), 'unsupported cancellation phase'
 assert cancel_phase=='body' or not skill_zip, 'header cancellation uses the client control workflow'
 assert sum((attack_mode,dns_mode,dns_truncated_mode,dns_answer_limit_mode,exfil_mode,rebind_mode,malformed_mode,framing_mode,response_limit_mode,frame_mode,frame_eof_mode,argument_mode,header_limit_mode,json_injection_mode,fallback_mode,tls_mode,tls_slow_mode,slow_http_mode,connect_blackhole_mode,upgrade_mode,html_quarantine_mode,saturation_mode))<=1, 'choose one opt-in skill replay mode'
 assert not (attack_mode or dns_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or frame_eof_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) or skill_zip, 'adversarial replay requires the explicit skill workflow'
-assert not frame_eof_mode or sys.argv[1]=='codex', 'EOF replay currently supports Codex CLI only'
+assert not frame_eof_mode or sys.argv[1] in ('codex','claude'), 'EOF replay supports Codex CLI and Claude Code'
 synthetic_marker='ghp_'+'A'*20 if (exfil_mode or argument_mode) else None
 unicode_marker='ｇｈｐ＿'+'Ａ'*20 if exfil_mode else None
 binary=str(pathlib.Path(sys.argv[2]).resolve(strict=True))
@@ -593,31 +593,50 @@ if skill_zip:
    assert not any(e.get('direction')=='out' and e.get('id')=='eof-private' for e in events), events
    assert json.loads((root/'hits.json').read_text())==['/plain'], 'unexpected HTTP request'
    assert 'private.test' not in json.loads((root/'dns.json').read_text()), 'private DNS query occurred'
-   deadline=time.monotonic()+30
+   deadline=time.monotonic()+40
    while time.monotonic()<deadline:
     messages=[json.loads(line) for line in (root/'client.jsonl').read_text().splitlines()]
-    completed=[m['params']['turn'] for m in messages if m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==skill_turn]
+    if name=='codex':
+     completed=[m['params']['turn'] for m in messages if m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==skill_turn]
+    else:
+     completed=[m for m in messages if m.get('type')=='result']
     if completed:break
     time.sleep(.05)
    else:raise AssertionError('native client did not finish after the server rejected EOF')
-   assert completed[0]['status']=='completed', 'native client turn failed after EOF'
-   native_calls=[m['params']['item'] for m in messages
-    if m.get('method')=='item/started' and m.get('params',{}).get('item',{}).get('type')=='mcpToolCall']
-   assert len(native_calls)==2, 'native client retried a tool call after EOF'
-   assert len({call['id'] for call in native_calls})==2, 'native client tool call IDs were duplicated'
-   assert all(call.get('server')=='outbound_guard' and call.get('tool')=='guarded_fetch'
-    for call in native_calls), 'native client used another MCP tool'
+   if name=='codex':
+    assert completed[0]['status']=='completed', 'native client turn failed after EOF'
+    native_calls=[m['params']['item'] for m in messages
+     if m.get('method')=='item/started' and m.get('params',{}).get('item',{}).get('type')=='mcpToolCall']
+    assert len(native_calls)==2, 'native client retried a tool call after EOF'
+    assert len({call['id'] for call in native_calls})==2, 'native client tool call IDs were duplicated'
+    assert all(call.get('server')=='outbound_guard' and call.get('tool')=='guarded_fetch'
+     for call in native_calls), 'native client used another MCP tool'
+   else:
+    blocks=[b for m in messages for b in m.get('message',{}).get('content',[]) if isinstance(b,dict)]
+    tool_uses=[b for b in blocks if b.get('type')=='tool_use']
+    assert {b.get('name') for b in tool_uses}<={'Skill','mcp__outbound_guard__guarded_fetch'}, 'native Claude used another tool'
+    skill_calls=[b for b in tool_uses if b.get('name')=='Skill'
+     and b.get('input',{}).get('skill')=='outbound-guard']
+    assert len(skill_calls)==1, 'native Claude skill invocation missing or duplicated'
+    skill_results=[b for b in blocks if b.get('type')=='tool_result'
+     and b.get('tool_use_id')==skill_calls[0].get('id')]
+    assert len(skill_results)==1 and not skill_results[0].get('is_error'), 'native Claude skill result missing or failed'
+    native_calls=[b for b in tool_uses if b.get('name')=='mcp__outbound_guard__guarded_fetch']
+    assert len(native_calls)==2 and len({b.get('id') for b in native_calls})==2, 'native Claude guarded call missing or retried after EOF'
+    assert completed[0].get('is_error') is False, 'native Claude turn failed after EOF'
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
    assert [e.get('rule') for e in events if 'rule' in e]==['EGRESS_ALLOWED'], events
    assert len([e for e in events if e.get('method')=='tools/call'])==2, 'bridge observed unexpected tool calls'
    assert json.loads((root/'hits.json').read_text())==['/plain'], 'unexpected HTTP request after EOF'
    assert 'private.test' not in json.loads((root/'dns.json').read_text()), 'private DNS query after EOF'
    packet_summary=summarize_packet_capture() if packet_capture_requested else None
-   print(json.dumps({'client':'codex','native_skill_discovered':True,'explicit_skill_input_accepted':True,
+   print(json.dumps({'client':name,'native_skill_discovered':True if name=='codex' else None,
+    'explicit_skill_input_accepted':True if name=='codex' else None,
+    'native_skill_invoked':True if name=='claude' else None,
     'first_rule':'EGRESS_ALLOWED','approved_http_hits':['/plain'],'private_dns_queries':0,
     'incomplete_frame_reply':False,'server_rejected_missing_lf':True,
     'native_turn_completed':True,'packet_capture':packet_summary,
-    'scope':'bridge-injected EOF frame in a native Codex skill session; fixture namespace only'}),flush=True)
+    'scope':'bridge-injected EOF frame in a native '+name+' skill session; fixture namespace only'}),flush=True)
    sys.exit(0)
 
   deadline=time.monotonic()+80
