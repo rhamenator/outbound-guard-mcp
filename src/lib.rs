@@ -18,6 +18,8 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+#[cfg(feature = "policy-fuzz")]
+pub use transport::fuzz_http_wire;
 use url::Url;
 
 const DEFAULT_RETURN_BYTES: usize = 64 * 1024;
