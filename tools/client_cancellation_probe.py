@@ -613,12 +613,16 @@ if skill_zip:
      for call in native_calls), 'native client used another MCP tool'
    else:
     blocks=[b for m in messages for b in m.get('message',{}).get('content',[]) if isinstance(b,dict)]
-    skill_calls={b.get('id') for b in blocks if b.get('type')=='tool_use' and b.get('name')=='Skill'
-     and b.get('input',{}).get('skill')=='outbound-guard'}
+    tool_uses=[b for b in blocks if b.get('type')=='tool_use']
+    assert {b.get('name') for b in tool_uses}<={'Skill','mcp__outbound_guard__guarded_fetch'}, 'native Claude used another tool'
+    skill_calls=[b for b in tool_uses if b.get('name')=='Skill'
+     and b.get('input',{}).get('skill')=='outbound-guard']
     assert len(skill_calls)==1, 'native Claude skill invocation missing or duplicated'
-    native_calls={b.get('id') for b in blocks if b.get('type')=='tool_use'
-     and b.get('name')=='mcp__outbound_guard__guarded_fetch'}
-    assert len(native_calls)==2, 'native Claude guarded call missing or retried after EOF'
+    skill_results=[b for b in blocks if b.get('type')=='tool_result'
+     and b.get('tool_use_id')==skill_calls[0].get('id')]
+    assert len(skill_results)==1 and not skill_results[0].get('is_error'), 'native Claude skill result missing or failed'
+    native_calls=[b for b in tool_uses if b.get('name')=='mcp__outbound_guard__guarded_fetch']
+    assert len(native_calls)==2 and len({b.get('id') for b in native_calls})==2, 'native Claude guarded call missing or retried after EOF'
     assert completed[0].get('is_error') is False, 'native Claude turn failed after EOF'
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
    assert [e.get('rule') for e in events if 'rule' in e]==['EGRESS_ALLOWED'], events
