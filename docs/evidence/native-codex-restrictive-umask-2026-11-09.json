@@ -1,0 +1,41 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "purpose": "Native Codex CLI replay of the installed Debian candidate and malformed MCP frame fixture under umask 077, after fixing probe ownership and snapshot permissions",
+  "client": "Codex CLI 0.151.0, installed Debian package",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "candidate": {
+    "revision": "f19748ad835f7ae6cb47588f2c6ce9beabacc851",
+    "deb_sha256": "f640fdf132f4daa66b258b3222d243a29674094c9ff5ee17a7e6de9adbe7110a",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  },
+  "upgrade_from": {
+    "revision": "a2215d13aaf1d0674bb125f9600662c3878763ad",
+    "deb_sha256": "10a9339a2fda9d7f411c9228cd3ed71b0399a45bb835a09edcccb285f924085a"
+  },
+  "replay": "umask 077; python3 tools/debian_native_container_probe.py codex <candidate.deb> <candidate-sha256> <skill.zip> <skill-sha256> --old-package <old.deb> --old-sha256 <old-sha256> --fixture-mode malformed-mcp-frame --container-memory-mib 128 --sample-server-resources",
+  "checks": [
+    "artifact checksums and clean dpkg install",
+    "preceding candidate launch and loopback denial, then package upgrade",
+    "native skill discovery and guarded calls",
+    "malformed MCP frame parse error followed by approved recovery",
+    "no forbidden DNS query or HTTP hit",
+    "package removal and residue inspection"
+  ],
+  "observations": {
+    "allowed_rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED"],
+    "fixture_hits": ["/plain", "/plain"],
+    "malformed_frame_parse_error_seen": true,
+    "container_memory_limit_mib": 128,
+    "container_memory_peak_bytes": 20156416,
+    "container_oom_events": 0,
+    "container_pids_peak": 9,
+    "server_fd_max_sampled": 3,
+    "server_rss_max_sampled_kib": 3888,
+    "server_samples": 219,
+    "server_sample_interval_ms": 50
+  },
+  "harness_issue_and_fix": "An initial umask 077 replay failed when the unprivileged probe could not read root-owned 0600 DNS snapshots or its root-created container state file; cleanup could not discover the container ID. The owned test container was stopped. The fixture now explicitly marks only diagnostic JSON snapshots readable inside its private 0700 directory, and the parent pre-creates the container state files with owner-only 0600 permissions. The identical replay under umask 077 then passed.",
+  "limits": "This fixture mutates a syntactically framed MCP message; it does not exercise the missing-LF EOF case through Codex CLI. The private directory limits snapshot visibility to the probe owner and root. Server RSS and FD are sampled, not exhaustive; cgroup peaks include helpers. No packet capture was taken in this replay. This tests the listed outbound-guard candidate only, not traffic sent via other tools or any AI Scraping Defense repository. It is not official candidate or owner release approval."
+}
