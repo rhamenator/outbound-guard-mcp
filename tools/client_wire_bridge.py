@@ -7,9 +7,10 @@ ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
 assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,truncated-mixed-v6.test','allowed.test,fallback-pin.test','allowed.test,syn-stall.test','allowed.test,many-answers.test','allowed.test,dns-limit-16.test,dns-limit-17.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
-assert mutation in (None,'mutate','mutate-eof','inject-arguments','active-proxy','queue-saturate')
+assert mutation in (None,'mutate','mutate-eof','mutate-eof-active','inject-arguments','active-proxy','queue-saturate')
 mutant_enabled=mutation=='mutate'
-eof_enabled=mutation=='mutate-eof'
+eof_enabled=mutation in ('mutate-eof','mutate-eof-active')
+active_eof=mutation=='mutate-eof-active'
 argument_enabled=mutation=='inject-arguments'
 saturation_enabled=mutation=='queue-saturate'
 server_env=['PATH=/usr/bin:/bin','OUTBOUND_GUARD_ALLOWED_HOSTS='+hosts]
@@ -87,7 +88,19 @@ try:
     client_message={}
    if client_message.get('method')=='tools/call':
     eof_calls+=1
-    if eof_calls==2:
+    if active_eof and eof_calls==1:
+     params={'name':'guarded_fetch','arguments':{'url':'http://allowed.test/cancel-silent-body'}}
+     meta=client_message.get('params',{}).get('_meta')
+     if meta is not None:params['_meta']=meta
+     frame={'jsonrpc':'2.0','id':client_message['id'],'method':'tools/call','params':params}
+     payload=(json.dumps(frame)+'\n').encode()
+     record('in',payload);p.stdin.write(payload);p.stdin.flush()
+     deadline=time.monotonic()+5
+     while not pathlib.Path(log).with_name('started').exists():
+      assert p.poll() is None and time.monotonic()<deadline, 'active HTTP fixture did not start'
+      time.sleep(.01)
+     record_event('active_http_started')
+    if eof_calls==(1 if active_eof else 2):
      params={'name':'guarded_fetch','arguments':{'url':'http://private.test/plain'}}
      meta=client_message.get('params',{}).get('_meta')
      if meta is not None:params['_meta']=meta
@@ -100,7 +113,14 @@ try:
      assert b'Input frame ended without LF delimiter' in diagnostic, 'missing fixed EOF diagnostic'
      assert b'private.test' not in diagnostic, 'private target leaked in diagnostic'
      record_event('eof_server_rejected')
+     if active_eof:
+      deadline=time.monotonic()+5
+      while not pathlib.Path(log).with_name('closed').exists():
+       assert time.monotonic()<deadline, 'active HTTP socket remained open after EOF'
+       time.sleep(.01)
+      record_event('active_http_closed')
      break
+    if active_eof:continue
   if (mutant_enabled or argument_enabled or saturation_enabled) and not mutant_sent:
    try:client_message=json.loads(line);method=client_message.get('method')
    except ValueError:client_message={};method=None

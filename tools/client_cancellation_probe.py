@@ -22,6 +22,7 @@ Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
 before an otherwise valid native-client tool call and observe recovery.
 Set OUTBOUND_GUARD_CLIENT_FRAME_EOF=1 for a Codex CLI or Claude Code skill replay with an
 injected complete private-host JSON call lacking LF before transport EOF.
+Use =active to inject the same incomplete frame while an approved HTTP body is pending.
 Set OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION=1 to inject synthetic secret-bearing
 unsupported header/body arguments during a valid native-client session.
 Set OUTBOUND_GUARD_CLIENT_HEADER_LIMIT=1 for excess-count and oversized
@@ -79,7 +80,10 @@ coding_framing_mode=framing_variant=='coding'
 obs_fold_framing_mode=framing_variant=='obs-fold'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
-frame_eof_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_EOF')=='1'
+frame_eof_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_EOF')
+assert frame_eof_variant in (None,'1','active'), 'unsupported EOF replay mode'
+frame_eof_mode=frame_eof_variant in ('1','active')
+frame_eof_active=frame_eof_variant=='active'
 argument_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ARGUMENT_INJECTION')=='1'
 header_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HEADER_LIMIT')=='1'
 json_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_JSON_INJECTION')
@@ -243,7 +247,7 @@ if dns_truncated_mode:bridge.append('allowed.test,'+dns_tcp_name if dns_tcp_priv
 if exfil_mode:bridge.append('allowed.test,exfil.test')
 if rebind_mode:bridge.append('allowed.test,rebind.test')
 if frame_mode:bridge.extend(['allowed.test,private.test','mutate'])
-if frame_eof_mode:bridge.extend(['allowed.test,private.test','mutate-eof'])
+if frame_eof_mode:bridge.extend(['allowed.test,private.test','mutate-eof-active' if frame_eof_active else 'mutate-eof'])
 if argument_mode:bridge.extend(['allowed.test','inject-arguments'])
 if saturation_mode:bridge.extend(['allowed.test','queue-saturate'])
 if fallback_mode:bridge.append('allowed.test,fallback-pin.test')
@@ -362,7 +366,7 @@ def summarize_packet_capture():
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
  eof_requests=fields('http.request','http.host','http.request.uri') if frame_eof_mode else []
  if frame_eof_mode:
-  assert eof_requests==[['allowed.test','/plain']], eof_requests
+  assert eof_requests==[['allowed.test','/cancel-silent-body' if frame_eof_active else '/plain']], eof_requests
   assert not fields('dns.flags.response == 0 && dns.qry.name == "private.test"','dns.qry.name'), 'private DNS packet observed'
  truncated_name=dns_tcp_name if dns_tcp_private_mode else 'truncated.test'
  truncated_responses=fields(f'dns.flags.response == 1 && dns.qry.name == "{truncated_name}" && udp.srcport == 53 && !icmp && !icmpv6',
@@ -498,7 +502,10 @@ if skill_zip:
    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED']
    expected_methods=['GET','GET']
   if frame_eof_mode:
-   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled MCP/HTTP fixture, use ONLY guarded_fetch to GET http://allowed.test/plain twice in order. The operator approved allowed.test and private.test for a negative transport test. A transparent test bridge will replace your second call with a complete private-host JSON frame lacking its LF delimiter and then close server stdin. Make both calls once, do not retry or use other tools, and report the actual results.'
+   if frame_eof_active:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled MCP/HTTP fixture, use ONLY guarded_fetch to GET http://allowed.test/cancel-silent-body once. The operator approved allowed.test for this negative transport test. A transparent test bridge will send your call to the approved streaming fixture, then inject a complete private-host JSON frame lacking its LF delimiter and close server stdin while your call is pending. Do not retry or use other tools. Report the actual result.'
+   else:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled MCP/HTTP fixture, use ONLY guarded_fetch to GET http://allowed.test/plain twice in order. The operator approved allowed.test and private.test for a negative transport test. A transparent test bridge will replace your second call with a complete private-host JSON frame lacking its LF delimiter and then close server stdin. Make both calls once, do not retry or use other tools, and report the actual results.'
   if argument_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled MCP/HTTP fixture, use ONLY guarded_fetch to GET http://allowed.test/plain twice in order. The operator approved allowed.test. A test bridge will issue separate synthetic secret-bearing header and body calls before your first valid call and hide their replies from you. Make both of your calls once without retrying or using any other tool. Report the actual results.'
    expected_rules=['EGRESS_INVALID_INPUT','EGRESS_INVALID_INPUT','EGRESS_ALLOWED','EGRESS_ALLOWED']
@@ -583,15 +590,21 @@ if skill_zip:
    deadline=time.monotonic()+75
    while time.monotonic()<deadline:
     events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()] if (root/'wire.jsonl').exists() else []
-    if any(e.get('event')=='eof_server_rejected' for e in events):break
+    if any(e.get('event')==('active_http_closed' if frame_eof_active else 'eof_server_rejected') for e in events):break
     assert p.poll() is None, 'native client exited before the EOF frame was sent'
     time.sleep(.05)
    else:raise AssertionError('native client did not reach the EOF fixture')
-   assert [e.get('rule') for e in events if 'rule' in e]==['EGRESS_ALLOWED'], events
-   assert [e.get('event') for e in events if 'event' in e]==['eof_frame_sent','eof_server_rejected'], events
+   assert [e.get('rule') for e in events if 'rule' in e]==([] if frame_eof_active else ['EGRESS_ALLOWED']), events
+   expected_events=(['active_http_started','eof_frame_sent','eof_server_rejected','active_http_closed']
+                    if frame_eof_active else ['eof_frame_sent','eof_server_rejected'])
+   assert [e.get('event') for e in events if 'event' in e]==expected_events, events
    assert [e.get('id') for e in events if e.get('method')=='tools/call'][-1]=='eof-private', events
    assert not any(e.get('direction')=='out' and e.get('id')=='eof-private' for e in events), events
-   assert json.loads((root/'hits.json').read_text())==['/plain'], 'unexpected HTTP request'
+   if frame_eof_active:
+    active_ids=[e.get('id') for e in events if e.get('direction')=='in' and e.get('url_class')=='allowed_pending_body']
+    assert len(active_ids)==1 and not any(e.get('direction')=='out' and e.get('id')==active_ids[0] for e in events), 'active call received a reply'
+   expected_hits=['/cancel-silent-body' if frame_eof_active else '/plain']
+   assert json.loads((root/'hits.json').read_text())==expected_hits, 'unexpected HTTP request'
    assert 'private.test' not in json.loads((root/'dns.json').read_text()), 'private DNS query occurred'
    deadline=time.monotonic()+40
    while time.monotonic()<deadline:
@@ -607,8 +620,8 @@ if skill_zip:
     assert completed[0]['status']=='completed', 'native client turn failed after EOF'
     native_calls=[m['params']['item'] for m in messages
      if m.get('method')=='item/started' and m.get('params',{}).get('item',{}).get('type')=='mcpToolCall']
-    assert len(native_calls)==2, 'native client retried a tool call after EOF'
-    assert len({call['id'] for call in native_calls})==2, 'native client tool call IDs were duplicated'
+    assert len(native_calls)==(1 if frame_eof_active else 2), 'native client retried a tool call after EOF'
+    assert len({call['id'] for call in native_calls})==len(native_calls), 'native client tool call IDs were duplicated'
     assert all(call.get('server')=='outbound_guard' and call.get('tool')=='guarded_fetch'
      for call in native_calls), 'native client used another MCP tool'
    else:
@@ -622,19 +635,23 @@ if skill_zip:
      and b.get('tool_use_id')==skill_calls[0].get('id')]
     assert len(skill_results)==1 and not skill_results[0].get('is_error'), 'native Claude skill result missing or failed'
     native_calls=[b for b in tool_uses if b.get('name')=='mcp__outbound_guard__guarded_fetch']
-    assert len(native_calls)==2 and len({b.get('id') for b in native_calls})==2, 'native Claude guarded call missing or retried after EOF'
+    assert len(native_calls)==(1 if frame_eof_active else 2) and len({b.get('id') for b in native_calls})==len(native_calls), 'native Claude guarded call missing or retried after EOF'
     assert completed[0].get('is_error') is False, 'native Claude turn failed after EOF'
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
-   assert [e.get('rule') for e in events if 'rule' in e]==['EGRESS_ALLOWED'], events
+   assert [e.get('rule') for e in events if 'rule' in e]==([] if frame_eof_active else ['EGRESS_ALLOWED']), events
    assert len([e for e in events if e.get('method')=='tools/call'])==2, 'bridge observed unexpected tool calls'
-   assert json.loads((root/'hits.json').read_text())==['/plain'], 'unexpected HTTP request after EOF'
+   if frame_eof_active:
+    assert not any(e.get('direction')=='out' and e.get('id')==active_ids[0] for e in events), 'active call replied after native turn'
+   assert json.loads((root/'hits.json').read_text())==expected_hits, 'unexpected HTTP request after EOF'
+   if frame_eof_active:assert (root/'closed').exists(), 'active HTTP socket was not closed'
    assert 'private.test' not in json.loads((root/'dns.json').read_text()), 'private DNS query after EOF'
    packet_summary=summarize_packet_capture() if packet_capture_requested else None
    print(json.dumps({'client':name,'native_skill_discovered':True if name=='codex' else None,
     'explicit_skill_input_accepted':True if name=='codex' else None,
     'native_skill_invoked':True if name=='claude' else None,
-    'first_rule':'EGRESS_ALLOWED','approved_http_hits':['/plain'],'private_dns_queries':0,
+    'first_rule':None if frame_eof_active else 'EGRESS_ALLOWED','approved_http_hits':expected_hits,'private_dns_queries':0,
     'incomplete_frame_reply':False,'server_rejected_missing_lf':True,
+    'active_http_socket_closed':True if frame_eof_active else None,
     'native_turn_completed':True,'packet_capture':packet_summary,
     'scope':'bridge-injected EOF frame in a native '+name+' skill session; fixture namespace only'}),flush=True)
    sys.exit(0)

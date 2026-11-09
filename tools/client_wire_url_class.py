@@ -10,4 +10,6 @@ def fixture_url_class(value):
         return "tls_fixture"
     if value == "http://allowed.test/plain":
         return "allowed_plain"
+    if value == "http://allowed.test/cancel-silent-body":
+        return "allowed_pending_body"
     return "other"
