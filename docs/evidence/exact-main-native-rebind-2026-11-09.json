@@ -1,0 +1,154 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "scope": "Exact trusted-main experimental Debian 12 amd64 artifact, native Codex and Claude skill runs in separate route-free DNS/HTTP fixture namespaces",
+  "source_commit": "7c935757721f0db0262b241fb36ac608f6919160",
+  "source_ci_run": 42620813730,
+  "source_codeql_run": 42620813833,
+  "package": {
+    "filename": "outbound-guard-mcp_0.1.0~candidate.314+g7c935757721f_amd64.deb",
+    "sha256": "8062ae3ee5b75430b15d4654b7bd070b9b74977d31c7596bdc491b8c28030d9d",
+    "installed_binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "unsigned": true
+  },
+  "skill_zip": {
+    "filename": "outbound-guard-skill-7c935757721f.zip",
+    "sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+  },
+  "upgrade_from": {
+    "revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+    "package_sha256": "11bd3b2149f78477525e6756b3030e31c98a194fd455769af0645970d095ca3d",
+    "installed_binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74"
+  },
+  "artifact_checks": "Downloaded the CI artifact for run 42620813730; sha256sum -c SHA256SUMS passed for the archive, Debian package and skill ZIP. The same CI run passed independent rebuild and provenance signing/verification checks. The local gh CLI lacks the attestation verifier, so this session did not independently verify the signature.",
+  "reproduction": "Download experimental-candidate-linux-x86_64 from run 42620813730, verify SHA256SUMS, then for each client run: umask 077; OUTBOUND_GUARD_PACKET_ARCHIVE=ABSOLUTE_PRIVATE_DIRECTORY/CLIENT.pcap python3 tools/debian_native_container_probe.py CLIENT NEW.deb NEW_SHA SKILL.zip SKILL_SHA --old-package OLD.deb --old-sha256 OLD_SHA --fixture-mode dns-rebind-packet --container-memory-mib 128 --sample-server-resources. Run tools/verify_exact_main_rebind_corpus.py on the retained captures.",
+  "clients": {
+    "codex": {
+      "native_client": "Codex CLI 0.151.0",
+      "native_skill": "discovered, explicit skill input and turn completed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "http_hits": [
+        "/plain",
+        "/plain",
+        "/plain"
+      ],
+      "private_answer_http_hit": false,
+      "packet_capture_path": "tests/fixtures/packet-capture/exact-main-codex-rebind-2026-11-09.pcap",
+      "packet_sha256": "3d2331444aff3934bcbf55c29c8ff710a53df03263d08395c5fb230c258089a5",
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test",
+          "rebind.test"
+        ],
+        "dns_query_count": 9,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "rebind.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "rebind_a_answers": [
+          [
+            "11.0.0.1"
+          ],
+          [
+            "127.0.0.1"
+          ]
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "3d2331444aff3934bcbf55c29c8ff710a53df03263d08395c5fb230c258089a5",
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          [
+            "11.0.0.1",
+            "80"
+          ]
+        ]
+      },
+      "clean_install_upgrade_remove_residue": "passed",
+      "server_fd_max_sampled": 3
+    },
+    "claude": {
+      "native_client": "Claude Code 2.1.319",
+      "native_skill": "native Skill invoked and result succeeded",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_FORBIDDEN_ADDRESS",
+        "EGRESS_ALLOWED"
+      ],
+      "http_hits": [
+        "/plain",
+        "/plain",
+        "/plain"
+      ],
+      "private_answer_http_hit": false,
+      "packet_capture_path": "tests/fixtures/packet-capture/exact-main-claude-rebind-2026-11-09.pcap",
+      "packet_sha256": "8a997ed252915d00bdc2d3cc5e8fc0c6ff7c146ed7bf49784821ab5e13154a2e",
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test",
+          "rebind.test"
+        ],
+        "dns_query_count": 9,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "rebind.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "rebind_a_answers": [
+          [
+            "11.0.0.1"
+          ],
+          [
+            "127.0.0.1"
+          ]
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "8a997ed252915d00bdc2d3cc5e8fc0c6ff7c146ed7bf49784821ab5e13154a2e",
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          [
+            "11.0.0.1",
+            "80"
+          ]
+        ]
+      },
+      "clean_install_upgrade_remove_residue": "passed",
+      "server_fd_max_sampled": 3
+    }
+  },
+  "limits": "The experimental package is unsigned and no official candidate is designated. This upgrade changed package revision but reused identical server executable bytes. Captures cover only separate disposable fixture namespaces and prove ordered public/private DNS answers, approved connections and no forbidden connection for these runs; they do not observe host-client or other-tool traffic, arbitrary resolver races, automatic skill triggering, or any AI Scraping Defense repository. Resource sampling is finite. Owner self-review and explicit residual-risk acceptance are still required; independent human review is absent."
+}
