@@ -1,0 +1,147 @@
+{
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "package_upgrade",
+    "old_package_launch_and_loopback_denial",
+    "native_skill_and_guarded_calls",
+    "loopback_denial",
+    "secret_path_denial",
+    "unicode_lookalike_denial",
+    "no_exfil_dns_or_marker_echo",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "client": "Claude Code 2.1.319",
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 128,
+    "memory_peak_bytes": 19423232,
+    "pids_peak": 9,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "exfil_dns_queried": false,
+  "fixture_hits": [
+    "/plain",
+    "/head-ok",
+    "/plain"
+  ],
+  "fixture_mode": "synthetic-exfil-packet",
+  "limitations": [
+    "Capture is confined to the fixture network namespace; host-client and other-tool traffic are not captured.",
+    "Synthetic secret-shaped and Unicode lookalike URLs do not establish general exfiltration prevention.",
+    "The old package received a loopback denial before upgrade; exfiltration calls ran on the new package. Executable bytes are identical across this metadata-only upgrade.",
+    "Finite sampled server FD/RSS and cgroup peaks do not establish general resource bounds.",
+    "Unsigned experimental package; no official candidate or owner acceptance. Independent human review is not claimed. Four AI Scraping Defense repositories require separate testing."
+  ],
+  "native_skill_invoked": true,
+  "native_skill_loaded": true,
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "package_sha256": "d66b52d74b94df3a8614113a318612ae5b3c30964d2f6308b070e5e9d6e3f432",
+    "revision": "175041b91c61eb29d8bed518967baa9f02a18de0",
+    "version": "0.1.0~candidate.307+g175041b91c61"
+  },
+  "observed_at_utc": "2026-11-09T06:41:11.464797+00:00",
+  "old_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "package_sha256": "ea3babd19d5b0f79deddcf9a8507b00813f29224d04266c6241ee595c2c95128",
+    "revision": "9a416b06ce2c6983cc6a954e5e3c9527f1b48346",
+    "version": "0.1.0~candidate.306+g9a416b06ce2c"
+  },
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "dns_query_count": 7,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "exfil_dns_query_count": 0,
+    "fallback_a_answers": null,
+    "fallback_a_query_count": null,
+    "ip_destination_entries": 50,
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "packet_count": 49,
+    "pcap_sha256": "c36266e757c3df4bd0a73cc8d9d847fe0f0691ed773d584d33bf0c9650cb0229",
+    "raw_pcap_retained": true,
+    "rebind_a_answers": null,
+    "rebind_a_query_count": null,
+    "redirect_private_dns_query_count": null,
+    "tcp_syn_count": 3,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "timed_out_streams_client_closed": null,
+    "tls_client_hello_streams": null,
+    "tls_pinning_sni": null,
+    "truncated_dns_responses": null,
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0
+  },
+  "packet_verifier": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 7,
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/head-ok"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scenario": "synthetic-exfil",
+    "scope": "fixture namespace only",
+    "sha256": "c36266e757c3df4bd0a73cc8d9d847fe0f0691ed773d584d33bf0c9650cb0229",
+    "tcp_syn_count": 3
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-exfil-current-2026-11-09.pcap",
+  "pcap_sha256": "c36266e757c3df4bd0a73cc8d9d847fe0f0691ed773d584d33bf0c9650cb0229",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "reproduction": "umask 077; OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_DIR/fixture.pcap python3 tools/debian_native_container_probe.py claude NEW.deb NEW_SHA SKILL.zip SKILL_SHA --old-package OLD.deb --old-sha256 OLD_SHA --fixture-mode synthetic-exfil-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_dns_ssrf_pcap.py RETAINED.pcap SHA --scenario synthetic-exfil",
+  "result": "passed",
+  "rules": [
+    "EGRESS_INVALID_HOST",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_SECRET_DETECTED",
+    "EGRESS_INVALID_URL",
+    "EGRESS_ALLOWED"
+  ],
+  "scenario": "native Claude Code 2.1.319 synthetic exfil denial and approved recovery after same-binary Debian package upgrade under umask 077",
+  "server_resource_observation": {
+    "max_sampled_fd": 3,
+    "max_sampled_rss_kib": 3968,
+    "sample_interval_ms": 50,
+    "samples": 490,
+    "scope": "Finite sampled server observations; sampling can miss transient peaks."
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "synthetic_marker_echo": false
+}
