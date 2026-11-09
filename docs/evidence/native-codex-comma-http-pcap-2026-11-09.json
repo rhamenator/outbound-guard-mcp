@@ -12,7 +12,8 @@
     "package_remove",
     "residue"
   ],
-  "client": "codex",
+  "client": "Codex CLI 0.151.0",
+  "client_version_source": "Host CLI --version checked after native replay on 2026-11-09; probe used the same CLI installation.",
   "container_resource_observation": {
     "memory_events": {
       "high": 0,
