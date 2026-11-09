@@ -368,6 +368,16 @@ def summarize_packet_capture():
  if frame_eof_mode:
   assert eof_requests==[['allowed.test','/cancel-silent-body' if frame_eof_active else '/plain']], eof_requests
   assert not fields('dns.flags.response == 0 && dns.qry.name == "private.test"','dns.qry.name'), 'private DNS packet observed'
+ eof_active_close=None
+ if frame_eof_active:
+  request_frames=fields('http.request','frame.number','tcp.stream')
+  response_frames=fields('tcp.srcport == 80 && tcp.len > 0','frame.number','tcp.stream')
+  close_frames=fields('tcp.dstport == 80 && (tcp.flags.fin == 1 || tcp.flags.reset == 1)','frame.number','tcp.stream')
+  assert len(request_frames)==1 and response_frames and len(close_frames)==1, 'active HTTP packet sequence incomplete'
+  stream=request_frames[0][1]
+  assert all(row[1]==stream for row in response_frames+close_frames), 'active HTTP stream mismatch'
+  assert int(request_frames[0][0])<int(response_frames[0][0])<int(close_frames[0][0]), 'active HTTP close order wrong'
+  eof_active_close={'response_data_before_client_close':True,'client_close_count':1}
  truncated_name=dns_tcp_name if dns_tcp_private_mode else 'truncated.test'
  truncated_responses=fields(f'dns.flags.response == 1 && dns.qry.name == "{truncated_name}" && udp.srcport == 53 && !icmp && !icmpv6',
                             'dns.flags.truncated','dns.count.answers','dns.qry.type') if dns_truncated_mode else []
@@ -439,6 +449,7 @@ def summarize_packet_capture():
          'exfil_dns_query_count':len(exfil_queries) if exfil_mode else None,
          'redirect_private_dns_query_count':len(redirect_queries) if attack_mode else None,
          'eof_approved_http_requests':eof_requests if frame_eof_mode else None,
+         'eof_active_close':eof_active_close,
          'timed_out_streams_client_closed':timed_out_streams_closed,
          'tls_client_hello_streams':tls_client_hello_streams,
          'tls_pinning_sni':tls_pinning_sni,

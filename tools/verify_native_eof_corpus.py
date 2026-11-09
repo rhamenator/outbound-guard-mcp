@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bind separate retained Codex and Claude EOF captures to their replay evidence."""
+"""Bind separate native EOF and active-HTTP EOF captures to replay evidence."""
 
 import json
 from pathlib import Path
@@ -11,15 +11,19 @@ ROOT = Path(__file__).resolve().parent.parent
 CAPTURE_ROOT = ROOT / "tests/fixtures/packet-capture"
 CASES = (
     ("codex", "native-codex-missing-lf-eof-pcap-2026-11-09.json",
-     "native_mcp_tool_starts_through_turn_completion"),
+     "native_mcp_tool_starts_through_turn_completion", "eof-frame"),
     ("claude", "native-claude-missing-lf-eof-pcap-2026-11-09.json",
-     "native_guarded_tool_use_ids_through_result"),
+     "native_guarded_tool_use_ids_through_result", "eof-frame"),
+    ("codex", "native-codex-active-http-eof-pcap-2026-11-09.json",
+     "native_mcp_tool_starts_through_turn_completion", "eof-active"),
+    ("claude", "native-claude-active-http-eof-pcap-2026-11-09.json",
+     "native_guarded_tool_use_ids_through_result", "eof-active"),
 )
 
 
 def main() -> None:
     captures = set()
-    for client, filename, call_count_field in CASES:
+    for client, filename, call_count_field, scenario in CASES:
         run = json.loads((ROOT / "docs/evidence" / filename).read_text())
         assert run["client"].startswith("Codex CLI" if client == "codex" else "Claude Code")
         prior_path = (ROOT / run["prior_package_replay"]).resolve(strict=True)
@@ -29,9 +33,12 @@ def main() -> None:
         assert prior["candidate"]["binary_sha256"] == run["server_binary_sha256"]
         assert prior["candidate"]["skill_zip_sha256"] == run["skill_zip_sha256"]
         assert run["result"] == "passed" and run["observations"]["server_rejected_missing_lf"]
-        assert run["observations"][call_count_field] == 2
+        assert run["observations"][call_count_field] == (1 if scenario == "eof-active" else 2)
         assert run["observations"]["incomplete_frame_reply"] is False
         assert run["observations"]["private_dns_queries"] == 0
+        if scenario == "eof-active":
+            assert run["observations"]["active_http_socket_closed"] is True
+            assert run["observations"]["active_call_reply"] is False
         assert run["packet_capture"]["raw_pcap_retained"] is True
         relative = Path(run["pcap_path"])
         capture = (ROOT / relative).resolve(strict=True)
@@ -42,15 +49,20 @@ def main() -> None:
         assert run["packet_capture"]["pcap_sha256"] == digest
         checked = json.loads(subprocess.check_output(
             ["python3", str(ROOT / "tools/verify_native_dns_ssrf_pcap.py"),
-             str(capture), digest, "--scenario", "eof-frame"], text=True, timeout=25))
-        for field in ("scenario", "tcp_syn_count", "dns_query_count", "dns_names",
-                      "http_requests", "ip_destinations", "scope"):
+             str(capture), digest, "--scenario", scenario], text=True, timeout=25))
+        fields = ("scenario", "tcp_syn_count", "dns_query_count", "dns_names",
+                  "http_requests", "ip_destinations", "scope")
+        if scenario == "eof-active":
+            fields += ("active_close",)
+        for field in fields:
             assert checked[field] == run["packet_verifier"][field], (client, field)
         assert checked["sha256"] == digest
         assert checked["http_requests"] == run["packet_capture"]["eof_approved_http_requests"]
         assert checked["tcp_syn_count"] == run["packet_capture"]["tcp_syn_count"]
+        if scenario == "eof-active":
+            assert checked["active_close"] == run["packet_capture"]["eof_active_close"]
     assert len(captures) == len(CASES)
-    print(json.dumps({"verified_clients": [client for client, _, _ in CASES],
+    print(json.dumps({"verified_clients": [client for client, _, _, _ in CASES],
                       "capture_count": len(captures)}, sort_keys=True))
 
 

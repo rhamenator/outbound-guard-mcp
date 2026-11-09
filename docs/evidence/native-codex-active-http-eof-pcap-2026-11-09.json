@@ -1,0 +1,81 @@
+{
+  "date_utc": "2026-11-09",
+  "result": "passed",
+  "client": "Codex CLI 0.151.0 app-server with explicit installed skill input",
+  "server_candidate_revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+  "server_binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "prior_package_replay": "docs/evidence/native-active-http-missing-lf-eof-2026-11-09.json",
+  "reproduction": "umask 077; OUTBOUND_GUARD_CLIENT_FRAME_EOF=active OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 OUTBOUND_GUARD_PACKET_ARCHIVE=ABSOLUTE_PRIVATE_DIRECTORY/native-codex-active-http-eof-2026-11-09.pcap python3 tools/client_cancellation_probe.py codex PACKAGE_BINARY SKILL_ZIP",
+  "observations": {
+    "native_skill_discovered": true,
+    "native_skill_invoked": null,
+    "native_mcp_tool_starts_through_turn_completion": 1,
+    "approved_http_hits": [
+      "/cancel-silent-body"
+    ],
+    "active_call_reply": false,
+    "incomplete_frame_reply": false,
+    "server_rejected_missing_lf": true,
+    "active_http_socket_closed": true,
+    "private_dns_queries": 0,
+    "native_turn_completed": true
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-codex-active-http-eof-2026-11-09.pcap",
+  "pcap_sha256": "175b6c8ba2d5692ebf46c7b8ce93b0f65a7132afd63f6431a7b80f5d9bed1d89",
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "tcp_syn_count": 1,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "dns_query_count": 3,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "eof_approved_http_requests": [
+      [
+        "allowed.test",
+        "/cancel-silent-body"
+      ]
+    ],
+    "eof_active_close": {
+      "response_data_before_client_close": true,
+      "client_close_count": 1
+    },
+    "packet_count": 17,
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0,
+    "pcap_sha256": "175b6c8ba2d5692ebf46c7b8ce93b0f65a7132afd63f6431a7b80f5d9bed1d89",
+    "raw_pcap_retained": true
+  },
+  "packet_verifier": {
+    "active_close": {
+      "client_close_count": 1,
+      "response_data_before_client_close": true
+    },
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 3,
+    "http_requests": [
+      [
+        "allowed.test",
+        "/cancel-silent-body"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scenario": "eof-active",
+    "scope": "fixture namespace only",
+    "tcp_syn_count": 1
+  },
+  "limits": "The bridge, not the native client, generated malformed MCP bytes. The capture sees only the controlled fixture namespace: one approved HTTP SYN and request, server response data, and a subsequent client FIN on that stream. It cannot itself prove parser rejection, no MCP reply, no native retry, or host-client/other-tool behavior; those are separate process/transcript checks from this replay and the prior installed-package evidence. This is not general MCP conformance, official candidate readiness, or evidence for any AI Scraping Defense repository. The prior package upgrade reused identical executable bytes; owner self-review and residual-risk acceptance remain open."
+}
