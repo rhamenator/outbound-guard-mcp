@@ -1,0 +1,114 @@
+{
+  "clients": {
+    "claude": "2.1.319 (Claude Code)",
+    "codex": "codex-cli 0.151.0"
+  },
+  "current_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "6e91bdd537c35085b3f25c845f3649186686f45d2400969ef8d9ce9f1e079d92",
+    "package_sha256": "f22b60c32fe476142eb08bb9f78ca72ca46d2c1c0f68e60b4a48f02066aabb5d",
+    "revision": "3e5983fc2fd1bfc252b2a274d9368ed6cd3e1370",
+    "version": "0.1.0~candidate.319+g3e5983fc2fd1"
+  },
+  "date_utc": "2026-11-09",
+  "limitations": [
+    "The old package received only a direct stdio loopback-denial smoke call before upgrade; native-client adversarial calls ran on the new package.",
+    "The upgrade changes executable bytes, but this test does not exercise saved configuration migration, other platforms, or rollbacks.",
+    "Captures cover the disposable fixture namespace after upgrade only, not host-client traffic or other tools.",
+    "Finite forged-ID responses do not prove DNS spoofing resistance across all resolver implementations or timing conditions.",
+    "The 12-second recovery gap is injected by the bridge so the unanswered OS resolver worker can finish; native clients did not naturally wait.",
+    "No official release candidate or independent human review is claimed."
+  ],
+  "platform": "Debian 12 amd64 disposable container joined to route-free fixture namespace; native clients on Ubuntu host",
+  "previous_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "61c873596119ec86eeb171fc40e4f1a1bd9bd2803e42fed70aa4792e850dff74",
+    "package_sha256": "11bd3b2149f78477525e6756b3030e31c98a194fd455769af0645970d095ca3d",
+    "revision": "6c7ecceed02506e72df1ae5a37d40005c4976e90",
+    "version": "0.1.0~candidate.308+g6c7ecceed025"
+  },
+  "runs": {
+    "claude": {
+      "capture_path": "tests/fixtures/packet-capture/native-claude-dns-spoof-id-upgrade-2026-11-09.pcap",
+      "capture_sha256": "0842a518b2abd6aaf2d1a9841407826d4ccece1490d87f992d869f497529ffe5",
+      "container_memory_peak_bytes": 20688896,
+      "dns_pairs": {
+        "all_ids_mismatched": true,
+        "forged_response_count": 2,
+        "query_count": 2
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "install_remove_residue_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "forged_transaction_id_dns_denial",
+        "approved_recovery_after_dns_failure",
+        "fixture_namespace_dns_id_and_tcp_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "memory_limit_mib": 128,
+      "native_turn_or_skill_completed": true,
+      "packet_count": 43,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_TIMEOUT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_sampled_rss_kib": 3932,
+      "skill_loaded": true,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ]
+    },
+    "codex": {
+      "capture_path": "tests/fixtures/packet-capture/native-codex-dns-spoof-id-upgrade-2026-11-09.pcap",
+      "capture_sha256": "da35de099626f0e09185825480f643a36a9cf237bbf6becb41097d771d718df0",
+      "container_memory_peak_bytes": 20840448,
+      "dns_pairs": {
+        "all_ids_mismatched": true,
+        "forged_response_count": 2,
+        "query_count": 2
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "install_remove_residue_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "package_upgrade",
+        "old_package_launch_and_loopback_denial",
+        "native_skill_and_guarded_calls",
+        "forged_transaction_id_dns_denial",
+        "approved_recovery_after_dns_failure",
+        "fixture_namespace_dns_id_and_tcp_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "memory_limit_mib": 128,
+      "native_turn_or_skill_completed": true,
+      "packet_count": 43,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_TIMEOUT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_sampled_rss_kib": 4012,
+      "skill_loaded": true,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ]
+    }
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_revision": "3e5983fc2fd1bfc252b2a274d9368ed6cd3e1370"
+}
