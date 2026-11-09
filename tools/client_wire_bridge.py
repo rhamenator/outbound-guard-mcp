@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Private helper: transparently forward MCP; log only method/ID/rule metadata."""
+"""Private helper: forward MCP and log metadata; delay spoof-test recovery."""
 import sys,subprocess,threading,json,time,pathlib,queue
 from client_wire_url_class import fixture_url_class
 assert len(sys.argv) in (4,5,6)
 ns,binary,log=sys.argv[1:4]
 hosts=sys.argv[4] if len(sys.argv)>=5 else 'allowed.test'
-assert hosts in ('allowed.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,truncated-mixed-v6.test','allowed.test,fallback-pin.test','allowed.test,syn-stall.test','allowed.test,many-answers.test','allowed.test,dns-limit-16.test,dns-limit-17.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
+assert hosts in ('allowed.test','allowed.test,spoof-id.test','allowed.test,private.test','allowed.test,truncated.test','allowed.test,truncated-private.test','allowed.test,truncated-mixed-v6.test','allowed.test,fallback-pin.test','allowed.test,syn-stall.test','allowed.test,many-answers.test','allowed.test,dns-limit-16.test,dns-limit-17.test','allowed.test,tls-handshake.test','allowed.test,private.test,alias-private.test,mixed.test,metadata.test,loop-dns.test','allowed.test,exfil.test','allowed.test,rebind.test')
 mutation=sys.argv[5] if len(sys.argv)==6 else None
 assert mutation in (None,'mutate','mutate-eof','mutate-eof-active','inject-arguments','active-proxy','queue-saturate')
 mutant_enabled=mutation=='mutate'
@@ -80,6 +80,7 @@ t=threading.Thread(target=outgoing,daemon=True);t.start()
 try:
  mutant_sent=False
  eof_calls=0
+ spoof_calls=0
  for line in sys.stdin.buffer:
   if eof_enabled:
    try:
@@ -178,6 +179,14 @@ try:
       p.stdin.write(payload)
      record_event('arguments_injected')
     p.stdin.flush()
+  if hosts=='allowed.test,spoof-id.test':
+   try:spoof_call=json.loads(line).get('method')=='tools/call'
+   except ValueError:spoof_call=False
+   if spoof_call:
+    spoof_calls+=1
+    if spoof_calls==3:
+     record_event('spoof_recovery_delayed_12s')
+     time.sleep(12)  # Let the OS resolver finish its unanswered transaction.
   record('in',line);p.stdin.write(line);p.stdin.flush()
 finally:
  if not p.stdin.closed:p.stdin.close()

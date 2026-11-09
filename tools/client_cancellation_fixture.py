@@ -85,6 +85,7 @@ last_fallback=None
 last_tls_handshake=None
 last_tls_sni=None
 last_tcp_dns=None
+last_spoofed_ids=None
 while True:
  hits=list(HTTP.hits)
  if hits!=last_hits:
@@ -120,6 +121,10 @@ while True:
  if tcp_dns_queries!=last_tcp_dns:
   snapshot('dns-tcp.json',tcp_dns_queries)
   last_tcp_dns=list(tcp_dns_queries)
+ spoofed_ids=list(DNS.spoofed_ids)
+ if spoofed_ids!=last_spoofed_ids:
+  snapshot('dns-spoof.json',spoofed_ids)
+  last_spoofed_ids=spoofed_ids
  if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
  if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
  if (root/'reset-cancel').exists():

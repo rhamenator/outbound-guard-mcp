@@ -1,0 +1,106 @@
+{
+  "clients": {
+    "claude": "2.1.319 (Claude Code)",
+    "codex": "codex-cli 0.151.0"
+  },
+  "date_utc": "2026-11-09",
+  "initial_codex_observation": {
+    "interpretation": "The immediately following approved call was denied while the bounded OS resolver worker remained live. The replay now delays that call in its bridge for 12 seconds to test same-process recovery.",
+    "rules": [
+      "EGRESS_ALLOWED",
+      "EGRESS_DNS_TIMEOUT",
+      "EGRESS_DNS_BUSY"
+    ]
+  },
+  "limitations": [
+    "Captures cover the disposable fixture namespace only, not the host client network or other tools.",
+    "Finite forged-ID responses do not prove DNS spoofing resistance across all resolver implementations or timing conditions.",
+    "Clean install, native guarded calls, package remove and residue checks were exercised; this run did not test upgrade or other operating systems.",
+    "The 12-second recovery gap is intentionally injected by the replay bridge, not evidence that a native client naturally waits.",
+    "No official release candidate or independent human review is claimed."
+  ],
+  "package_sha256": "102acd87b03d30592c395d9323aefe2108ab05469bfb675155238c21bd027e92",
+  "platform": "Debian 12 amd64 disposable container joined to route-free fixture namespace; native clients on Ubuntu host",
+  "runs": {
+    "claude": {
+      "capture_path": "tests/fixtures/packet-capture/native-claude-dns-spoof-id-2026-11-09.pcap",
+      "capture_sha256": "e1b116637f7d391b36f127299d01c49ab233e095c1a779d3a9c095586f904522",
+      "container_memory_peak_bytes": 18165760,
+      "dns_pairs": {
+        "all_ids_mismatched": true,
+        "forged_response_count": 2,
+        "query_count": 2
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "install_remove_residue_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "forged_transaction_id_dns_denial",
+        "approved_recovery_after_dns_failure",
+        "fixture_namespace_dns_id_and_tcp_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "memory_limit_mib": 128,
+      "native_turn_or_skill_completed": true,
+      "packet_count": 43,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_TIMEOUT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_sampled_rss_kib": 3968,
+      "skill_loaded": true,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ]
+    },
+    "codex": {
+      "capture_path": "tests/fixtures/packet-capture/native-codex-dns-spoof-id-2026-11-09.pcap",
+      "capture_sha256": "9f389c940038a0c98f3493370ef1473b1267713aa93521c9c8543f9c2f7120b6",
+      "container_memory_peak_bytes": 18341888,
+      "dns_pairs": {
+        "all_ids_mismatched": true,
+        "forged_response_count": 2,
+        "query_count": 2
+      },
+      "fixture_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "install_remove_residue_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "forged_transaction_id_dns_denial",
+        "approved_recovery_after_dns_failure",
+        "fixture_namespace_dns_id_and_tcp_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "memory_limit_mib": 128,
+      "native_turn_or_skill_completed": true,
+      "packet_count": 43,
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_TIMEOUT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_sampled_rss_kib": 3988,
+      "skill_loaded": true,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ]
+    }
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_revision": "1d40b71f5d86f464c0c03c4ba03ffedb6399ef8a"
+}
