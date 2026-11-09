@@ -315,6 +315,11 @@ pub fn fuzz_http_wire(input: &[u8]) {
                 }
             }
             driver.abort();
+            if let Err(error) = driver.await {
+                if error.is_panic() {
+                    std::panic::resume_unwind(error.into_panic());
+                }
+            }
         });
     });
 }
