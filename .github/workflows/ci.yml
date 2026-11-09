@@ -151,12 +151,17 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8.2
       - run: cargo fmt --all -- --check
       - run: cargo test --locked
+      - name: Prove raw HTTP fuzzer reaches a valid parsed response
+        run: cargo test --locked --features policy-fuzz --lib raw_wire_oracle_tracks_strict_framing_cases_through_hyper
       - name: Verify retained HTTP framing fuzz corpus
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/http-fuzz/local-corpus.tar.gz tests/fixtures/http-fuzz/local-report.json --max-member-bytes 512
       - name: Verify retained raw HTTP wire fuzz corpus
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/local-corpus.tar.gz tests/fixtures/wire-fuzz/local-report.json --max-member-bytes 4096
+      - name: Verify retained raw HTTP framing oracle corpus
+        run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/oracle-local-corpus.tar.gz tests/fixtures/wire-fuzz/oracle-local-report.json --max-member-bytes 4096
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo clippy --lib --features policy-fuzz --locked -- -D warnings
       - run: cargo build --locked --bins --examples
       - run: python3 tools/iana_ip_policy_probe.py target/debug/examples/ip_policy_probe
       - run: python3 tools/cli_smoke.py target/debug/outbound-guard-mcp "$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"

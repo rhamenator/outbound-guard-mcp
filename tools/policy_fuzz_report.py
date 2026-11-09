@@ -25,7 +25,7 @@ scope = {
     'json': 'actual JSON response scanner versus canonical-value recursive key oracle; duplicate-key, invalid-JSON and Value-private-number collision seeds; oracle cannot classify Value parse errors; no HTTP transport or MCP client',
     'rpc': 'actual MCP dispatch/session transitions and tool validation; empty allowlist; no DNS, sockets, queues or cancellation timing',
     'http': 'parsed HTTP HeaderMap framing decision versus independent checked-decimal oracle; no raw HTTP parser, sockets, DNS, cancellation or native clients',
-    'wire': 'in-process Hyper HTTP/1 raw response parser, configured header and stream limits, framing decision and body poll; no independent semantic oracle, TCP/TLS, DNS, cancellation or native clients',
+    'wire': 'in-process Hyper HTTP/1 raw response parser with a narrow independent raw-header framing oracle, configured header limits, 4 KiB BudgetIo, and body poll; out-of-scope wire shapes have no semantic oracle; no TCP/TLS, DNS, cancellation or native clients',
 }[target]
 report = {'seed': 306373022, 'executions': int(match[1]), 'coverage_counters': int(match[2]),
           'features': int(match[3]), 'new_units_added': int(added[1]), 'corpus': corpus,
