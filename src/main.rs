@@ -69,7 +69,10 @@ fn read_frame_tracked<R: BufRead>(
             } else if too_large {
                 Ok(Frame::TooLarge)
             } else {
-                Ok(Frame::Data(data))
+                Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Input frame ended without LF delimiter",
+                ))
             };
         }
         {
@@ -108,7 +111,12 @@ pub fn fuzz_frame_stream(input: &[u8]) {
     let capacity = capacities[input.first().copied().unwrap_or(0) as usize % capacities.len()];
     let mut reader = io::BufReader::with_capacity(capacity, input);
     for expected in input.split_inclusive(|byte| *byte == b'\n') {
-        let frame = read_frame_tracked(&mut reader, &Mutex::new(None)).unwrap();
+        let result = read_frame_tracked(&mut reader, &Mutex::new(None));
+        if !expected.ends_with(b"\n") && expected.len() <= MAX_LINE {
+            assert_eq!(result.err().unwrap().kind(), io::ErrorKind::UnexpectedEof);
+            break;
+        }
+        let frame = result.unwrap();
         match frame {
             Frame::Data(actual) => {
                 assert!(expected.len() <= MAX_LINE);
@@ -1165,6 +1173,14 @@ mod tests {
         for capacity in [1, 2, 3, 7, 64, 8192, MAX_LINE + 1] {
             let mut reader = io::BufReader::with_capacity(capacity, input.as_slice());
             for (index, expected) in input.split_inclusive(|byte| *byte == b'\n').enumerate() {
+                if !expected.ends_with(b"\n") {
+                    assert_eq!(
+                        read_frame(&mut reader).err().unwrap().kind(),
+                        io::ErrorKind::UnexpectedEof,
+                        "capacity={capacity} frame={index}"
+                    );
+                    break;
+                }
                 match read_frame(&mut reader).unwrap() {
                     Frame::Data(actual) => {
                         assert!(
@@ -1183,15 +1199,21 @@ mod tests {
             }
             assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Eof));
         }
-        // EOF has no delimiter byte: exactly MAX_LINE bytes remain a valid frame.
+        // An incomplete frame at EOF is never dispatched, even when valid JSON.
         for length in [0, MAX_LINE, MAX_LINE + 1] {
             let bytes = vec![b'x'; length];
             let mut reader = io::BufReader::with_capacity(7, bytes.as_slice());
-            match read_frame(&mut reader).unwrap() {
-                Frame::Eof => assert_eq!(length, 0),
-                Frame::Data(actual) => assert_eq!(actual.len(), MAX_LINE),
-                Frame::TooLarge => assert_eq!(length, MAX_LINE + 1),
-                Frame::Busy(_) => panic!("reader produced an internal reply"),
+            if length == MAX_LINE {
+                assert_eq!(
+                    read_frame(&mut reader).err().unwrap().kind(),
+                    io::ErrorKind::UnexpectedEof
+                );
+            } else {
+                match read_frame(&mut reader).unwrap() {
+                    Frame::Eof => assert_eq!(length, 0),
+                    Frame::TooLarge => assert_eq!(length, MAX_LINE + 1),
+                    _ => panic!("unexpected frame at EOF"),
+                }
             }
             assert!(matches!(read_frame(&mut reader).unwrap(), Frame::Eof));
         }

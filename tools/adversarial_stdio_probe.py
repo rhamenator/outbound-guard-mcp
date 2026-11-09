@@ -106,8 +106,14 @@ def framing_boundary_probe(binary, env):
             if ending:
                 payload += frame({"jsonrpc":"2.0", "id":2, "method":"ping"})
             result = subprocess.run([binary], input=payload, capture_output=True,
-                                    env=env, timeout=10, check=True)
-            assert not result.stderr
+                                    env=env, timeout=10)
+            if not ending and length <= limit:
+                assert result.returncode != 0, result.returncode
+                assert result.stdout == b"", result.stdout
+                assert b"Input frame ended without LF delimiter" in result.stderr
+                decisions += 1
+                continue
+            assert result.returncode == 0 and not result.stderr, result.stderr
             replies = [json.loads(line) for line in result.stdout.splitlines()]
             assert len(replies) == (2 if ending else 1), replies
             if length <= limit:
@@ -134,7 +140,7 @@ def framing_boundary_probe(binary, env):
         assert replies[2 * index]["id"] is None
         assert replies[2 * index]["error"] == {"code":-32700, "message":"Parse error"}
         assert replies[2 * index + 1] == {"jsonrpc":"2.0", "id":100 + index, "result":{}}
-    print(f"framing boundary probe: {decisions + len(replies)} replies; LF/CRLF/EOF byte limits, "
+    print(f"framing boundary probe: {decisions + len(replies)} decisions; LF/CRLF limits and incomplete EOF closure, "
           "invalid UTF-8/control rejection and subsequent ping recovery passed")
 
 
