@@ -35,11 +35,11 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
 
     syns = rows(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0",
                 "ip.dst", "ipv6.dst", "tcp.dstport")
-    assert len(syns) == (5 if mode == "comma" else 6) and {(ipv4 or ipv6, port) for ipv4, ipv6, port in syns} == {
+    assert len(syns) == (5 if mode in ("comma", "coding") else 6) and {(ipv4 or ipv6, port) for ipv4, ipv6, port in syns} == {
         ("11.0.0.1", "80")}, syns
 
     queries = rows(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
-    assert len(queries) == (11 if mode == "comma" else 13) and all(ip == "127.0.0.1" and port == "53"
+    assert len(queries) == (11 if mode in ("comma", "coding") else 13) and all(ip == "127.0.0.1" and port == "53"
                                       for _, ip, port in queries), queries
     names = {name for name, _, _ in queries}
     assert "allowed.test" in names and names <= {"allowed.test", "1.0.0.11.in-addr.arpa"}, names
@@ -47,6 +47,8 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
     requests = rows(path, "http.request", "http.host", "http.request.uri", "tcp.stream")
     expected_paths = (["/plain", "/comma-length-equal", "/comma-length-conflict",
                        "/repeated-chunked-coding", "/plain"] if mode == "comma" else
+                      ["/plain", "/coding-mutant-0", "/coding-mutant-3",
+                       "/coding-mutant-5", "/plain"] if mode == "coding" else
                       ["/plain", "/conflict-framing", "/duplicate-length",
                        "/stacked-transfer-coding", "/duplicate-transfer-coding", "/plain"])
     assert [(host, uri) for host, uri, _ in requests] == [
@@ -67,6 +69,15 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
             "/comma-length-conflict": ([b"Content-Length: 2, 3"], b"ok"),
             "/repeated-chunked-coding": ([b"Transfer-Encoding: chunked, chunked"],
                                           b"2\r\nok\r\n0\r\n\r\n"),
+        }
+    elif mode == "coding":
+        expected_metadata = {
+            "/coding-mutant-0": ([b"Transfer-Encoding: gzip72580, chunked"],
+                                 b"2\r\nok\r\n0\r\n\r\n"),
+            "/coding-mutant-3": ([b"Transfer-Encoding: chunked;param=70025"],
+                                 b"2\r\nok\r\n0\r\n\r\n"),
+            "/coding-mutant-5": ([b"Transfer-Encoding: chunked36027"],
+                                 b"2\r\nok\r\n0\r\n\r\n"),
         }
     verified = {}
     for uri, (expected_headers, expected_body) in expected_metadata.items():
@@ -96,7 +107,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--mode", choices=("framing", "comma"), default="framing")
+    parser.add_argument("--mode", choices=("framing", "comma", "coding"), default="framing")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-framing-pcap-verify-") as directory:
