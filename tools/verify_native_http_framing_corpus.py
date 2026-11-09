@@ -16,6 +16,8 @@ CASES = (
     ("codex", "framing", "tools/verify_native_framing_http_pcap.py", "2026-11-07", ()),
     ("claude", "comma", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "comma")),
     ("codex", "comma", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "comma")),
+    ("claude", "coding", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "coding")),
+    ("codex", "coding", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "coding")),
 )
 
 
@@ -23,7 +25,7 @@ def main() -> None:
     results = []
     seen = set()
     for client, kind, verifier, date, options in CASES:
-        filename = (f"native-{client}-{kind}-http-pcap-{date}.json" if kind == "comma" else
+        filename = (f"native-{client}-{kind}-http-pcap-{date}.json" if kind in ("comma", "coding") else
                     f"native-{client}-{kind}-http-upgrade-pcap-{date}.json")
         document = json.loads((ROOT / "docs/evidence" / filename).read_text())
         assert document["result"] == "passed", filename
