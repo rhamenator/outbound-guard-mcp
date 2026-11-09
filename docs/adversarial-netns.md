@@ -125,6 +125,14 @@ SystemResolver now adds a terminal dot to the lookup name unless one is already 
 
 This is controlled Linux resolver evidence, not certification of every platform/NSS backend. Operator-controlled hosts/resolver data and CNAME handling remain OS trust boundaries; no custom resolver or DNSSEC implementation was added. The host's resolver configuration is not changed: only `/etc/netns/<disposable-name>/resolv.conf` is created and removed by the fixture. No dependencies were added.
 
+## Forged DNS transaction ID, 2026-11-09
+
+The [retained fixture record](evidence/dns-transaction-id-spoof-2026-11-09.json) adds `spoof-id.test` to the route-free resolver. For both A and AAAA questions it returns an otherwise plausible private loopback answer with the transaction ID incremented modulo 65536. It never sends a matching-ID answer. In the direct stdio MCP sequence, two forged responses were ignored, `guarded_fetch` returned `EGRESS_DNS_FAILURE` without an HTTP hit or body, and a following approved GET succeeded in the same process.
+
+The existing `strace -f -yy -e trace=network` post-DNS probe now repeats the spoof case in legacy and modern MCP sessions. Each observed two mismatched response IDs, a DNS-failure decision and no additional Internet stream socket after a positive approved TCP control. The full route-free suite passed 2,252 MCP decisions; its [compressed run log](evidence/dns-transaction-id-spoof-2026-11-09.log.gz) is retained. Reproduce with `cargo build --locked` and `bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp`. The live syscall assertions are rerun in CI, and `python3 tools/verify_dns_spoof_evidence.py` checks the retained log digest and key observations. Raw syscall traces were not retained for this local run.
+
+This finite Ubuntu glibc fixture does not establish resistance across all resolver implementations or DNS spoofing conditions. It is a direct stdio probe, not an installed native-client replay, and does not cover host-client traffic or requests sent through other tools. The four AI Scraping Defense repositories retain separate adversarial gates.
+
 ## Controlled HEAD requests
 
 Eight new HEAD fixtures cover: a normal status response with application/octet-stream and representation Content-Length, empty JSON with status 200, private-target redirect, gzip metadata, duplicate Content-Type, conflicting Content-Length/Transfer-Encoding, seventy response headers, and delayed headers. Allowed responses must contain empty body_text and untrusted_content=true. Denials must contain no body_text. The delayed-header case must fail within a seven-second aggregate probe bound. Exact method/path logs require eight HEAD requests, no GET fallback and no request to the redirect target.

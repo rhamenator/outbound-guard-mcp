@@ -90,6 +90,7 @@ RECORDS = {
     "private.test": ["127.0.0.1"],
     "alias-private.test": [],  # The CNAME branch below supplies its answer.
     "loop-dns.test": [],  # The DNS compression-loop branch supplies its answer.
+    "spoof-id.test": [],  # The forged transaction-ID branch supplies a private answer.
     "metadata.test": ["169.254.169.254"],
     "carrier.test": ["100.64.0.1"],
     "documentation.test": ["192.0.2.1"],
@@ -128,6 +129,7 @@ class DNS(socketserver.BaseRequestHandler):
     names = []
     a_names = []
     aaaa_names = []
+    spoofed_ids = []
 
     def handle(self):
         data, sock = self.request
@@ -188,6 +190,20 @@ class DNS(socketserver.BaseRequestHandler):
                      + struct.pack("!H", 0xc000 | rdata_offset))
             header = data[:2] + struct.pack("!HHHHH", 0x8180, 1, 1, 0, 0)
             sock.sendto(header + question + cname, self.client_address)
+            return
+        if name == "spoof-id.test" and qtype in (1, 28):
+            # An otherwise plausible private answer with the wrong transaction
+            # ID must be ignored by the system resolver. Never send the matching
+            # answer: acceptance would expose a resolver-spoofing failure.
+            requested = struct.unpack("!H", data[:2])[0]
+            forged = (requested + 1) & 0xffff
+            address = "127.0.0.1" if qtype == 1 else "::1"
+            family = socket.AF_INET if qtype == 1 else socket.AF_INET6
+            rdata = socket.inet_pton(family, address)
+            answer = b"\xc0\x0c" + struct.pack("!HHIH", qtype, 1, 60, len(rdata)) + rdata
+            header = struct.pack("!HHHHHH", forged, 0x8180, 1, 1, 0, 0)
+            sock.sendto(header + question + answer, self.client_address)
+            type(self).spoofed_ids.append((requested, forged, qtype))
             return
         flags = 0x8180 if name in RECORDS else 0x8183
         header = data[:2] + struct.pack("!HHHHH", flags, 1, len(addresses), 0, 0)
@@ -2147,7 +2163,8 @@ def test_connect_blackhole(binary):
 def test_post_dns_syscalls(binary):
     """DNS may use UDP/Unix sockets; denied answers must never create Internet TCP."""
     cases = ('private.test', 'mixed.test', 'metadata.test', 'carrier.test',
-             'documentation.test', 'v6-loopback.test', 'v6-private.test', 'mixed-v6.test')
+             'documentation.test', 'v6-loopback.test', 'v6-private.test',
+             'mixed-v6.test', 'spoof-id.test')
     stream = re.compile(r'socket\(AF_INET6?, SOCK_STREAM\b')
     with tempfile.TemporaryDirectory(prefix='outbound-dns-syscall-') as folder:
         for modern in (False, True):
@@ -2181,6 +2198,7 @@ def test_post_dns_syscalls(binary):
                 assert trace.stat().st_size < 2*1024*1024
                 return len(stream.findall(trace.read_text()))
             before_hits = len(HTTP.hits)
+            before_spoofs = len(DNS.spoofed_ids)
             try:
                 if not modern:
                     send('initialize', 'init', {'protocolVersion':'2025-06-18', 'capabilities':{},
@@ -2192,10 +2210,14 @@ def test_post_dns_syscalls(binary):
                 assert streams() == 1, 'positive TCP tracer control failed'
                 for index, host in enumerate(cases):
                     before_dns = len(DNS.names)
-                    assert fetch(index, host)['rule'] == 'EGRESS_FORBIDDEN_ADDRESS'
+                    expected = ('EGRESS_DNS_FAILURE' if host == 'spoof-id.test'
+                                else 'EGRESS_FORBIDDEN_ADDRESS')
+                    assert fetch(index, host)['rule'] == expected
                     assert host in DNS.names[before_dns:], 'denial did not exercise DNS'
                     assert streams() == 1, 'forbidden DNS answer reached Internet stream socket creation'
                     assert HTTP.hits[before_hits:] == ['/plain']
+                spoof_attempts = DNS.spoofed_ids[before_spoofs:]
+                assert spoof_attempts and all(a != b for a, b, _ in spoof_attempts), spoof_attempts
                 private_queries = DNS.names.count('private.test')
                 assert fetch('redirect', 'allowed.test', 'redirect')['rule'] == 'EGRESS_REDIRECT_DENIED'
                 assert DNS.names.count('private.test') == private_queries, 'redirect destination resolved'
@@ -2214,7 +2236,10 @@ def test_post_dns_syscalls(binary):
                 assert HTTP.hits[before_hits:] == ['/plain', '/redirect', '/plain']
                 send('resources/read', 'audit', {'uri':'outbound-guard://logs/audit.json'})
                 events = json.loads(receive('audit')['contents'][0]['text'])['events']
-                assert [e['rule'] for e in events] == ['EGRESS_ALLOWED'] + ['EGRESS_FORBIDDEN_ADDRESS']*len(cases) + ['EGRESS_REDIRECT_DENIED', 'EGRESS_ALLOWED', 'EGRESS_FORBIDDEN_ADDRESS']
+                assert [e['rule'] for e in events] == (['EGRESS_ALLOWED']
+                    + ['EGRESS_FORBIDDEN_ADDRESS'] * (len(cases) - 1)
+                    + ['EGRESS_DNS_FAILURE', 'EGRESS_REDIRECT_DENIED',
+                       'EGRESS_ALLOWED', 'EGRESS_FORBIDDEN_ADDRESS'])
                 child.stdin.close()
                 assert child.wait(timeout=3) == 0
                 assert not child.stdout.read() and not child.stderr.read()
@@ -2226,7 +2251,8 @@ def test_post_dns_syscalls(binary):
                     assert 'sin_port=htons(80)' in line and f'inet_addr("{address}")' in line, 'unexpected pinned destination'
                 assert 'ECONNREFUSED' in trace.read_text(), 'first fallback address did not refuse TCP'
                 print(f'post-DNS syscall {"modern" if modern else "legacy"}: {len(cases)} real-DNS '
-                      'forbidden-answer denials, zero extra Internet stream sockets; '
+                      f'forbidden-answer/spoof denials ({len(spoof_attempts)} mismatched IDs), '
+                      'zero extra Internet stream sockets; '
                       'approved TCP controls; refused address followed by pinned fallback without DNS retry; '
                       'next-call private rebinding denied; redirect not followed')
             finally:
@@ -2400,6 +2426,23 @@ def main(binary, cancellation_probe):
         assert {"dns-limit-16.test", "dns-limit-17.test"} <= set(DNS.a_names[before_names:])
         print("DNS answer-cap boundary: 16 public A records allowed, 17 denied before HTTP, "
               "approved same-process recovery")
+        before_hits = len(HTTP.hits)
+        before_spoofs = len(DNS.spoofed_ids)
+        before_queries = len(DNS.names)
+        forged, recovered = call_sequence(binary, [
+            ("spoof-id.test", "plain", "http"),
+            ("allowed.test", "plain", "http"),
+        ])
+        assert forged["rule"] == "EGRESS_DNS_FAILURE", forged
+        assert "body_text" not in forged, forged
+        assert recovered["rule"] == "EGRESS_ALLOWED", recovered
+        assert recovered["body_text"] == "fixture-ok", recovered
+        assert HTTP.hits[before_hits:] == ["/plain"], HTTP.hits[before_hits:]
+        attempts = DNS.spoofed_ids[before_spoofs:]
+        assert attempts and all(requested != sent for requested, sent, _ in attempts), attempts
+        assert "spoof-id.test" in DNS.names[before_queries:], DNS.names[before_queries:]
+        print(f"forged DNS transaction ID: {len(attempts)} mismatched private answers ignored; "
+              "EGRESS_DNS_FAILURE before HTTP; same-process approved recovery")
         before_hits = len(HTTP.hits)
         first, rebound = call_sequence(binary, [("rebind.test", "plain", "http"),
                                                 ("rebind.test", "plain", "http")])
@@ -2608,7 +2651,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1212 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1214 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()
