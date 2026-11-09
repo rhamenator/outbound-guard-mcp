@@ -90,7 +90,10 @@ active_proxy_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY')=='1'
 assert not active_proxy_mode or (tls_mode or exfil_mode), 'active proxy trap requires TLS handshake or exfiltration replay'
 slow_http_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_SLOW_HTTP')=='1'
 connect_blackhole_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_CONNECT_BLACKHOLE')=='1'
-dns_answer_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_ANSWER_LIMIT')=='1'
+dns_answer_limit_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_ANSWER_LIMIT')
+assert dns_answer_limit_variant in (None,'1','boundary'), 'unsupported DNS answer-limit replay mode'
+dns_answer_limit_mode=dns_answer_limit_variant in ('1','boundary')
+dns_boundary_mode=dns_answer_limit_variant=='boundary'
 upgrade_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE')
 assert upgrade_variant in (None,'1','interim','interim-repeat','interim-slow','headers'), 'unsupported HTTP upgrade replay mode'
 upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','headers')
@@ -237,7 +240,7 @@ if saturation_mode:bridge.extend(['allowed.test','queue-saturate'])
 if fallback_mode:bridge.append('allowed.test,fallback-pin.test')
 if tls_mode:bridge.append('allowed.test,tls-handshake.test')
 if connect_blackhole_mode:bridge.append('allowed.test,syn-stall.test')
-if dns_answer_limit_mode:bridge.append('allowed.test,many-answers.test')
+if dns_answer_limit_mode:bridge.append('allowed.test,dns-limit-16.test,dns-limit-17.test' if dns_boundary_mode else 'allowed.test,many-answers.test')
 if active_proxy_mode:bridge.append('active-proxy')
 config=root/'mcp.json';config.write_text(json.dumps({'mcpServers':{'outbound_guard':{'command':'python3','args':bridge}}}))
 (root/'.cursor').mkdir(exist_ok=True)
@@ -322,14 +325,19 @@ def summarize_packet_capture():
   # In the blackhole mode, OUTPUT drops precede tcpdump's packet tap.
   assert syn_destinations and set(syn_destinations)=={('11.0.0.1','80')}, syn_destinations
   requests=fields('http.request','http.host','http.request.uri','tcp.stream')
-  assert [(host,path) for host,path,_ in requests]==[('allowed.test','/plain')]*2, requests
+  expected_requests=([('allowed.test','/plain'),('dns-limit-16.test','/plain'),('allowed.test','/plain')]
+                     if dns_boundary_mode else [('allowed.test','/plain')]*2)
+  assert [(host,path) for host,path,_ in requests]==expected_requests, requests
   assert len({stream for _,_,stream in requests})==len(syn_destinations), (requests,syn_destinations)
   responses=fields('http.response','http.response.code')
-  assert responses==[['200']]*2, responses
+  assert responses==[['200']]*len(expected_requests), responses
   if dns_answer_limit_mode:
-   answers=fields('dns.flags.response == 1 && dns.qry.name == "many-answers.test" && dns.a','dns.a')
-   expected=','.join(f'11.0.0.{n}' for n in range(1,21))
-   assert answers==[[expected]], answers
+   counts=(16,17) if dns_boundary_mode else (20,)
+   for count in counts:
+    name=f'dns-limit-{count}.test' if dns_boundary_mode else 'many-answers.test'
+    answers=fields(f'dns.flags.response == 1 && dns.qry.name == "{name}" && dns.a','dns.a')
+    expected=','.join(f'11.0.0.{n}' for n in range(1,count+1))
+    assert answers==[[expected]], (name,answers)
  elif dns_truncated_mode:
   assert syn_destinations.count(('11.0.0.1','80'))==2, syn_destinations
   assert set(syn_destinations)<={('11.0.0.1','80'),('127.0.0.1','53')}, syn_destinations
@@ -522,7 +530,11 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS/TCP fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://syn-stall.test/plain ; GET http://allowed.test/plain . The middle host resolves to two public fixture addresses; the first SYN is deliberately dropped inside this disposable namespace. The operator approved both exact hosts. Make each call once even when the middle call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_NETWORK_FAILURE','EGRESS_ALLOWED']
    expected_methods=['GET']*3
-  if dns_answer_limit_mode:
+  if dns_boundary_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://dns-limit-16.test/plain ; GET http://dns-limit-17.test/plain ; GET http://allowed.test/plain . The second host has exactly sixteen public fixture A records and the third has seventeen. The operator approved all three exact hosts. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_DNS_ANSWER_LIMIT','EGRESS_ALLOWED']
+   expected_methods=['GET']*4
+  elif dns_answer_limit_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://many-answers.test/plain ; GET http://allowed.test/plain . The middle host returns twenty public fixture A records, above the configured sixteen-address cap. The operator approved both exact hosts. Make each call once even if the middle call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_DNS_ANSWER_LIMIT','EGRESS_ALLOWED']
    expected_methods=['GET']*3
@@ -620,7 +632,7 @@ if skill_zip:
    print(json.dumps({'probe_diagnostic':{'http_methods':[e['http_method'] for e in fetches],
     'rules':[e['rule'] for e in events if 'rule' in e]}}),flush=True)
   assert [e['http_method'] for e in fetches]==expected_methods
-  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if (attack_mode or dns_mode or exfil_mode or malformed_mode or rebind_mode or html_quarantine_mode) else [200,200])
+  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if (attack_mode or dns_mode or dns_boundary_mode or exfil_mode or malformed_mode or rebind_mode or html_quarantine_mode) else [200,200])
   if not framing_mode:
    assert [e['status_code'] for e in events if 'status_code' in e]==expected_statuses
   if attack_mode:
@@ -823,7 +835,14 @@ if skill_zip:
    blackhole_drops=sum(expr['counter']['packets'] for item in rules['nftables'] if 'rule' in item
                        for expr in item['rule']['expr'] if 'counter' in expr)
    assert blackhole_drops>0, blackhole_drops
-  if dns_answer_limit_mode:
+  if dns_boundary_mode:
+   hits=json.loads((root/'hits.json').read_text())
+   assert hits==['/plain','/plain','/plain'], hits
+   dns_names=json.loads((root/'dns-all.json').read_text())
+   assert {'dns-limit-16.test','dns-limit-17.test'} <= set(dns_names), dns_names
+   denied=[e for e in events if e.get('rule')=='EGRESS_DNS_ANSWER_LIMIT']
+   assert len(denied)==1 and denied[0].get('body_text_present') is False, denied
+  elif dns_answer_limit_mode:
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/plain','/plain'], hits
    dns_names=json.loads((root/'dns-all.json').read_text())
@@ -849,7 +868,7 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_answer_limit_mode':dns_answer_limit_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'connect_blackhole_mode':connect_blackhole_mode, 'blackhole_connect_seconds':blackhole_connect_seconds, 'blackhole_dropped_packets':blackhole_drops, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'dns_mode':dns_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_answer_limit_mode':dns_answer_limit_mode, 'dns_answer_boundary_mode':dns_boundary_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'connect_blackhole_mode':connect_blackhole_mode, 'blackhole_connect_seconds':blackhole_connect_seconds, 'blackhole_dropped_packets':blackhole_drops, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
    'fixture_hits':hits if (attack_mode or dns_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
    'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
     'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,

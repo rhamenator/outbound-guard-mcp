@@ -1,0 +1,308 @@
+{
+  "limitations": [
+    "Packet captures observe disposable fixture namespaces, not host-client or other-tool traffic.",
+    "Explicit installed-skill invocations and finite 16/17-answer fixtures do not prove automatic skill use or arbitrary resolver behavior.",
+    "Unsigned experimental Debian package is not an exact owner-approved official candidate; no package upgrade was exercised.",
+    "Other platforms, general adversarial coverage and the four separate AI Scraping Defense repository gates remain open.",
+    "Owner self-review and residual-risk acceptance remain open; no independent human review is claimed."
+  ],
+  "observed_at_utc": "2026-11-09T00:37:36.937620+00:00",
+  "package_sha256": "cd03aa3bca20197f1ecba83232867a919e178a5456eb7d6d0ab1c9147232a6ff",
+  "platform": "Disposable Debian 12 amd64 containers in route-free DNS/HTTP fixture namespaces",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_CAPTURE.pcap python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode dns-answer-boundary-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_dns_answer_limit_pcap.py RETAINED.pcap SHA256 --boundary",
+  "result": "passed",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "sixteen_public_dns_answers_allowed",
+        "seventeen_public_dns_answers_denied_before_http",
+        "approved_recovery_after_dns_denial",
+        "no_extra_tcp_connection_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "claude",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18341888,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/plain",
+        "/plain"
+      ],
+      "fixture_mode": "dns-answer-boundary-packet",
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "cd03aa3bca20197f1ecba83232867a919e178a5456eb7d6d0ab1c9147232a6ff",
+        "revision": "e60d966b1c86fbd67dcf0567cd89ed279e079360",
+        "version": "0.1.0~candidate.301+ge60d966b1c86"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 9,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 58,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 57,
+        "pcap_sha256": "ed502996b306d45ae91874f33f2717f69b9414cb9403a36f891d250cd36fbf31",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "packet_verifier": {
+        "answer_counts": {
+          "dns-limit-16.test": 16,
+          "dns-limit-17.test": 17
+        },
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test",
+          "dns-limit-16.test",
+          "dns-limit-17.test"
+        ],
+        "dns_query_count": 9,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "dns-limit-16.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "http_response_codes": [
+          "200",
+          "200",
+          "200"
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "ed502996b306d45ae91874f33f2717f69b9414cb9403a36f891d250cd36fbf31",
+        "tcp_syn_count": 3
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-dns-answer-boundary-claude-2026-11-09.pcap",
+      "pcap_sha256": "ed502996b306d45ae91874f33f2717f69b9414cb9403a36f891d250cd36fbf31",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_ANSWER_LIMIT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3920,
+        "sample_interval_ms": 50,
+        "samples": 345,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "status_codes": [
+        200,
+        200,
+        200
+      ]
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "sixteen_public_dns_answers_allowed",
+        "seventeen_public_dns_answers_denied_before_http",
+        "approved_recovery_after_dns_denial",
+        "no_extra_tcp_connection_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "codex",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17907712,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/plain",
+        "/plain"
+      ],
+      "fixture_mode": "dns-answer-boundary-packet",
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "bbed466ac746d94b78054ece850e53c2a604665c95c362e26ac51df536ae1e21",
+        "package_sha256": "cd03aa3bca20197f1ecba83232867a919e178a5456eb7d6d0ab1c9147232a6ff",
+        "revision": "e60d966b1c86fbd67dcf0567cd89ed279e079360",
+        "version": "0.1.0~candidate.301+ge60d966b1c86"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 9,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 57,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 56,
+        "pcap_sha256": "8f5cb5708fe6525ee1b049f02fe3c4ddfb604c20c8a15377f6aa10689c91cc26",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "tcp_syn_count": 3,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "packet_verifier": {
+        "answer_counts": {
+          "dns-limit-16.test": 16,
+          "dns-limit-17.test": 17
+        },
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test",
+          "dns-limit-16.test",
+          "dns-limit-17.test"
+        ],
+        "dns_query_count": 9,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "dns-limit-16.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "http_response_codes": [
+          "200",
+          "200",
+          "200"
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "8f5cb5708fe6525ee1b049f02fe3c4ddfb604c20c8a15377f6aa10689c91cc26",
+        "tcp_syn_count": 3
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-dns-answer-boundary-codex-2026-11-09.pcap",
+      "pcap_sha256": "8f5cb5708fe6525ee1b049f02fe3c4ddfb604c20c8a15377f6aa10689c91cc26",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_DNS_ANSWER_LIMIT",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3896,
+        "sample_interval_ms": 50,
+        "samples": 257,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "status_codes": [
+        200,
+        200,
+        200
+      ]
+    }
+  },
+  "scenario": "Native installed-skill exact DNS answer-cap boundary and recovery with retained packet captures",
+  "skill_zip_sha256": "33dc13c35204fcf2742179e569487bc7bbd211705fd135b32ac240b238e3323d",
+  "source_main": "e60d966b1c86fbd67dcf0567cd89ed279e079360",
+  "source_main_ci": 42537371823
+}
