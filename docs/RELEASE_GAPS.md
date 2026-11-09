@@ -4,6 +4,8 @@ Original review baseline: main `699a627ed2ccfec89e7739f9899612c5b73b9e46` (2026-
 
 The latest [trusted-main installed-client rebinding replay](evidence/exact-main-native-rebind-2026-11-09.json) tested Codex CLI 0.151.0 and Claude Code 2.1.319 separately with a checksum-verified experimental Debian package, an old-package upgrade, a 128 MiB container limit, and retained fixture-namespace packet captures. Both denied the private second DNS answer with no private TCP connection and recovered on an approved GET. The exact-main CI and CodeQL runs passed. This evidence covers those versions and fixture conditions only; it does not qualify an official candidate or other tools' traffic. The four AI Scraping Defense repositories retain [separate adversarial gates](CROSS_REPO_ADVERSARIAL_GATE.md).
 
+The [raw HTTP wire parser fuzz campaign](policy-fuzzing.md#raw-http-wire-parser-campaign-2026-11-09) adds bounded coverage-guided input to the configured in-process Hyper parser. It has no independent semantic oracle, real network or native-client path, and does not close priority 1 or the official release gate.
+
 ## Priority engineering and verification
 
 | Priority | Remaining gap | Concrete next step and completion evidence |

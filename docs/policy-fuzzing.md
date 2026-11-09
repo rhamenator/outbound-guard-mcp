@@ -1,5 +1,17 @@
 # Network-free LLVM policy fuzzing
 
+## Raw HTTP wire parser campaign (2026-11-09)
+
+The `wire_fuzz` development target feeds mutated HTTP/1 response bytes through an in-process duplex peer to the production Hyper client parser configuration, header limits, `BudgetIo` stream wrapper, response-framing decision, and body poll. Its fixed 4 KiB read budget is smaller than the guarded fetch's per-call budget. Seeds include a valid response, duplicate and conflicting framing, chunked framing, truncated body, and an interim response. Run it with `POLICY_FUZZ_TARGET=wire` and the LLVM setup below. CI runs a bounded 60-second campaign and uploads its corpus and report. No new runtime dependency is needed.
+
+The local Clang 18 campaign completed 375,754 executions in 60 seconds, reached 3,001 coverage counters and 3,066 features, and added 53 feedback-guided units. It produced no crash or timeout artifact. The [report](../tests/fixtures/wire-fuzz/local-report.json), [27-file verified corpus](../tests/fixtures/wire-fuzz/local-corpus.tar.gz), [source hashes](../tests/fixtures/wire-fuzz/local-inputs.sha256), [runtime hash](../tests/fixtures/wire-fuzz/local-runtime.sha256), [compressed log](../tests/fixtures/wire-fuzz/local-campaign.log.gz), and compiler identities are retained. The report and corpus SHA-256 values are `8cf36fc81489c28bc9a7bd85c46b7efeb2cf17def4afd69af4ecc5dd15dc428f` and `507ea1788ff94aec2f08ec5dbdbded57833a9f10b84c7d0101d859d866f777c8`.
+
+```sh
+python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/local-corpus.tar.gz tests/fixtures/wire-fuzz/local-report.json --max-member-bytes 4096
+```
+
+This target checks for panics and bounded completion, without an independent semantic oracle. It does not use TCP, TLS, DNS, native MCP clients, cancellation, or traffic sent through other tools. It cannot close the independent adversarial review or release gates. The four AI Scraping Defense repositories need their own evidence.
+
 The `http_fuzz` development target drives the same `response_framing_denial` decision used after Hyper parses a guarded response. It mutates up to two `Content-Length` and two `Transfer-Encoding` values in a `HeaderMap`, then compares the production rule with a separate checked-decimal oracle. Seeds cover the largest valid length, integer overflow, duplicate lengths, conflicting framing, `chunked`, and stacked codings. The normal build adds no dependency. CI runs a bounded 60-second campaign and retains its report and evolved corpus as a short-lived workflow artifact. To repeat locally, set `POLICY_FUZZ_TARGET=http` alongside the documented LLVM runtime and evidence-directory variables before running `tools/policy_fuzz.sh`.
 
 This target starts after raw HTTP parsing. It does not fuzz Hyper's wire parser, sockets, DNS, deadlines, cancellation or clients, and a matching decision does not prove general HTTP request-smuggling resistance. The controlled raw-wire fixtures and real-client replays remain separate evidence.

@@ -105,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [policy, frame, rpc, json, http]
+        target: [policy, frame, rpc, json, http, wire]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -153,6 +153,8 @@ jobs:
       - run: cargo test --locked
       - name: Verify retained HTTP framing fuzz corpus
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/http-fuzz/local-corpus.tar.gz tests/fixtures/http-fuzz/local-report.json --max-member-bytes 512
+      - name: Verify retained raw HTTP wire fuzz corpus
+        run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/local-corpus.tar.gz tests/fixtures/wire-fuzz/local-report.json --max-member-bytes 4096
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo build --locked --bins --examples

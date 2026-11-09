@@ -254,6 +254,71 @@ pub async fn send(
     }
 }
 
+// Development-only raw-wire parser campaign. The duplex peer is entirely in
+// process; this exercises Hyper's configured HTTP/1 parser and body framing
+// without DNS, a TCP socket, or TLS.
+#[cfg(feature = "policy-fuzz")]
+pub fn fuzz_http_wire(input: &[u8]) {
+    use http_body_util::BodyExt;
+    thread_local! {
+        static RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("fuzz runtime");
+    }
+    RUNTIME.with(|runtime| {
+        runtime.block_on(async {
+            let (mut peer, socket) = tokio::io::duplex(8192);
+            use tokio::io::AsyncWriteExt;
+            peer.write_all(input).await.expect("bounded fixture write");
+            peer.shutdown().await.expect("fixture EOF");
+            let flags = Arc::new(Flags::default());
+            let io = BudgetIo::new(socket, 4096, MAX_REQUEST_BYTES, flags);
+            let mut builder = http1::Builder::new();
+            builder
+                .max_headers(MAX_RESPONSE_HEADERS)
+                .max_buf_size(MAX_RESPONSE_HEADER_BYTES);
+            let Ok((mut sender, connection)) = builder.handshake(TokioIo::new(io)).await else {
+                return;
+            };
+            let driver = tokio::spawn(async move {
+                let _ = connection.await;
+            });
+            let request = Request::builder()
+                .uri("/")
+                .header("Host", "fixture.test")
+                .body(Empty::<Bytes>::new())
+                .expect("fixed request");
+            let parsed =
+                tokio::time::timeout(Duration::from_millis(100), sender.send_request(request))
+                    .await
+                    .expect("closed fixture response parser stalled");
+            if let Ok(mut response) = parsed {
+                if crate::response_framing_denial(response.headers()).is_none() {
+                    let mut completed = false;
+                    for _ in 0..1024 {
+                        let frame = tokio::time::timeout(
+                            Duration::from_millis(100),
+                            response.body_mut().frame(),
+                        )
+                        .await
+                        .expect("closed fixture body parser stalled");
+                        match frame {
+                            Some(Ok(_)) => continue,
+                            _ => {
+                                completed = true;
+                                break;
+                            }
+                        }
+                    }
+                    assert!(completed, "bounded fixture yielded too many body frames");
+                }
+            }
+            driver.abort();
+        });
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
