@@ -39,10 +39,14 @@ elif [ "$target" = wire ]; then
 from pathlib import Path
 import sys
 p=Path(sys.argv[1])
-(p/'valid').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok')
+(p/'valid').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok')
+(p/'other-header').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok')
 (p/'duplicate').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: 1\r\nContent-Length: 2\r\n\r\na')
+(p/'comma').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: 1, 1\r\n\r\na')
+(p/'overflow').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: 18446744073709551616\r\n\r\n')
 (p/'conflict').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n')
 (p/'chunked').write_bytes(b'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n0\r\n\r\n')
+(p/'stacked').write_bytes(b'HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n')
 (p/'truncated').write_bytes(b'HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nx')
 (p/'interim').write_bytes(b'HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n')
 SEEDS

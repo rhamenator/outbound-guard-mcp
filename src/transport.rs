@@ -254,12 +254,73 @@ pub async fn send(
     }
 }
 
+// An independent oracle for a deliberately narrow raw-wire grammar. The outer
+// Option distinguishes out-of-scope input from an expected allowed response.
+// Hyper does not participate in parsing these bytes or computing this rule.
+#[cfg(feature = "policy-fuzz")]
+fn wire_framing_expectation(input: &[u8]) -> Option<Option<&'static str>> {
+    let end = input.windows(4).position(|part| part == b"\r\n\r\n")?;
+    let header = std::str::from_utf8(&input[..end]).ok()?;
+    let mut lines = header.split("\r\n");
+    if lines.next()? != "HTTP/1.1 200 OK" {
+        return None;
+    }
+    let mut lengths = Vec::new();
+    let mut codings = Vec::new();
+    for line in lines {
+        if line.contains(['\r', '\n']) {
+            return None;
+        }
+        let (name, value) = line.split_once(':')?;
+        let value = value.trim_matches([' ', '\t']);
+        if !value
+            .bytes()
+            .all(|byte| byte.is_ascii_graphic() || byte == b' ' || byte == b'\t')
+        {
+            return None;
+        }
+        if name.eq_ignore_ascii_case("Content-Length") {
+            lengths.push(value);
+        } else if name.eq_ignore_ascii_case("Transfer-Encoding") {
+            codings.push(value);
+        } else {
+            return None;
+        }
+    }
+    if lengths.len() > 1 || (!lengths.is_empty() && !codings.is_empty()) {
+        return Some(Some("EGRESS_INVALID_FRAMING"));
+    }
+    if lengths.first().is_some_and(|value| {
+        value.is_empty()
+            || value
+                .bytes()
+                .try_fold(0u64, |n, byte| {
+                    if !byte.is_ascii_digit() {
+                        return None;
+                    }
+                    n.checked_mul(10)?.checked_add(u64::from(byte - b'0'))
+                })
+                .is_none()
+    }) {
+        return Some(Some("EGRESS_INVALID_FRAMING"));
+    }
+    if codings.len() > 1
+        || codings
+            .first()
+            .is_some_and(|value| !value.eq_ignore_ascii_case("chunked"))
+    {
+        return Some(Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"));
+    }
+    Some(None)
+}
+
 // Development-only raw-wire parser campaign. The duplex peer is entirely in
 // process; this exercises Hyper's configured HTTP/1 parser and body framing
 // without DNS, a TCP socket, or TLS.
 #[cfg(feature = "policy-fuzz")]
-pub fn fuzz_http_wire(input: &[u8]) {
+pub fn fuzz_http_wire(input: &[u8]) -> bool {
     use http_body_util::BodyExt;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     thread_local! {
         static RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -268,10 +329,27 @@ pub fn fuzz_http_wire(input: &[u8]) {
     }
     RUNTIME.with(|runtime| {
         runtime.block_on(async {
+            let expected = wire_framing_expectation(input);
             let (mut peer, socket) = tokio::io::duplex(8192);
-            use tokio::io::AsyncWriteExt;
-            peer.write_all(input).await.expect("bounded fixture write");
-            peer.shutdown().await.expect("fixture EOF");
+            let wire = input.to_vec();
+            let peer_task = tokio::spawn(async move {
+                let mut request = Vec::new();
+                let mut chunk = [0u8; 1024];
+                loop {
+                    let count = peer.read(&mut chunk).await.expect("fixture request read");
+                    assert!(count != 0, "fixture request closed before headers");
+                    request.extend_from_slice(&chunk[..count]);
+                    assert!(
+                        request.len() <= MAX_REQUEST_BYTES,
+                        "fixture request over budget"
+                    );
+                    if request.windows(4).any(|part| part == b"\r\n\r\n") {
+                        break;
+                    }
+                }
+                peer.write_all(&wire).await.expect("bounded fixture write");
+                peer.shutdown().await.expect("fixture EOF");
+            });
             let flags = Arc::new(Flags::default());
             let io = BudgetIo::new(socket, 4096, MAX_REQUEST_BYTES, flags);
             let mut builder = http1::Builder::new();
@@ -279,7 +357,13 @@ pub fn fuzz_http_wire(input: &[u8]) {
                 .max_headers(MAX_RESPONSE_HEADERS)
                 .max_buf_size(MAX_RESPONSE_HEADER_BYTES);
             let Ok((mut sender, connection)) = builder.handshake(TokioIo::new(io)).await else {
-                return;
+                peer_task.abort();
+                if let Err(error) = peer_task.await {
+                    if error.is_panic() {
+                        std::panic::resume_unwind(error.into_panic());
+                    }
+                }
+                return false;
             };
             let driver = tokio::spawn(async move {
                 let _ = connection.await;
@@ -293,8 +377,13 @@ pub fn fuzz_http_wire(input: &[u8]) {
                 tokio::time::timeout(Duration::from_millis(100), sender.send_request(request))
                     .await
                     .expect("closed fixture response parser stalled");
+            let accepted = parsed.is_ok();
             if let Ok(mut response) = parsed {
-                if crate::response_framing_denial(response.headers()).is_none() {
+                let actual = crate::response_framing_denial(response.headers());
+                if let Some(expected) = expected {
+                    assert_eq!(actual.as_ref().map(|denial| denial.rule), expected);
+                }
+                if actual.is_none() {
                     let mut completed = false;
                     for _ in 0..1024 {
                         let frame = tokio::time::timeout(
@@ -320,14 +409,45 @@ pub fn fuzz_http_wire(input: &[u8]) {
                     std::panic::resume_unwind(error.into_panic());
                 }
             }
-        });
-    });
+            peer_task.abort();
+            if let Err(error) = peer_task.await {
+                if error.is_panic() {
+                    std::panic::resume_unwind(error.into_panic());
+                }
+            }
+            accepted
+        })
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[cfg(feature = "policy-fuzz")]
+    #[test]
+    fn raw_wire_oracle_tracks_strict_framing_cases_through_hyper() {
+        let cases: &[(&[u8], Option<Option<&str>>)] = &[
+            (b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 200 OK\r\nContent-Length: 1, 1\r\n\r\na", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\nContent-Length: 1\r\n\r\na", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n", Some(Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"))),
+            (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 200 OK\r\nX-Other: 1\r\n\r\n", None),
+        ];
+        for (wire, expected) in cases {
+            assert_eq!(wire_framing_expectation(wire), *expected);
+            let accepted = fuzz_http_wire(wire);
+            if *expected == Some(None) {
+                assert!(
+                    accepted,
+                    "valid framing control must reach Hyper response: {wire:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn stream_read_budget_stops_before_consuming_excess_bytes() {

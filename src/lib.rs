@@ -980,9 +980,7 @@ pub fn fuzz_response_framing(input: &[u8]) {
     for value in &te_values {
         headers.append(header::TRANSFER_ENCODING, value.clone());
     }
-    let expected = if cl_values.len() > 1 || (!cl_values.is_empty() && !te_values.is_empty()) {
-        Some("EGRESS_INVALID_FRAMING")
-    } else if cl_values.first().is_some_and(|value| {
+    let invalid_length = cl_values.first().is_some_and(|value| {
         let bytes = value.as_bytes();
         bytes.is_empty()
             || bytes.iter().any(|byte| !byte.is_ascii_digit())
@@ -992,7 +990,11 @@ pub fn fuzz_response_framing(input: &[u8]) {
                     n.checked_mul(10)?.checked_add(u64::from(*byte - b'0'))
                 })
                 .is_none()
-    }) {
+    });
+    let expected = if cl_values.len() > 1
+        || (!cl_values.is_empty() && !te_values.is_empty())
+        || invalid_length
+    {
         Some("EGRESS_INVALID_FRAMING")
     } else if te_values.len() > 1
         || te_values
