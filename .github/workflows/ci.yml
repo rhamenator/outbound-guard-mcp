@@ -34,7 +34,7 @@ jobs:
         run: python3 tools/verify_native_dns_boundary_corpus.py
       - name: Recheck native synthetic-exfiltration packet evidence
         run: python3 tools/verify_native_exfil_corpus.py
-      - name: Recheck native missing-LF EOF packet evidence
+      - name: Recheck native Codex and Claude missing-LF EOF captures
         run: python3 tools/verify_native_eof_corpus.py
   sdk-audit:
     name: Locked ${{ matrix.probe.name }} npm audit
