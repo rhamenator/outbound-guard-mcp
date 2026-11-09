@@ -594,9 +594,15 @@ if skill_zip:
     time.sleep(.05)
    else:raise AssertionError('native client did not finish after the server rejected EOF')
    assert completed[0]['status']=='completed', 'native client turn failed after EOF'
+   native_calls=[m['params']['item'] for m in messages
+    if m.get('method')=='item/started' and m.get('params',{}).get('item',{}).get('type')=='mcpToolCall']
+   assert len(native_calls)==2, 'native client retried a tool call after EOF'
+   assert len({call['id'] for call in native_calls})==2, 'native client tool call IDs were duplicated'
+   assert all(call.get('server')=='outbound_guard' and call.get('tool')=='guarded_fetch'
+    for call in native_calls), 'native client used another MCP tool'
    events=[json.loads(line) for line in (root/'wire.jsonl').read_text().splitlines()]
    assert [e.get('rule') for e in events if 'rule' in e]==['EGRESS_ALLOWED'], events
-   assert len([e for e in events if e.get('method')=='tools/call'])==2, 'native client retried a tool call'
+   assert len([e for e in events if e.get('method')=='tools/call'])==2, 'bridge observed unexpected tool calls'
    assert json.loads((root/'hits.json').read_text())==['/plain'], 'unexpected HTTP request after EOF'
    assert 'private.test' not in json.loads((root/'dns.json').read_text()), 'private DNS query after EOF'
    print(json.dumps({'client':'codex','native_skill_discovered':True,'explicit_skill_input_accepted':True,

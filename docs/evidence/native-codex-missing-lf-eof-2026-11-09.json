@@ -20,6 +20,7 @@
     "native_skill_discovered": true,
     "native_turn_completed": true,
     "native_tool_calls_before_bridge_replacement": 2,
+    "native_mcp_tool_starts_through_turn_completion": 2,
     "approved_first_rule": "EGRESS_ALLOWED",
     "approved_http_hits": ["/plain"],
     "server_nonzero_exit": true,
