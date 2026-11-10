@@ -118,7 +118,11 @@ upgrade_mode=upgrade_variant in ('1','interim','interim-repeat','interim-slow','
 interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 interim_slow_mode=upgrade_variant=='interim-slow'
-assert not packet_capture_requested or (dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode or frame_eof_mode), 'packet capture requires an explicit adversarial native replay'
+control_packet_capture=(packet_capture_requested and
+                        os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE')=='headers' and
+                        os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES')=='3' and
+                        not skill_zip and sys.argv[1] in ('codex','claude'))
+assert not packet_capture_requested or (dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode or frame_eof_mode or control_packet_capture), 'packet capture requires an explicit adversarial native replay'
 upgrade_headers_mode=upgrade_variant=='headers'
 html_quarantine_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE')=='1'
 saturation_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_QUEUE_SATURATION')=='1'
@@ -481,6 +485,26 @@ def summarize_packet_capture():
          'unexpected_tcp_connection_attempts':0,
          'pcap_sha256':hashlib.sha256(capture_path.read_bytes()).hexdigest(),
          'raw_pcap_retained':bool(packet_archive)}
+def summarize_control_packet_capture():
+ assert control_packet_capture and packet_capture is not None and packet_capture.poll() is None
+ assert tcpdump_pid is not None, 'control capture PID missing'
+ # Keep the raw capture for a separate request/FIN timing oracle; do not
+ # infer a client cancellation notification from socket closure alone.
+ time.sleep(1.2)  # Let the final HEAD response and libpcap output drain.
+ subprocess.run(['sudo','-n','aa-exec','-p','tcpdump','/usr/bin/kill','-INT',str(tcpdump_pid)],check=True)
+ packet_capture.wait(timeout=5)
+ size=capture_path.stat().st_size
+ assert 24<size<=1024*1024, 'control capture outside fixture size limit'
+ if packet_archive:
+  destination=pathlib.Path(packet_archive)
+  assert destination.is_absolute() and destination.suffix=='.pcap', 'archive must be an absolute .pcap path'
+  parent=destination.parent;parent_stat=parent.stat()
+  assert parent.is_dir() and parent_stat.st_uid==os.getuid() and parent_stat.st_mode & 0o077==0, 'archive directory must be private and owned by the caller'
+  with os.fdopen(os.open(destination,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as archived:
+   with capture_path.open('rb') as source:shutil.copyfileobj(source,archived)
+ return {'pcap_sha256':hashlib.sha256(capture_path.read_bytes()).hexdigest(),
+         'bytes':size,'raw_pcap_retained':bool(packet_archive),
+         'scope':'fixture network namespace only; not native client transport or other tools'}
 if skill_zip:
  try:
   skill_prompt='First invoke the outbound-guard skill using the Skill tool. Follow its instructions for this controlled fixture: use guarded_fetch to GET http://127.0.0.1/ once, GET http://allowed.test/plain once and HEAD http://allowed.test/head-ok once, in that order. The operator already approved allowed.test and installed the server. Use no other tools; report actual results.'
@@ -1269,6 +1293,7 @@ try:
  for cycle in range(2,cancel_cycles+1):
   if name=='claude':assert any(m.get('type')=='control_response' and m.get('response',{}).get('request_id')==f'interrupt-probe-{cycle}' and m['response'].get('subtype')=='success' for m in messages), f'client interruption {cycle} not acknowledged'
   else:assert any(m.get('method')=='turn/completed' and m.get('params',{}).get('turn',{}).get('id')==repeated_turns[cycle-2] and m['params']['turn'].get('status')=='interrupted' for m in messages), f'client interruption {cycle} not acknowledged'
+ control_packet_summary=summarize_control_packet_capture() if control_packet_capture else None
  report={'client':name,'binary_sha256':hashlib.sha256(pathlib.Path(binary).read_bytes()).hexdigest(),
          'cancel_phase':cancel_phase,
          'cancel_cycles':cancel_cycles,'socket_closed_after_each_seconds':close_times,
@@ -1280,6 +1305,7 @@ try:
          'status_codes':[e['status_code'] for e in events if 'status_code' in e],
          'fetches':len(fetches),'socket_closed_after_seconds':closed_after,
          'recovery_allowed':True,'rules':[e['rule'] for e in events if 'rule' in e],
+         'packet_capture':control_packet_summary,
          'scope':'client control API, not desktop or terminal UI; no saturated input queue'}
  print(json.dumps(report),flush=True)
 finally:

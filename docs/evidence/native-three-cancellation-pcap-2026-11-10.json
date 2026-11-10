@@ -1,0 +1,318 @@
+{
+  "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+  "date_utc": "2026-11-10",
+  "fixture": "route-free Linux network namespace; local DNS 127.0.0.1:53 and HTTP 11.0.0.1:80; three interrupted silent-header GETs alternating with approved GETs, then approved HEAD",
+  "harness_sha256": {
+    "tools/client_cancellation_probe.py": "9b2921f9c0844513c27782165ba237721732cbca27af509918422c68bfb5e4a1",
+    "tools/debian_native_container_probe.py": "1eca7e025cab198168d7de794499d39da0cf709c9c189948ddc0f557151d094a",
+    "tools/verify_native_cancel_pcap.py": "bd32b5f3b164fdf62d945d3a4d86cfd1a5e4357913c63bf5333bb3d443df1b52"
+  },
+  "limitations": [
+    "Finite fixture-namespace TCP/HTTP/DNS capture; no visibility into native-client MCP cancellation delivery or traffic through other tools.",
+    "Explicit native client API calls, not UI actions or automatic tool selection.",
+    "Checksum-verified unsigned experimental Debian amd64 package; skill ZIP checked but not loaded in this control replay; no package upgrade.",
+    "Other clients, supported platforms, DNS implementations, and four AI Scraping Defense repositories require separate evidence; owner release acceptance remains open."
+  ],
+  "package_sha256": "aceca10372aba3824847c2a140c85ac0b5b860a9b32433dd373f257249cd6d11",
+  "package_version": "0.1.0~candidate.340+g224ef474135b",
+  "runs": {
+    "claude": {
+      "capture": "tests/fixtures/packet-capture/native-claude-three-cancel-current-2026-11-10.pcap",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "matching_mcp_cancel_and_socket_close",
+        "repeated_same_process_cancel_recovery_cycles",
+        "fixture_namespace_control_packet_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control_result": {
+        "binary_sha256": "2e5d74559f39dc1cbe8c2ab9befcdd7713ebf67067f15fda87b6a259ab0b40d7",
+        "cancel_cycles": 3,
+        "cancel_notifications": 3,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": false,
+        "client": "claude",
+        "client_control_acknowledged": true,
+        "control_path": "stream-json interrupt",
+        "fetches": 8,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": true,
+        "packet_capture": {
+          "bytes": 10752,
+          "pcap_sha256": "12bd1fed530d187c7f1caf4a4861a2bf9670e1a20b5954a20f06dd69988d9c55",
+          "raw_pcap_retained": true,
+          "scope": "fixture network namespace only; not native client transport or other tools"
+        },
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_each_seconds": [
+          0.061,
+          0.02,
+          0.061
+        ],
+        "socket_closed_after_seconds": 0.061,
+        "status_codes": [
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17932288,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "packet_analysis": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 15,
+        "held_request_to_client_close_seconds": [
+          0.052413,
+          0.026131,
+          0.052221
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "http_requests": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_statuses": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture network namespace TCP/HTTP/DNS only; MCP cancellation delivery is not visible in this capture",
+        "sha256": "12bd1fed530d187c7f1caf4a4861a2bf9670e1a20b5954a20f06dd69988d9c55",
+        "tcp_syn_count": 7
+      },
+      "pcap_bytes": 10752,
+      "pcap_sha256": "12bd1fed530d187c7f1caf4a4861a2bf9670e1a20b5954a20f06dd69988d9c55",
+      "result": "passed",
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3940,
+        "sample_interval_ms": 50,
+        "samples": 417,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "capture": "tests/fixtures/packet-capture/native-codex-three-cancel-current-2026-11-10.pcap",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "missing_mcp_cancel_server_timeout_and_socket_close",
+        "repeated_same_process_cancel_recovery_cycles",
+        "fixture_namespace_control_packet_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control_result": {
+        "binary_sha256": "59013ee2e118bf3824ca28cbc7f82f67a504cabe4d57f00c196320b3e586a14f",
+        "cancel_cycles": 3,
+        "cancel_notifications": 0,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": true,
+        "client": "codex",
+        "client_control_acknowledged": true,
+        "control_path": "app-server turn/interrupt",
+        "fetches": 8,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": false,
+        "packet_capture": {
+          "bytes": 11016,
+          "pcap_sha256": "20ba19fef1f5518db43a03db415fb9c6ba845011b3519bb4ce5e4455a66de72d",
+          "raw_pcap_retained": true,
+          "scope": "fixture network namespace only; not native client transport or other tools"
+        },
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_each_seconds": [
+          2.999,
+          2.999,
+          2.999
+        ],
+        "socket_closed_after_seconds": 2.999,
+        "status_codes": [
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "client_version": "codex-cli 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18149376,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "packet_analysis": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 15,
+        "held_request_to_client_close_seconds": [
+          3.001091,
+          3.001708,
+          3.001018
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "http_requests": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_statuses": [
+          200,
+          200,
+          200,
+          200
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture network namespace TCP/HTTP/DNS only; MCP cancellation delivery is not visible in this capture",
+        "sha256": "20ba19fef1f5518db43a03db415fb9c6ba845011b3519bb4ce5e4455a66de72d",
+        "tcp_syn_count": 7
+      },
+      "pcap_bytes": 11016,
+      "pcap_sha256": "20ba19fef1f5518db43a03db415fb9c6ba845011b3519bb4ce5e4455a66de72d",
+      "result": "passed",
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3936,
+        "sample_interval_ms": 50,
+        "samples": 1024,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42838977522",
+  "source_main_sha": "224ef474135b5298dd8a4d6656ee7d797ef55ea6"
+}

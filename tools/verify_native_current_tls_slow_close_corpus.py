@@ -26,7 +26,10 @@ def main() -> None:
     assert evidence["skill_zip_sha256"] == "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
     assert evidence["oracle_limits_seconds"] == {"/drip": 4.25, "/delayed": 3.25}
     for name, digest in evidence["harness_sha256"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        # Verify the immutable bytes actually used by this recorded main build.
+        historical = subprocess.check_output(
+            ["git", "show", f"{evidence['source_main_sha']}:{name}"], cwd=ROOT, timeout=10)
+        assert hashlib.sha256(historical).hexdigest() == digest, name
     for client in ("codex", "claude"):
         run = evidence["runs"][client]
         assert run["client_version"] == ("codex-cli 0.151.0" if client == "codex"
