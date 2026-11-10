@@ -1,0 +1,29 @@
+{
+  "result": "passed",
+  "source_main_commit": "ab3bc1f6839ba70dae9d44fa1df0df6d4848d0e8",
+  "source_captures": [
+    {
+      "client": "Claude Code 2.1.319",
+      "path": "tests/fixtures/packet-capture/native-claude-bombs-http-2026-11-10.pcap",
+      "sha256": "86934cdf0b455156b25a10c91c0657030dcf7d1a61ca37dcd8033a49fb374172"
+    },
+    {
+      "client": "Codex CLI 0.151.0",
+      "path": "tests/fixtures/packet-capture/native-codex-bombs-http-2026-11-10.pcap",
+      "sha256": "b0b4c3249b24dd460d193eaf5f59ba289f80d0f3c3129db9edcd5b3a2f9fc412"
+    }
+  ],
+  "checks_per_capture": [
+    "Wrong SHA-256 is rejected before wire inspection.",
+    "A fixture SYN destination changed to 169.254.169.254 is rejected by the destination oracle even when its new SHA-256 is supplied.",
+    "A gzip compression-method byte changed from 8 to 9 is rejected by the offline decoder even when its new SHA-256 is supplied."
+  ],
+  "reproduction": "python3 tools/verify_native_bomb_oracle_negative_controls.py",
+  "scope": "Local mutations of retained fixture-namespace captures; no packets are sent to 169.254.169.254.",
+  "limitations": [
+    "This validates three failure paths in the independent capture oracle. It does not rerun either native client or the Outbound Guard binary.",
+    "Mutated packets are test artifacts under a temporary directory, not real host-client or other-tool traffic.",
+    "The product rejects encoded responses before decompression; this does not establish safe accepted decompression.",
+    "Official-candidate gates and each AI Scraping Defense repository's separate adversarial gate remain open."
+  ]
+}
