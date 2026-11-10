@@ -335,6 +335,8 @@ The [redacted transfer-coding record](evidence/transfer-coding-property-corpus-2
 
 The [redacted early-close record](evidence/unsupported-transfer-coding-early-close-2026-11-05.json) captures one controlled HTTP/1.1 response with `Transfer-Encoding: gzip999, chunked`. The fixture sends only an incomplete chunk prefix and keeps the response open for up to two seconds. A persistent MCP process must return exact `EGRESS_UNSUPPORTED_TRANSFER_CODING` within two seconds, omit body text, and close the socket before the fixture's wait expires. The probe checks process liveness at that point and makes an approved recovery GET in the same process before closing its stdin. This separates response-socket cleanup from process teardown. It does not bound every transport shutdown path or native-client behavior.
 
+The [encoded-body hold probe](evidence/encoded-response-early-close-2026-11-10.json) tests `Content-Encoding: gzip` with a declared 8 MiB body but only a three-byte gzip prefix sent. It requires `EGRESS_ENCODED_RESPONSE` before the held body can arrive, no returned body text, peer-observed socket closure, and an approved recovery call in the same process. This is a finite synthetic stdio test; it does not decode a bomb or establish native-client timing, host-client/other-tool coverage, or general shutdown bounds.
+
 This deterministic matrix broadens the prior five fixed forms. It is not a coverage-guided HTTP fuzz campaign, formal parser proof, native-client package replay, or assertion that every socket/packet was absent. The two earlier native clients and package-installed replays remain separately scoped evidence.
 
 ## Retained native DNS SSRF packet captures (2026-11-06)
