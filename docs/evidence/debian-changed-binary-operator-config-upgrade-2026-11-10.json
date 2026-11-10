@@ -1,0 +1,79 @@
+{
+  "checks": [
+    "old_install",
+    "new_upgrade",
+    "installed_binary_bytes",
+    "mcp_discovery",
+    "loopback_denial",
+    "non_ascii_url_denial",
+    "remove",
+    "residue",
+    "changed_executable_bytes",
+    "old_and_new_operator_allowlist_and_audit",
+    "saved_operator_allowlist_and_ca_valid_before_and_after_upgrade",
+    "operator_files_preserved_after_remove"
+  ],
+  "limitations": [
+    "The transition skips experimental revisions 333 through 337; it is a changed-executable continuity replay, not an adjacent upgrade from the preceding candidate.",
+    "The saved configuration is an operator-owned environment file and public CA PEM, not a server-owned configuration format.",
+    "Startup --check-config does not contact the network. The guarded allowed-host call fails DNS by design; no trusted TLS fetch or certificate-chain interoperability is proven.",
+    "The network-disabled disposable package test does not involve native MCP clients or observe other-tool traffic.",
+    "Unsigned experimental packages do not qualify an official candidate; owner self-review and residual-risk acceptance remain open.",
+    "The four AI Scraping Defense repositories require separate adversarial evidence."
+  ],
+  "negative_control": {
+    "input": "adjacent experimental revisions 336 to 337 with identical executable digest",
+    "reason": "changed executable required",
+    "result": "rejected_before_container_launch"
+  },
+  "new": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "a7ebc540b4a8fbc7ba7fe819a53b4655f9b6f08af9976d36c51d60ca6495ed40",
+    "revision": "7dcc6122c37ab31e80708d001f17f2ee0b0bf43b",
+    "version": "0.1.0~candidate.338+g7dcc6122c37a"
+  },
+  "new_source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42819602068",
+  "new_source_codeql_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42819602257",
+  "old": {
+    "app_version": "0.1.0",
+    "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+    "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+    "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+    "version": "0.1.0~candidate.332+gba75a5645e56"
+  },
+  "old_package_prior_evidence": "docs/evidence/native-held-encoded-two-phase-upgrade-2026-11-10.json",
+  "platform": "Debian 12 amd64",
+  "policy_decisions": [
+    {
+      "correlation_id": "egress-1",
+      "rule": "EGRESS_DNS_FAILURE",
+      "status": "BLOCKED"
+    },
+    {
+      "correlation_id": "egress-2",
+      "rule": "EGRESS_HOST_NOT_ALLOWED",
+      "status": "BLOCKED"
+    }
+  ],
+  "public_ca_fixture": "tests/fixtures/certs/isrg-root-x1.pem",
+  "reproduction": "python3 tools/debian_upgrade_probe.py --old OLD.deb --old-sha256 OLD_SHA --new NEW.deb --new-sha256 NEW_SHA --operator-ca tests/fixtures/certs/isrg-root-x1.pem --operator-ca-sha256 22b557a27055b33606b6559f37703928d3e4ad79f110b407d04986e1843543d1 --check-policy-compat --require-changed-binary --output RESULT.json",
+  "result": "passed",
+  "saved_config": {
+    "ca_sha256": "22b557a27055b33606b6559f37703928d3e4ad79f110b407d04986e1843543d1",
+    "new_check": {
+      "allowed_host_count": 1,
+      "network_checked": false,
+      "scope": "startup",
+      "valid": true
+    },
+    "old_check": {
+      "allowed_host_count": 1,
+      "network_checked": false,
+      "scope": "startup",
+      "valid": true
+    },
+    "settings_sha256": "171ff0a1c50673767325ea3a1ec3812104ebe4286c89b419c1eb43ca663eaa53"
+  },
+  "scenario": "saved operator-owned allowlist and public CA continuity across changed-executable experimental Debian package upgrade"
+}
