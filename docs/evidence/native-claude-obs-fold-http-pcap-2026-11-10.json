@@ -1,0 +1,157 @@
+{
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "no_upgrade",
+    "native_skill_and_guarded_calls",
+    "folded_length_denial",
+    "folded_encoding_denial",
+    "folded_connection_denial",
+    "folded_extension_denial",
+    "no_denied_body_text",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "client": "Claude Code 2.1.319",
+  "client_version_source": "Host CLI --version checked after native replay on 2026-11-10; probe used the same CLI installation.",
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 128,
+    "memory_peak_bytes": 18059264,
+    "pids_peak": 9,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "explicit_skill_input_accepted": null,
+  "fixture_hits": [
+    "/plain",
+    "/obs-fold-length",
+    "/obs-fold-encoding",
+    "/obs-fold-connection",
+    "/obs-fold-extension",
+    "/plain"
+  ],
+  "fixture_mode": "framing-http-obs-fold-packet",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limitations": [
+    "Fixture namespace only; host-client and other-tool traffic are not captured.",
+    "Four finite folded-header shapes and a 128 MiB cgroup run do not prove arbitrary parsing or exhaustion resistance.",
+    "This run tested clean install and uninstall; upgrade was not exercised.",
+    "Unsigned experimental package is not an owner-approved official candidate.",
+    "Independent human review is not claimed; four AI Scraping Defense repositories require separate evidence."
+  ],
+  "native_skill_discovered": null,
+  "native_skill_invoked": true,
+  "native_skill_loaded": true,
+  "native_turn_completed": null,
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "8115a74771396e4fa678b4a599f56ba048ae5031cf712f14c5ee64a2dabdffd7",
+    "revision": "516d192c3c713bad71240207d3f88ded929a9268",
+    "version": "0.1.0~candidate.325+g516d192c3c71"
+  },
+  "observed_at_utc": "2026-11-10T00:42:00.927298+00:00",
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "dns_query_count": 13,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "packet_count": 92,
+    "pcap_sha256": "ad187dbeda7ad98ea03db5b471a5141ee6bc7a0ed848f97e1e84e20f6d6af8d2",
+    "raw_pcap_retained": true,
+    "tcp_syn_count": 6,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0
+  },
+  "packet_verifier": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 13,
+    "framing_metadata_and_body": {
+      "/obs-fold-connection": true,
+      "/obs-fold-encoding": true,
+      "/obs-fold-extension": true,
+      "/obs-fold-length": true
+    },
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/obs-fold-length"
+      ],
+      [
+        "allowed.test",
+        "/obs-fold-encoding"
+      ],
+      [
+        "allowed.test",
+        "/obs-fold-connection"
+      ],
+      [
+        "allowed.test",
+        "/obs-fold-extension"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "ad187dbeda7ad98ea03db5b471a5141ee6bc7a0ed848f97e1e84e20f6d6af8d2",
+    "tcp_syn_count": 6
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-obs-fold-http-2026-11-10.pcap",
+  "pcap_sha256": "ad187dbeda7ad98ea03db5b471a5141ee6bc7a0ed848f97e1e84e20f6d6af8d2",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_DIR/claude.pcap python3 tools/debian_native_container_probe.py claude PACKAGE.deb PACKAGE_SHA SKILL.zip SKILL_SHA --fixture-mode framing-http-obs-fold-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_framing_http_pcap.py RETAINED.pcap SHA --mode obs-fold",
+  "result": "passed",
+  "rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_ALLOWED"
+  ],
+  "scenario": "native claude obsolete folded HTTP header denial and approved recovery",
+  "server_resource_observation": {
+    "max_sampled_fd": 3,
+    "max_sampled_rss_kib": 3896,
+    "sample_interval_ms": 50,
+    "samples": 313,
+    "scope": "Finite sampled server observations; sampling can miss transient peaks."
+  },
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "status_codes": [
+    200,
+    200
+  ]
+}
