@@ -58,8 +58,18 @@ def main():
     parser.add_argument("--new-sha256", required=True)
     parser.add_argument("--check-policy-compat", action="store_true",
                         help="Check the same operator allowlist and redacted audit before and after upgrade")
+    parser.add_argument("--operator-ca", type=Path,
+                        help="Preserve this operator-owned PEM certificate and saved environment across upgrade")
+    parser.add_argument("--operator-ca-sha256")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    assert (args.operator_ca is None) == (args.operator_ca_sha256 is None), "operator CA and digest must be paired"
+    saved_config = args.operator_ca is not None
+    assert not saved_config or args.check_policy_compat, "saved configuration replay requires policy compatibility calls"
+    operator_ca = args.operator_ca.resolve(strict=True) if saved_config else None
+    if saved_config:
+        assert re.fullmatch(r"[0-9a-f]{64}", args.operator_ca_sha256)
+        assert hashlib.sha256(operator_ca.read_bytes()).hexdigest() == args.operator_ca_sha256
     old, new = args.old.resolve(), args.new.resolve()
     before = package_info(old, args.old_sha256)
     after = package_info(new, args.new_sha256)
@@ -67,10 +77,22 @@ def main():
     subprocess.run(["dpkg", "--compare-versions", before["version"], "lt", after["version"]], check=True)
     script = r'''set -eu
 grep -q '^VERSION_ID="12"$' /etc/os-release
+if [ "$CHECK_SAVED_CONFIG" = 1 ]; then
+  mkdir -p /opt/operator
+  cp /input-ca.pem /opt/operator/ca.pem
+  printf '%s\n' 'OUTBOUND_GUARD_ALLOWED_HOSTS=upgrade-allowed.test' 'OUTBOUND_GUARD_EXTRA_CA_CERT=/opt/operator/ca.pem' > /opt/operator/settings.env
+  test "$(sha256sum /opt/operator/ca.pem | cut -d' ' -f1)" = "$OPERATOR_CA_SHA256"
+  SETTINGS_SHA256=$(sha256sum /opt/operator/settings.env | cut -d' ' -f1)
+  . /opt/operator/settings.env
+  export OUTBOUND_GUARD_ALLOWED_HOSTS OUTBOUND_GUARD_EXTRA_CA_CERT
+fi
 dpkg -i /old.deb
 test "$(dpkg-query -W -f '${Version}' outbound-guard-mcp)" = "$OLD_VERSION"
 test "$(/usr/bin/outbound-guard-mcp --version)" = "outbound-guard-mcp $OLD_APP_VERSION"
 test "$(sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1)" = "$OLD_BINARY_SHA256"
+if [ "$CHECK_SAVED_CONFIG" = 1 ]; then
+  /usr/bin/outbound-guard-mcp --check-config > /tmp/config-old.json
+fi
 if [ "$CHECK_POLICY_COMPAT" = 1 ]; then
   printf '%s\n' \
     '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"deb-policy-upgrade","version":"1"}}}' \
@@ -84,6 +106,14 @@ dpkg -i /new.deb
 test "$(dpkg-query -W -f '${Version}' outbound-guard-mcp)" = "$NEW_VERSION"
 test "$(/usr/bin/outbound-guard-mcp --version)" = "outbound-guard-mcp $NEW_APP_VERSION"
 test "$(sha256sum /usr/bin/outbound-guard-mcp | cut -d' ' -f1)" = "$NEW_BINARY_SHA256"
+if [ "$CHECK_SAVED_CONFIG" = 1 ]; then
+  test "$(sha256sum /opt/operator/settings.env | cut -d' ' -f1)" = "$SETTINGS_SHA256"
+  test "$(sha256sum /opt/operator/ca.pem | cut -d' ' -f1)" = "$OPERATOR_CA_SHA256"
+  unset OUTBOUND_GUARD_ALLOWED_HOSTS OUTBOUND_GUARD_EXTRA_CA_CERT
+  . /opt/operator/settings.env
+  export OUTBOUND_GUARD_ALLOWED_HOSTS OUTBOUND_GUARD_EXTRA_CA_CERT
+  /usr/bin/outbound-guard-mcp --check-config > /tmp/config-new.json
+fi
 if [ "$CHECK_POLICY_COMPAT" = 1 ]; then
   printf '%s\n' \
     '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"deb-policy-upgrade","version":"1"}}}' \
@@ -103,6 +133,13 @@ test ! -e /usr/bin/outbound-guard-mcp
 test ! -d /usr/share/doc/outbound-guard-mcp
 if dpkg-query -W outbound-guard-mcp >/dev/null 2>&1; then exit 1; fi
 test ! -e /etc/outbound-guard-mcp
+if [ "$CHECK_SAVED_CONFIG" = 1 ]; then
+  test "$(sha256sum /opt/operator/settings.env | cut -d' ' -f1)" = "$SETTINGS_SHA256"
+  test "$(sha256sum /opt/operator/ca.pem | cut -d' ' -f1)" = "$OPERATOR_CA_SHA256"
+  printf 'SAVED_SETTINGS_SHA256=%s\n' "$SETTINGS_SHA256"
+  printf 'CONFIG_OLD='; base64 -w0 /tmp/config-old.json; printf '\n'
+  printf 'CONFIG_NEW='; base64 -w0 /tmp/config-new.json; printf '\n'
+fi
 if [ "$CHECK_POLICY_COMPAT" = 1 ]; then
   printf 'POLICY_OLD='; base64 -w0 /tmp/policy-old.jsonl; printf '\n'
   printf 'POLICY_NEW='; base64 -w0 /tmp/policy-new.jsonl; printf '\n'
@@ -113,6 +150,7 @@ fi
                         "--memory", "256m", "--memory-swap", "256m", "--cpus", "1", "--pids-limit", "64",
                         "--mount", f"type=bind,src={old},dst=/old.deb,readonly",
                         "--mount", f"type=bind,src={new},dst=/new.deb,readonly",
+                        *(["--mount", f"type=bind,src={operator_ca},dst=/input-ca.pem,readonly"] if saved_config else []),
                         "--env", f"OLD_VERSION={before['version']}",
                         "--env", f"NEW_VERSION={after['version']}",
                         "--env", f"OLD_APP_VERSION={before['app_version']}",
@@ -120,6 +158,8 @@ fi
                         "--env", f"OLD_BINARY_SHA256={before['binary_sha256']}",
                         "--env", f"NEW_BINARY_SHA256={after['binary_sha256']}",
                         "--env", f"CHECK_POLICY_COMPAT={int(args.check_policy_compat)}",
+                        "--env", f"CHECK_SAVED_CONFIG={int(saved_config)}",
+                        "--env", f"OPERATOR_CA_SHA256={args.operator_ca_sha256 or ''}",
                         BUILDER_IMAGE, "sh", "-ec", script], text=True, timeout=90)
     if args.check_policy_compat:
         encoded = {}
@@ -136,6 +176,24 @@ fi
     if args.check_policy_compat:
         result["checks"].append("old_and_new_operator_allowlist_and_audit")
         result["policy_decisions"] = old_decisions
+    if saved_config:
+        assert all("/opt/operator/" not in encoded[phase] for phase in ("OLD", "NEW")), "operator path leaked to MCP result"
+        settings_sha = re.search(r"^SAVED_SETTINGS_SHA256=([0-9a-f]{64})$", output, re.M)
+        assert settings_sha, "missing saved settings digest"
+        checks = []
+        for phase in ("OLD", "NEW"):
+            encoded = re.search(rf"^CONFIG_{phase}=([A-Za-z0-9+/=]+)$", output, re.M)
+            assert encoded, f"missing {phase} startup configuration check"
+            checked = json.loads(base64.b64decode(encoded.group(1), validate=True))
+            assert checked == {"allowed_host_count": 1, "network_checked": False,
+                               "scope": "startup", "valid": True}, (phase, checked)
+            checks.append(checked)
+        assert checks[0] == checks[1]
+        result["checks"].extend(["saved_operator_allowlist_and_ca_valid_before_and_after_upgrade",
+                                 "operator_files_preserved_after_remove"])
+        result["saved_config"] = {"settings_sha256": settings_sha.group(1),
+                                  "ca_sha256": args.operator_ca_sha256,
+                                  "old_check": checks[0], "new_check": checks[1]}
     if args.output:
         args.output.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n")
     print(json.dumps(result, sort_keys=True))
