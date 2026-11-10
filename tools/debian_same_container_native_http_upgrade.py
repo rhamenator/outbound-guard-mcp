@@ -33,6 +33,10 @@ SCENARIOS = {
                   "http://allowed.test/plain"],
                  ["EGRESS_ALLOWED", "EGRESS_REDIRECT_DENIED", "EGRESS_ALLOWED"],
                  ["/plain", "/redirect", "/plain"]),
+    "held-encoded": (["http://allowed.test/plain", "http://allowed.test/encoded-body-hold",
+                      "http://allowed.test/plain"],
+                     ["EGRESS_ALLOWED", "EGRESS_ENCODED_RESPONSE", "EGRESS_ALLOWED"],
+                     ["/plain", "/encoded-body-hold", "/plain"]),
 }
 TOOL = "mcp__outbound_guard__guarded_fetch"
 

@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import tempfile
 
+from verify_native_framing_http_pcap import rows, server_payload
+
 
 def fields(path, display_filter, *names):
     command = ["tshark", "-n", "-r", str(path), "-Y", display_filter,
@@ -20,7 +22,7 @@ def fields(path, display_filter, *names):
 
 
 def verify(path, expected_sha256, scenario="dns"):
-    assert scenario in ("dns", "redirect"), "unsupported capture scenario"
+    assert scenario in ("dns", "redirect", "held-encoded"), "unsupported capture scenario"
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture size outside fixture bounds"
     digest = hashlib.sha256(data).hexdigest()
@@ -51,21 +53,51 @@ def verify_fields(path, digest, scenario):
     assert not forbidden_queries & {name for name, _, _ in queries}, queries
     requests = fields(path, "http.request", "http.host", "http.request.uri")
     expected_requests = (["/plain"] * 2 if scenario == "dns"
-                         else ["/plain", "/redirect", "/plain"] * 2)
+                         else ["/plain", "/redirect", "/plain"] * 2
+                         if scenario == "redirect" else
+                         ["/plain", "/encoded-body-hold", "/plain"] * 2)
     assert requests == [["allowed.test", uri] for uri in expected_requests], requests
+    held_closes = 0
+    if scenario == "held-encoded":
+        streams = fields(path, "http.request", "http.request.uri", "tcp.stream")
+        for uri, stream in streams:
+            if uri != "/encoded-body-hold":
+                continue
+            payload = server_payload(path, stream)
+            headers, separator, body = payload.partition(b"\r\n\r\n")
+            assert separator and headers.startswith((b"HTTP/1.0 200 OK\r\n",
+                                                     b"HTTP/1.1 200 OK\r\n"))
+            lines = headers.split(b"\r\n")[1:]
+            assert [line for line in lines if line.startswith(
+                (b"Content-Encoding:", b"Content-Length:"))] == [
+                    b"Content-Encoding: gzip", b"Content-Length: 8388608"], lines
+            assert body == b"\x1f\x8b\x08", body
+            server_frames = rows(path, f"tcp.stream == {stream} && tcp.srcport == 80 && tcp.len > 0",
+                                 "frame.number")
+            client_closes = rows(path, f"tcp.stream == {stream} && tcp.dstport == 80 && "
+                                       "(tcp.flags.fin == 1 || tcp.flags.reset == 1)",
+                                 "frame.number")
+            assert server_frames and client_closes
+            assert any(int(number) > max(int(item) for [item] in server_frames)
+                       for [number] in client_closes)
+            held_closes += 1
+        assert held_closes == 2, held_closes
     addresses = {item for ipv4, ipv6 in fields(path, "ip || ipv6", "ip.dst", "ipv6.dst")
                  for item in (ipv4 or ipv6).split(",") if item}
     assert addresses and addresses <= {"11.0.0.1", "127.0.0.1"}, addresses
-    return {"sha256": digest, "scenario": scenario, "tcp_syn_count": len(syns), "dns_a_queries": a_names,
-            "http_requests": requests, "ip_destinations": sorted(addresses),
-            "scope": "fixture namespace only"}
+    result = {"sha256": digest, "scenario": scenario, "tcp_syn_count": len(syns),
+              "dns_a_queries": a_names, "http_requests": requests,
+              "ip_destinations": sorted(addresses), "scope": "fixture namespace only"}
+    if scenario == "held-encoded":
+        result["held_client_close_after_partial_response_count"] = held_closes
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--scenario", choices=("dns", "redirect"), default="dns")
+    parser.add_argument("--scenario", choices=("dns", "redirect", "held-encoded"), default="dns")
     args = parser.parse_args()
     print(json.dumps(verify(args.pcap, args.sha256, args.scenario), sort_keys=True))
 

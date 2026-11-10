@@ -1,0 +1,667 @@
+{
+  "cases": {
+    "adjacent": {
+      "claude": {
+        "after": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "before": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "checks": [
+          "same_container",
+          "unchanged_saved_client_config",
+          "old_native_calls",
+          "in_place_package_upgrade",
+          "new_native_calls",
+          "controlled_http_and_dns",
+          "remove",
+          "residue",
+          "route_free_fixture",
+          "packet_capture_verified"
+        ],
+        "client": "2.1.319 (Claude Code)",
+        "fixture_dns_a_after": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_a_before": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_all": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_http_hits": [
+          "/plain",
+          "/encoded-body-hold",
+          "/plain",
+          "/plain",
+          "/encoded-body-hold",
+          "/plain"
+        ],
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "limits": [
+          "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+          "no TLS or host-client/other-tool traffic coverage",
+          "Claude native tool availability is model dependent",
+          "unsigned experimental packages, not an approved candidate"
+        ],
+        "native_client": "claude",
+        "new_installed": {
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "new_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "6ca8c0d5b4033819727f017a38daf4fbf8a4f1191c31205680be811b76a62f42",
+          "revision": "b59bc2cf65e641bf27abb511ea047f6a2767d86a",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "old_installed": {
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "version": "0.1.0~candidate.333+gcf9f758a12cf"
+        },
+        "old_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "67ca44c41b1cd47e7be8ee4d5dab0aa122d8320d555015fbee2f3962c2690335",
+          "revision": "cf9f758a12cf1462fd2110f2c3f2a998ec9501d2",
+          "version": "0.1.0~candidate.333+gcf9f758a12cf"
+        },
+        "packet_capture": {
+          "dns_a_queries": [
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test"
+          ],
+          "held_client_close_after_partial_response_count": 2,
+          "http_requests": [
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ]
+          ],
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "scenario": "held-encoded",
+          "scope": "fixture namespace only",
+          "sha256": "b489daec0b26ccd391d413a74024caf02d053aee7f477bad893fa1e63ab8a81a",
+          "tcp_syn_count": 6
+        },
+        "pcap_path": "tests/fixtures/packet-capture/native-claude-held-two-phase-adjacent-2026-11-10.pcap",
+        "platform": "Debian 12 amd64",
+        "result": "passed",
+        "saved_mcp_config_sha256": "58e03928644be32d173efd3ad0590c40d41c40947fa783220d0f244e5eb89f0e",
+        "scenario": "held-encoded"
+      },
+      "codex": {
+        "after": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "before": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "checks": [
+          "same_container",
+          "unchanged_saved_client_config",
+          "old_native_calls",
+          "in_place_package_upgrade",
+          "new_native_calls",
+          "controlled_http_and_dns",
+          "remove",
+          "residue",
+          "route_free_fixture",
+          "packet_capture_verified"
+        ],
+        "client": "codex-cli 0.151.0",
+        "fixture_dns_a_after": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_a_before": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_all": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_http_hits": [
+          "/plain",
+          "/encoded-body-hold",
+          "/plain",
+          "/plain",
+          "/encoded-body-hold",
+          "/plain"
+        ],
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "limits": [
+          "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+          "no TLS or host-client/other-tool traffic coverage",
+          "Codex approval bypass ran from private test cwd but retained host access",
+          "unsigned experimental packages, not an approved candidate"
+        ],
+        "native_client": "codex",
+        "new_installed": {
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "new_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "6ca8c0d5b4033819727f017a38daf4fbf8a4f1191c31205680be811b76a62f42",
+          "revision": "b59bc2cf65e641bf27abb511ea047f6a2767d86a",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "old_installed": {
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "version": "0.1.0~candidate.333+gcf9f758a12cf"
+        },
+        "old_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "67ca44c41b1cd47e7be8ee4d5dab0aa122d8320d555015fbee2f3962c2690335",
+          "revision": "cf9f758a12cf1462fd2110f2c3f2a998ec9501d2",
+          "version": "0.1.0~candidate.333+gcf9f758a12cf"
+        },
+        "packet_capture": {
+          "dns_a_queries": [
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test"
+          ],
+          "held_client_close_after_partial_response_count": 2,
+          "http_requests": [
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ]
+          ],
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "scenario": "held-encoded",
+          "scope": "fixture namespace only",
+          "sha256": "114084b5d376493c8982bc60741c9e81c7ff8f915d580bd9dedfc9a8ec51caec",
+          "tcp_syn_count": 6
+        },
+        "pcap_path": "tests/fixtures/packet-capture/native-codex-held-two-phase-adjacent-2026-11-10.pcap",
+        "platform": "Debian 12 amd64",
+        "result": "passed",
+        "saved_mcp_config_sha256": "a96ecc420971ed6ba81204490c41c0f48f4c6613818391f8d071df3ac17cae1d",
+        "scenario": "held-encoded"
+      }
+    },
+    "changed": {
+      "claude": {
+        "after": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "before": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "checks": [
+          "same_container",
+          "unchanged_saved_client_config",
+          "old_native_calls",
+          "in_place_package_upgrade",
+          "new_native_calls",
+          "controlled_http_and_dns",
+          "remove",
+          "residue",
+          "route_free_fixture",
+          "packet_capture_verified"
+        ],
+        "client": "2.1.319 (Claude Code)",
+        "fixture_dns_a_after": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_a_before": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_all": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_http_hits": [
+          "/plain",
+          "/encoded-body-hold",
+          "/plain",
+          "/plain",
+          "/encoded-body-hold",
+          "/plain"
+        ],
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "limits": [
+          "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+          "no TLS or host-client/other-tool traffic coverage",
+          "Claude native tool availability is model dependent",
+          "unsigned experimental packages, not an approved candidate"
+        ],
+        "native_client": "claude",
+        "new_installed": {
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "new_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "6ca8c0d5b4033819727f017a38daf4fbf8a4f1191c31205680be811b76a62f42",
+          "revision": "b59bc2cf65e641bf27abb511ea047f6a2767d86a",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "old_installed": {
+          "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+          "version": "0.1.0~candidate.332+gba75a5645e56"
+        },
+        "old_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+          "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+          "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+          "version": "0.1.0~candidate.332+gba75a5645e56"
+        },
+        "packet_capture": {
+          "dns_a_queries": [
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test"
+          ],
+          "held_client_close_after_partial_response_count": 2,
+          "http_requests": [
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ]
+          ],
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "scenario": "held-encoded",
+          "scope": "fixture namespace only",
+          "sha256": "6ad23c7e7beb41936ac3a360b7ce37450bc5918274d7288cbf2cb7665148b01e",
+          "tcp_syn_count": 6
+        },
+        "pcap_path": "tests/fixtures/packet-capture/native-claude-held-two-phase-changed-2026-11-10.pcap",
+        "platform": "Debian 12 amd64",
+        "result": "passed",
+        "saved_mcp_config_sha256": "9b54573ea2e4d01d5bdd3bae8a62a82cd4e6e11ce6a3178fad8f197a36b3d6b2",
+        "scenario": "held-encoded"
+      },
+      "codex": {
+        "after": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "before": [
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          },
+          {
+            "rule": "EGRESS_ENCODED_RESPONSE",
+            "status": "BLOCKED",
+            "url": "http://allowed.test/encoded-body-hold"
+          },
+          {
+            "rule": "EGRESS_ALLOWED",
+            "status": "SAFE",
+            "url": "http://allowed.test/plain"
+          }
+        ],
+        "checks": [
+          "same_container",
+          "unchanged_saved_client_config",
+          "old_native_calls",
+          "in_place_package_upgrade",
+          "new_native_calls",
+          "controlled_http_and_dns",
+          "remove",
+          "residue",
+          "route_free_fixture",
+          "packet_capture_verified"
+        ],
+        "client": "codex-cli 0.151.0",
+        "fixture_dns_a_after": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_a_before": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_dns_all": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "fixture_http_hits": [
+          "/plain",
+          "/encoded-body-hold",
+          "/plain",
+          "/plain",
+          "/encoded-body-hold",
+          "/plain"
+        ],
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "limits": [
+          "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+          "no TLS or host-client/other-tool traffic coverage",
+          "Codex approval bypass ran from private test cwd but retained host access",
+          "unsigned experimental packages, not an approved candidate"
+        ],
+        "native_client": "codex",
+        "new_installed": {
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "new_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "6ca8c0d5b4033819727f017a38daf4fbf8a4f1191c31205680be811b76a62f42",
+          "revision": "b59bc2cf65e641bf27abb511ea047f6a2767d86a",
+          "version": "0.1.0~candidate.334+gb59bc2cf65e6"
+        },
+        "old_installed": {
+          "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+          "version": "0.1.0~candidate.332+gba75a5645e56"
+        },
+        "old_package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+          "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+          "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+          "version": "0.1.0~candidate.332+gba75a5645e56"
+        },
+        "packet_capture": {
+          "dns_a_queries": [
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test",
+            "allowed.test"
+          ],
+          "held_client_close_after_partial_response_count": 2,
+          "http_requests": [
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ],
+            [
+              "allowed.test",
+              "/encoded-body-hold"
+            ],
+            [
+              "allowed.test",
+              "/plain"
+            ]
+          ],
+          "ip_destinations": [
+            "11.0.0.1",
+            "127.0.0.1"
+          ],
+          "scenario": "held-encoded",
+          "scope": "fixture namespace only",
+          "sha256": "b3e84497074995a886f195d885a6421bcc035cc725b61c893dedf12f7d22e098",
+          "tcp_syn_count": 6
+        },
+        "pcap_path": "tests/fixtures/packet-capture/native-codex-held-two-phase-changed-2026-11-10.pcap",
+        "platform": "Debian 12 amd64",
+        "result": "passed",
+        "saved_mcp_config_sha256": "60de9b086f9ec50e96291e191bae4354185e1ab7e107bc94acc24319cfa79397",
+        "scenario": "held-encoded"
+      }
+    }
+  },
+  "fixture": "route-free namespace; allowed.test -> 11.0.0.1; hostile HTTP 200 advertises gzip Content-Length 8388608 but sends only 1f8b08 and waits for peer close",
+  "limitations": [
+    "Four finite explicit native-client sessions in two experimental Debian upgrade paths; adjacent 333 to 334 changes package bytes but has identical server executable bytes; older 332 to 334 changes executable bytes but skips intermediate 333.",
+    "The saved MCP client config is unchanged and hashed, but this does not exercise server-side persisted configuration migration.",
+    "Codex approval bypass was explicitly opted in from a private test directory but retains host access; test targets are route-free fixture namespaces.",
+    "Captures exclude host-client and other-tool traffic. The three-byte gzip prefix is not a decompression bomb; the packet trace alone does not establish MCP denial or body quarantine.",
+    "No automatic skill use, other platform, official candidate, owner self-review or residual-risk acceptance is established. Each of the four AI Scraping Defense repositories requires separate adversarial evidence."
+  ],
+  "new_source_commit": "b59bc2cf65e641bf27abb511ea047f6a2767d86a",
+  "new_source_trusted_main_ci_run": 42786222123,
+  "new_source_trusted_main_codeql_run": 42786221969,
+  "observed_at_utc": "2026-11-10T09:35:34.057405+00:00",
+  "reproduction": "python3 tools/debian_same_container_native_http_upgrade.py --client CLIENT --scenario held-encoded --old OLD.deb --old-sha256 OLD_SHA --new NEW.deb --new-sha256 NEW_SHA --output RESULT.json --capture RESULT.pcap (Codex additionally requires --allow-codex-approval-bypass)",
+  "result": "passed",
+  "scenario": "same disposable Debian 12 amd64 container: native client explicit guarded calls before and after in-place package upgrade against approved GET, incomplete held gzip response, approved GET"
+}
