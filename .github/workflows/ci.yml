@@ -52,6 +52,10 @@ jobs:
         run: python3 tools/verify_native_current_tls_slow_close_corpus.py
       - name: Recheck native three-cycle interruption evidence
         run: python3 tools/verify_native_current_three_cancellation.py
+      - name: Recheck retained native three-cycle cancellation packets
+        run: python3 tools/verify_native_cancel_pcap_corpus.py
+      - name: Reject late native cancellation socket closure
+        run: python3 tools/verify_native_cancel_pcap_negative_controls.py
       - name: Recheck current-package native slow HTTP socket closes
         run: python3 tools/verify_native_current_slow_close_corpus.py
       - name: Recheck saved operator configuration upgrade evidence
