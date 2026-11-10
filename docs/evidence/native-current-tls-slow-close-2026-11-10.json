@@ -1,0 +1,249 @@
+{
+  "date_utc": "2026-11-10",
+  "fixture": "tls-slow-http-packet; route-free Debian 12 amd64 containers; approved allowed.test with generated fixture CA",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "371cd3012f0a50587072b7f849aba0569dbce910e7b82c0162d355823d9f7b68",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22",
+    "tools/debian_native_container_probe.py": "22084e0d75ae8e504e10fabf1e6c3cb6210dc57a5460a73037f9d112649be3c1",
+    "tools/verify_native_tls_slow_pcap.py": "e167cc2c360630c1da154a885e235efb0a1556fb1197f31983d17e70b8f196ba"
+  },
+  "installed_binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+  "limitations": [
+    "Experimental unsigned package from exact trusted main, not an official release candidate.",
+    "Clean install and removal were tested; no upgrade was exercised.",
+    "The fixture CA is generated per run and trusted only inside the controlled fixture; this does not prove saved operator CA persistence across upgrade.",
+    "TLS request paths are encrypted; their stream ordering is corroborated by the fixture hit log.",
+    "Packet captures cover only the fixture network namespace, not host-client or other-tool traffic.",
+    "Finite sampled memory, descriptor and packet observations do not prove universal resource or socket-leak bounds.",
+    "Codex and Claude versions are tested separately; Cursor and other clients are not covered by this replay."
+  ],
+  "oracle_limits_seconds": {
+    "/delayed": 3.25,
+    "/drip": 4.25
+  },
+  "package_sha256": "aceca10372aba3824847c2a140c85ac0b5b860a9b32433dd373f257249cd6d11",
+  "package_version": "0.1.0~candidate.340+g224ef474135b",
+  "runs": {
+    "claude": {
+      "capture": "tests/fixtures/packet-capture/native-claude-tls-slow-current-2026-11-10.pcap",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "trusted_tls_handshake",
+        "tls_sni_preserved",
+        "tls_slow_drip_denial",
+        "tls_delayed_first_byte_denial",
+        "tls_client_hello_capture",
+        "timed_out_tcp_streams_closed",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18178048,
+        "pids_peak": 10,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "fixture_mode": "tls-slow-http-packet",
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "2.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 11,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "request_to_client_close_seconds": {
+          "/delayed": 2.960646,
+          "/drip": 4.003063
+        },
+        "scope": "fixture namespace only; encrypted request paths are inferred from the ordered fixture log",
+        "sha256": "d85835c062b6e91d3b74d78da91bc070a10255a2b70fbb61b473982a1cdd093e",
+        "tcp_syn_count": 4,
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_sni": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ]
+      },
+      "pcap_sha256": "d85835c062b6e91d3b74d78da91bc070a10255a2b70fbb61b473982a1cdd093e",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4816,
+        "sample_interval_ms": 50,
+        "samples": 398,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_tool_result_success": true,
+      "tls_sni": [
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ]
+      ]
+    },
+    "codex": {
+      "capture": "tests/fixtures/packet-capture/native-codex-tls-slow-current-2026-11-10.pcap",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "trusted_tls_handshake",
+        "tls_sni_preserved",
+        "tls_slow_drip_denial",
+        "tls_delayed_first_byte_denial",
+        "tls_client_hello_capture",
+        "timed_out_tcp_streams_closed",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "codex-cli 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 19226624,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "fixture_mode": "tls-slow-http-packet",
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "native_skill_discovered": true,
+      "native_skill_loaded": true,
+      "native_turn_completed": true,
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "2.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 11,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "request_to_client_close_seconds": {
+          "/delayed": 2.958743,
+          "/drip": 4.003237
+        },
+        "scope": "fixture namespace only; encrypted request paths are inferred from the ordered fixture log",
+        "sha256": "71a21ad521fe1bd797d06075fd8946913d315ef69b9e4123fad66dbfde777afd",
+        "tcp_syn_count": 4,
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_sni": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ]
+      },
+      "pcap_sha256": "71a21ad521fe1bd797d06075fd8946913d315ef69b9e4123fad66dbfde777afd",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4768,
+        "sample_interval_ms": 50,
+        "samples": 360,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "tls_sni": [
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ],
+        [
+          "11.0.0.1",
+          "allowed.test"
+        ]
+      ]
+    }
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42838977522",
+  "source_main_sha": "224ef474135b5298dd8a4d6656ee7d797ef55ea6"
+}

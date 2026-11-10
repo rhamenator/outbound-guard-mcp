@@ -48,6 +48,8 @@ jobs:
         run: python3 tools/verify_native_tls_slow_close_corpus.py
       - name: Reject a late native TLS slow HTTP socket close
         run: python3 tools/verify_native_tls_slow_close_negative_controls.py
+      - name: Recheck fresh exact-main native TLS slow HTTP closes
+        run: python3 tools/verify_native_current_tls_slow_close_corpus.py
       - name: Recheck current-package native slow HTTP socket closes
         run: python3 tools/verify_native_current_slow_close_corpus.py
       - name: Recheck saved operator configuration upgrade evidence
