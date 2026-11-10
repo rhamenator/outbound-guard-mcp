@@ -1,0 +1,217 @@
+{
+  "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+  "date_utc": "2026-11-10",
+  "fixture": "client-control-repeated-cancellation; three pre-header interruption/recovery cycles per native client in one process; route-free Debian 12 amd64 container",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "371cd3012f0a50587072b7f849aba0569dbce910e7b82c0162d355823d9f7b68",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22",
+    "tools/debian_native_container_probe.py": "22084e0d75ae8e504e10fabf1e6c3cb6210dc57a5460a73037f9d112649be3c1"
+  },
+  "limitations": [
+    "The native control API was exercised, not desktop or terminal UI cancellation.",
+    "The skill ZIP was checksum-verified but the explicit skill workflow was not loaded in this control-path mode.",
+    "Codex acknowledged three turn interrupts but emitted no matching MCP cancellation; its server requests timed out. This remains a client-delivery gap.",
+    "The fixture reports socket close markers, but this run retains no raw packet capture or client wire transcript for an independent timing oracle.",
+    "Finite 50 ms server samples may miss transient resource peaks; the 128 MiB cgroup limit is not a server-only memory bound.",
+    "The package is unsigned and experimental; no upgrade or official candidate was tested.",
+    "Cursor, host-client/other-tool traffic and the four AI Scraping Defense repositories remain outside this test.",
+    "The per-client binary_sha256 field in the raw control result hashes a generated bridge wrapper; the installed package executable hash is recorded separately at the top level."
+  ],
+  "package_sha256": "aceca10372aba3824847c2a140c85ac0b5b860a9b32433dd373f257249cd6d11",
+  "package_version": "0.1.0~candidate.340+g224ef474135b",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "matching_mcp_cancel_and_socket_close",
+        "repeated_same_process_cancel_recovery_cycles",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control_result": {
+        "binary_sha256": "d01b50ca57cff44f293ab18245ab8393cc098fca64abe24ae3b4390ea3ce0e34",
+        "cancel_cycles": 3,
+        "cancel_notifications": 3,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": false,
+        "client": "claude",
+        "client_control_acknowledged": true,
+        "control_path": "stream-json interrupt",
+        "fetches": 8,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": true,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_each_seconds": [
+          0.061,
+          0.04,
+          0.041
+        ],
+        "socket_closed_after_seconds": 0.061,
+        "status_codes": [
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18288640,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "result": "passed",
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 4004,
+        "sample_interval_ms": 50,
+        "samples": 465,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_client_control_and_guarded_calls",
+        "client_interrupt_acknowledged",
+        "missing_mcp_cancel_server_timeout_and_socket_close",
+        "repeated_same_process_cancel_recovery_cycles",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_control_result": {
+        "binary_sha256": "538c7c4735b498c9cfad594a0cfa1ef0a5ea8dcc45e26851b6bb7c6a42ad857c",
+        "cancel_cycles": 3,
+        "cancel_notifications": 0,
+        "cancel_phase": "headers",
+        "cancelled_fetch_replied": true,
+        "client": "codex",
+        "client_control_acknowledged": true,
+        "control_path": "app-server turn/interrupt",
+        "fetches": 8,
+        "fixture_paths": [
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/cancel-silent-headers-long",
+          "/plain",
+          "/head-ok"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "HEAD"
+        ],
+        "live_client": true,
+        "matching_wire_cancellation": false,
+        "recovery_allowed": true,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_ALLOWED",
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+        "socket_closed": true,
+        "socket_closed_after_each_seconds": [
+          2.998,
+          2.993,
+          3.014
+        ],
+        "socket_closed_after_seconds": 2.998,
+        "status_codes": [
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "client_version": "codex-cli 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18309120,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "result": "passed",
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3928,
+        "sample_interval_ms": 50,
+        "samples": 857,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42838977522",
+  "source_main_sha": "224ef474135b5298dd8a4d6656ee7d797ef55ea6"
+}
