@@ -11,7 +11,8 @@
     "fixture_namespace_tcp_syn_capture",
     "approved_recovery",
     "package_remove",
-    "residue"
+    "residue",
+    "request_to_client_close_within_3_25_seconds"
   ],
   "client": "Claude Code 2.1.319",
   "container_resource_observation": {
@@ -40,7 +41,7 @@
   "limitations": [
     "Fixture namespace only; host-client and other-tool traffic are not captured.",
     "One-byte-per-second drip and eleven-second delayed-header fixtures do not prove all slow-stream resistance.",
-    "Client-direction FIN/RST was observed for each timed-out stream, but strict close latency and universal socket-leak freedom are not proven.",
+    "For these two timed-out streams, first client-direction FIN/RST followed the request within 3.25 seconds; universal close latency and socket-leak freedom are not proven.",
     "Only the old-package loopback denial is exercised before upgrade; the slow sequence runs on the new package.",
     "Unsigned experimental packages are not an exact owner-approved candidate.",
     "No independent human review is claimed; four AI Scraping Defense repositories require separate evidence."
@@ -80,6 +81,10 @@
     "rebind_a_answers": null,
     "rebind_a_query_count": null,
     "redirect_private_dns_query_count": null,
+    "request_to_client_close_seconds": {
+      "/delayed": 3.001235,
+      "/drip": 3.001978
+    },
     "tcp_syn_count": 4,
     "tcp_syn_destinations": [
       "11.0.0.1:80"
@@ -119,6 +124,10 @@
       "11.0.0.1",
       "127.0.0.1"
     ],
+    "request_to_client_close_seconds": {
+      "/delayed": 3.001235,
+      "/drip": 3.001978
+    },
     "scope": "fixture namespace only",
     "sha256": "016177f8e1df9550850c9c195dc0586bfe6d834c50aaae099a7c1904be3601d2",
     "tcp_syn_count": 4,

@@ -40,6 +40,10 @@ jobs:
         run: python3 tools/verify_native_dns_answer_limit_corpus.py
       - name: Recheck native exact DNS answer-cap packet evidence
         run: python3 tools/verify_native_dns_boundary_corpus.py
+      - name: Recheck native slow HTTP socket close timing
+        run: python3 tools/verify_native_slow_close_corpus.py
+      - name: Reject a late native slow HTTP socket close
+        run: python3 tools/verify_native_slow_close_negative_controls.py
       - name: Recheck native synthetic-exfiltration packet evidence
         run: python3 tools/verify_native_exfil_corpus.py
       - name: Recheck native Codex and Claude EOF and active-HTTP EOF captures
