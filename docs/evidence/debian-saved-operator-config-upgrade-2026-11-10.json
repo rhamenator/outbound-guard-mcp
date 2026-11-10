@@ -1,0 +1,76 @@
+{
+  "checks": [
+    "old_install",
+    "new_upgrade",
+    "installed_binary_bytes",
+    "mcp_discovery",
+    "loopback_denial",
+    "non_ascii_url_denial",
+    "remove",
+    "residue",
+    "old_and_new_operator_allowlist_and_audit",
+    "saved_operator_allowlist_and_ca_valid_before_and_after_upgrade",
+    "operator_files_preserved_after_remove"
+  ],
+  "limitations": [
+    "Both adjacent experimental Debian revisions contain identical executable bytes; this does not prove changed-binary configuration migration.",
+    "The saved configuration is an operator-owned environment file and public CA PEM, not a server-owned configuration format.",
+    "Startup --check-config validates syntax and certificate loading without network; the guarded allowed-host call failed DNS by design, so this is not a trusted TLS fetch or certificate-chain interoperability test.",
+    "This disposable network-disabled package test does not involve native MCP clients, host-client or other-tool traffic.",
+    "Unsigned experimental packages do not qualify an official candidate; owner self-review and residual-risk acceptance remain open.",
+    "The four AI Scraping Defense repositories require separate adversarial evidence."
+  ],
+  "new": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "898fbd33b993b21d62696fdc3f4f642cc80fcf9793d180bd151c23c1ebdd8c8d",
+    "revision": "aae78aa8f43e9af5887b9c08839f8f1b9f590124",
+    "version": "0.1.0~candidate.337+gaae78aa8f43e"
+  },
+  "old": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "dab823941c42b9e841b17202158ddd2034630029d183dd561f6f348c74d7ba6c",
+    "revision": "0f83d50a41071aeb1d0ad6c6ec1472dd4efbf619",
+    "version": "0.1.0~candidate.336+g0f83d50a4107"
+  },
+  "platform": "Debian 12 amd64",
+  "policy_decisions": [
+    {
+      "correlation_id": "egress-1",
+      "rule": "EGRESS_DNS_FAILURE",
+      "status": "BLOCKED"
+    },
+    {
+      "correlation_id": "egress-2",
+      "rule": "EGRESS_HOST_NOT_ALLOWED",
+      "status": "BLOCKED"
+    }
+  ],
+  "public_ca_certificate_fingerprint_sha256": "96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6",
+  "public_ca_fixture": "tests/fixtures/certs/isrg-root-x1.pem",
+  "public_ca_subject": "C=US, O=Internet Security Research Group, CN=ISRG Root X1",
+  "reproduction": "python3 tools/debian_upgrade_probe.py --old OLD.deb --old-sha256 OLD_SHA --new NEW.deb --new-sha256 NEW_SHA --operator-ca tests/fixtures/certs/isrg-root-x1.pem --operator-ca-sha256 22b557a27055b33606b6559f37703928d3e4ad79f110b407d04986e1843543d1 --check-policy-compat --output RESULT.json",
+  "result": "passed",
+  "saved_config": {
+    "ca_sha256": "22b557a27055b33606b6559f37703928d3e4ad79f110b407d04986e1843543d1",
+    "new_check": {
+      "allowed_host_count": 1,
+      "network_checked": false,
+      "scope": "startup",
+      "valid": true
+    },
+    "old_check": {
+      "allowed_host_count": 1,
+      "network_checked": false,
+      "scope": "startup",
+      "valid": true
+    },
+    "settings_sha256": "171ff0a1c50673767325ea3a1ec3812104ebe4286c89b419c1eb43ca663eaa53"
+  },
+  "scenario": "saved operator-owned allowlist environment and public CA PEM survive adjacent experimental Debian package upgrade and removal",
+  "source_ci_runs": {
+    "new": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42810820700",
+    "old": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42802130859"
+  }
+}
