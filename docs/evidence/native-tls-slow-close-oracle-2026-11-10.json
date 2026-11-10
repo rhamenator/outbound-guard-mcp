@@ -1,0 +1,24 @@
+{
+  "date_utc": "2026-11-10",
+  "source_evidence": "docs/evidence/native-client-tls-slow-pcap-2026-11-08.json",
+  "method": "Retrospective independent packet timing from the post-ServerHello client TLS request record to the first client FIN/RST; ordered fixture log identifies encrypted paths. Negative control delays a close by six seconds and recomputes the capture digest.",
+  "limits_seconds": {"/drip": 4.25, "/delayed": 3.25},
+  "clients": {
+    "codex": {
+      "capture": "tests/fixtures/packet-capture/native-tls-slow-codex-2026-11-08.pcap",
+      "sha256": "f1a9e727a37dea728a6084cedc766032c5da4702b05daa92e5a064f5cf017bf7",
+      "request_to_client_close_seconds": {"/drip": 4.00289, "/delayed": 2.959837}
+    },
+    "claude": {
+      "capture": "tests/fixtures/packet-capture/native-tls-slow-claude-2026-11-08.pcap",
+      "sha256": "44d0e720d736de6ca4ff0254503faf7907823699f3f33e51490156f91ff22514",
+      "request_to_client_close_seconds": {"/drip": 4.002946, "/delayed": 2.959073}
+    }
+  },
+  "limitations": [
+    "Retrospective verification of the earlier experimental package, not a fresh exact-candidate replay.",
+    "TLS request paths are encrypted; stream-to-path mapping comes from the fixture's ordered hit log.",
+    "Packet captures cover the fixture network namespace, not host-client or other-tool traffic.",
+    "The finite close observations do not establish universal socket-leak freedom."
+  ]
+}

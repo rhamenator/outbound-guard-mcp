@@ -2,6 +2,7 @@
 """Independently inspect a retained route-free native TLS slow-HTTP capture."""
 
 import argparse
+from decimal import Decimal
 import hashlib
 import json
 from pathlib import Path
@@ -43,11 +44,30 @@ def verify(path: Path, digest: str) -> dict:
     assert len(set(streams)) == 4, streams
 
     closed = {}
+    elapsed = {}
     for path_name, stream in zip(("/drip", "/delayed"), streams[1:3]):
+        server_hellos = rows(path, f"tcp.stream == {stream} && tls.handshake.type == 2",
+                             "frame.time_epoch")
+        assert len(server_hellos) == 1, (path_name, server_hellos)
+        hello_time = Decimal(server_hellos[0][0])
+        request_packets = rows(
+            path, f"tcp.stream == {stream} && tcp.dstport == 443 && tcp.len >= 100",
+            "frame.time_epoch", "tcp.len")
+        requests = [Decimal(timestamp) for timestamp, _ in request_packets
+                    if Decimal(timestamp) > hello_time]
+        assert len(requests) == 1, (path_name, request_packets)
         client_fin_or_reset = rows(
             path, f"tcp.stream == {stream} && tcp.dstport == 443 && "
-                  "(tcp.flags.fin == 1 || tcp.flags.reset == 1)", "frame.number")
+                  "(tcp.flags.fin == 1 || tcp.flags.reset == 1)",
+            "frame.number", "frame.time_epoch")
         assert client_fin_or_reset, (path_name, stream)
+        first_close = min(Decimal(timestamp) for _, timestamp in client_fin_or_reset)
+        duration = first_close - requests[0]
+        # The drip fixture sends one encrypted body byte each second; its
+        # four-second rate window differs from the three-second first-byte wait.
+        limit = Decimal("4.25") if path_name == "/drip" else Decimal("3.25")
+        assert Decimal(0) < duration <= limit, (path_name, duration, limit)
+        elapsed[path_name] = float(duration.quantize(Decimal("0.000001")))
         closed[path_name] = True
 
     destinations = rows(path, "ip || ipv6", "ip.dst", "ipv6.dst")
@@ -56,7 +76,8 @@ def verify(path: Path, digest: str) -> dict:
     assert addresses and addresses <= {"11.0.0.1", "127.0.0.1"}, addresses
     return {"sha256": actual, "tcp_syn_count": len(syns), "dns_query_count": len(queries),
             "dns_names": sorted(names), "tls_sni": [host for host, _ in hellos],
-            "timed_out_streams_client_closed": closed, "ip_destinations": sorted(addresses),
+            "timed_out_streams_client_closed": closed,
+            "request_to_client_close_seconds": elapsed, "ip_destinations": sorted(addresses),
             "scope": "fixture namespace only; encrypted request paths are inferred from the ordered fixture log"}
 
 
