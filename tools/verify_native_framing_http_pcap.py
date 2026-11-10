@@ -49,6 +49,9 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
                        "/repeated-chunked-coding", "/plain"] if mode == "comma" else
                       ["/plain", "/coding-mutant-0", "/coding-mutant-3",
                        "/coding-mutant-5", "/plain"] if mode == "coding" else
+                      ["/plain", "/obs-fold-length", "/obs-fold-encoding",
+                       "/obs-fold-connection", "/obs-fold-extension", "/plain"]
+                      if mode == "obs-fold" else
                       ["/plain", "/conflict-framing", "/duplicate-length",
                        "/stacked-transfer-coding", "/duplicate-transfer-coding", "/plain"])
     assert [(host, uri) for host, uri, _ in requests] == [
@@ -79,6 +82,17 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
             "/coding-mutant-5": ([b"Transfer-Encoding: chunked36027"],
                                  b"2\r\nok\r\n0\r\n\r\n"),
         }
+    elif mode == "obs-fold":
+        expected_metadata = {
+            "/obs-fold-length": ([b"Content-Type: text/plain", b"Content-Length: 2",
+                                  b" 3"], b"ok"),
+            "/obs-fold-encoding": ([b"Content-Type: text/plain", b"Content-Encoding: identity",
+                                    b" gzip", b"Content-Length: 2"], b"ok"),
+            "/obs-fold-connection": ([b"Content-Type: text/plain", b"Connection: keep-alive,",
+                                      b" Upgrade", b"Content-Length: 2"], b"ok"),
+            "/obs-fold-extension": ([b"Content-Type: text/plain", b"X-Fixture: first",
+                                     b" second", b"Content-Length: 2"], b"ok"),
+        }
     verified = {}
     for uri, (expected_headers, expected_body) in expected_metadata.items():
         streams = {stream for _, request_uri, stream in requests if request_uri == uri}
@@ -88,8 +102,10 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
         assert separator and headers.startswith((b"HTTP/1.0 200 OK\r\n",
                                                  b"HTTP/1.1 200 OK\r\n")), uri
         actual_headers = headers.split(b"\r\n")[1:]
-        assert [line for line in actual_headers if line.startswith(
-            (b"Content-Length:", b"Transfer-Encoding:"))] == expected_headers, uri
+        checked_headers = (actual_headers if mode == "obs-fold" else
+                           [line for line in actual_headers if line.startswith(
+                               (b"Content-Length:", b"Transfer-Encoding:"))])
+        assert checked_headers == expected_headers, (uri, checked_headers)
         assert body == expected_body, (uri, body)
         verified[uri] = True
 
@@ -107,7 +123,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--mode", choices=("framing", "comma", "coding"), default="framing")
+    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold"), default="framing")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-framing-pcap-verify-") as directory:
