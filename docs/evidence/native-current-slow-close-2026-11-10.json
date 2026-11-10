@@ -1,0 +1,316 @@
+{
+  "fixture_details": [
+    "one-byte-per-second body drip",
+    "eleven-second delayed response headers",
+    "approved /plain calls before and after denial"
+  ],
+  "fixture_mode": "slow-http-packet",
+  "limitations": [
+    "Route-free fixture namespace only; host-client and other-tool traffic were not captured.",
+    "Finite clean-install tests on exact main 0f83d50; no saved-configuration migration or upgrade in this replay.",
+    "Four request-to-first-client-close measurements do not prove universal socket cleanup or long-duration resource bounds.",
+    "Unsigned experimental Debian package is not an official candidate or owner acceptance.",
+    "No independent human review is claimed; four AI Scraping Defense repositories require separate evidence."
+  ],
+  "package_sha256": "dab823941c42b9e841b17202158ddd2034630029d183dd561f6f348c74d7ba6c",
+  "result": "passed",
+  "runs": {
+    "claude": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "slow_drip_denial",
+        "delayed_first_byte_denial",
+        "timed_out_tcp_streams_closed",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "claude",
+      "client_version": "Claude Code 2.1.319",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17899520,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "native_skill_discovered": null,
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "old_package": null,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "dab823941c42b9e841b17202158ddd2034630029d183dd561f6f348c74d7ba6c",
+        "revision": "0f83d50a41071aeb1d0ad6c6ec1472dd4efbf619",
+        "version": "0.1.0~candidate.336+g0f83d50a4107"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 9,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "eof_active_close": null,
+        "eof_approved_http_requests": null,
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 73,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 72,
+        "pcap_sha256": "c1eec4b08ffa6efd0e7de89b805efc2a800a3c15caa3c31f7a1cc87e50a5c445",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "spoofed_dns_transaction_ids": null,
+        "tcp_syn_count": 4,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 9,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/drip"
+          ],
+          [
+            "allowed.test",
+            "/delayed"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "request_to_client_close_seconds": {
+          "/delayed": 3.001307,
+          "/drip": 3.002244
+        },
+        "scope": "fixture namespace only",
+        "sha256": "c1eec4b08ffa6efd0e7de89b805efc2a800a3c15caa3c31f7a1cc87e50a5c445",
+        "tcp_syn_count": 4,
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        }
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-claude-slow-close-current-2026-11-10.pcap",
+      "pcap_sha256": "c1eec4b08ffa6efd0e7de89b805efc2a800a3c15caa3c31f7a1cc87e50a5c445",
+      "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3944,
+        "sample_interval_ms": 50,
+        "samples": 389,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+    },
+    "codex": {
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "slow_drip_denial",
+        "delayed_first_byte_denial",
+        "timed_out_tcp_streams_closed",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client": "codex",
+      "client_version": "Codex CLI 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17911808,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/drip",
+        "/delayed",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "native_skill_discovered": true,
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "old_package": null,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "dab823941c42b9e841b17202158ddd2034630029d183dd561f6f348c74d7ba6c",
+        "revision": "0f83d50a41071aeb1d0ad6c6ec1472dd4efbf619",
+        "version": "0.1.0~candidate.336+g0f83d50a4107"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 9,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "eof_active_close": null,
+        "eof_approved_http_requests": null,
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 71,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 70,
+        "pcap_sha256": "cca8f7662b8bc1d2a632d0fa6a2b1bda408b9c012cc38f53048cfd8d89b6ba65",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "spoofed_dns_transaction_ids": null,
+        "tcp_syn_count": 4,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        },
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "packet_verifier": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 9,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/drip"
+          ],
+          [
+            "allowed.test",
+            "/delayed"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "request_to_client_close_seconds": {
+          "/delayed": 3.000798,
+          "/drip": 3.001772
+        },
+        "scope": "fixture namespace only",
+        "sha256": "cca8f7662b8bc1d2a632d0fa6a2b1bda408b9c012cc38f53048cfd8d89b6ba65",
+        "tcp_syn_count": 4,
+        "timed_out_streams_client_closed": {
+          "/delayed": true,
+          "/drip": true
+        }
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-codex-slow-close-current-2026-11-10.pcap",
+      "pcap_sha256": "cca8f7662b8bc1d2a632d0fa6a2b1bda408b9c012cc38f53048cfd8d89b6ba65",
+      "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+      "result": "passed",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_RESPONSE_TOO_SLOW",
+        "EGRESS_NETWORK_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 7,
+        "max_sampled_rss_kib": 3896,
+        "sample_interval_ms": 50,
+        "samples": 320,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+    }
+  },
+  "scenario": "clean native client replay of exact-main experimental Debian package against controlled slow HTTP fixtures",
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42802130859",
+  "source_codeql_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42802130542",
+  "source_sha": "0f83d50a41071aeb1d0ad6c6ec1472dd4efbf619"
+}
