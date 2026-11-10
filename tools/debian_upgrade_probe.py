@@ -61,6 +61,8 @@ def main():
     parser.add_argument("--operator-ca", type=Path,
                         help="Preserve this operator-owned PEM certificate and saved environment across upgrade")
     parser.add_argument("--operator-ca-sha256")
+    parser.add_argument("--require-changed-binary", action="store_true",
+                        help="Reject package-only transitions before running the upgrade probe")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     assert (args.operator_ca is None) == (args.operator_ca_sha256 is None), "operator CA and digest must be paired"
@@ -74,6 +76,8 @@ def main():
     before = package_info(old, args.old_sha256)
     after = package_info(new, args.new_sha256)
     assert before["revision"] != after["revision"], "distinct source revisions required"
+    if args.require_changed_binary:
+        assert before["binary_sha256"] != after["binary_sha256"], "changed executable required"
     subprocess.run(["dpkg", "--compare-versions", before["version"], "lt", after["version"]], check=True)
     script = r'''set -eu
 grep -q '^VERSION_ID="12"$' /etc/os-release
@@ -173,6 +177,8 @@ fi
     result = {"result": "passed", "platform": "Debian 12 amd64", "old": before, "new": after,
               "checks": ["old_install", "new_upgrade", "installed_binary_bytes", "mcp_discovery", "loopback_denial", "non_ascii_url_denial",
                          "remove", "residue"]}
+    if args.require_changed_binary:
+        result["checks"].append("changed_executable_bytes")
     if args.check_policy_compat:
         result["checks"].append("old_and_new_operator_allowlist_and_audit")
         result["policy_decisions"] = old_decisions
