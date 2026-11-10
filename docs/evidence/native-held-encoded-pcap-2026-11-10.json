@@ -1,0 +1,219 @@
+{
+  "clients": {
+    "claude": {
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18567168,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "native_approved_status_codes": [
+        200,
+        200
+      ],
+      "native_client_binary_sha256": "834f4b83b7b067bff8793908a87b15ea725e7141dce628a41a96b491b3a69084",
+      "native_client_version": "Claude Code 2.1.319",
+      "native_fixture_hits": [
+        "/plain",
+        "/encoded-body-hold",
+        "/plain"
+      ],
+      "native_held_socket_closed": true,
+      "native_http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ENCODED_RESPONSE",
+        "EGRESS_ALLOWED"
+      ],
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "packet_verifier": {
+        "client_close_after_partial_response": true,
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 7,
+        "held_body_hex": "1f8b08",
+        "held_content_length": 8388608,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/encoded-body-hold"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "44ba9cc9a0fa6150b9cef5131e539c3349d82e66590d5a11b274741b2706cedf",
+        "tcp_syn_count": 3
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-claude-held-encoded-2026-11-10.pcap",
+      "pcap_sha256": "44ba9cc9a0fa6150b9cef5131e539c3349d82e66590d5a11b274741b2706cedf",
+      "probe_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "held_gzip_header_denial",
+        "peer_observed_socket_close",
+        "approved_recovery",
+        "no_denied_body_text",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3928,
+        "sample_interval_ms": 50,
+        "samples": 239,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+    },
+    "codex": {
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 16531456,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "native_approved_status_codes": [
+        200,
+        200
+      ],
+      "native_client_binary_sha256": "3722a5dc8f88669ed582f2bef91606757b06155868f68d3048614a7f0699636e",
+      "native_client_version": "Codex CLI 0.151.0",
+      "native_fixture_hits": [
+        "/plain",
+        "/encoded-body-hold",
+        "/plain"
+      ],
+      "native_held_socket_closed": true,
+      "native_http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "native_rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ENCODED_RESPONSE",
+        "EGRESS_ALLOWED"
+      ],
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "packet_verifier": {
+        "client_close_after_partial_response": true,
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 7,
+        "held_body_hex": "1f8b08",
+        "held_content_length": 8388608,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/encoded-body-hold"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scope": "fixture namespace only",
+        "sha256": "5582fe94144608eba77c6b155ba8047a37828cebaa37412708c6ddd42b963a54",
+        "tcp_syn_count": 3
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-codex-held-encoded-2026-11-10.pcap",
+      "pcap_sha256": "5582fe94144608eba77c6b155ba8047a37828cebaa37412708c6ddd42b963a54",
+      "probe_checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "held_gzip_header_denial",
+        "peer_observed_socket_close",
+        "approved_recovery",
+        "no_denied_body_text",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 3944,
+        "sample_interval_ms": 50,
+        "samples": 182,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      },
+      "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
+    }
+  },
+  "fixture": "route-free namespace: allowed.test resolves to 11.0.0.1; HTTP 200 Content-Encoding: gzip, Content-Length: 8388608, only three gzip prefix bytes sent; fixture waits for peer closure",
+  "limitations": [
+    "Captures only route-free fixture namespace, not host client, automatic tool invocation, or other-tool traffic.",
+    "Packet traces establish partial gzip response on wire and later client TCP close; native bridge transcript and fixture observation establish EGRESS_ENCODED_RESPONSE, no denied text, and approved recovery.",
+    "Three-byte prefix is not a decompression bomb; encoded response is denied before decompression.",
+    "Experimental unsigned Debian 12 amd64 package, no preceding-candidate upgrade in this replay, not an official candidate.",
+    "Finite sample; transient resource peaks may be missed. Owner self-review and residual-risk acceptance plus separate evidence in four AI Scraping Defense repositories remain open."
+  ],
+  "observed_at_utc": "2026-11-10T07:43:35.747723+00:00",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=/absolute/private/archive.pcap python3 tools/debian_native_container_probe.py CLIENT PACKAGE.deb PACKAGE_SHA SKILL.zip SKILL_SHA --fixture-mode encoded-body-hold-packet --container-memory-mib 128 --sample-server-resources",
+  "result": "passed",
+  "scenario": "explicit native skill calls to held three-byte gzip response, with approved GET before and after",
+  "source_commit": "ba75a5645e56acc67bd51f1b492468629a204672"
+}
