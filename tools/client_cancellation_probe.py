@@ -119,8 +119,10 @@ interim_mode=upgrade_variant in ('interim','interim-repeat')
 interim_repeat_mode=upgrade_variant=='interim-repeat'
 interim_slow_mode=upgrade_variant=='interim-slow'
 control_packet_capture=(packet_capture_requested and
-                        os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE')=='headers' and
-                        os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES')=='3' and
+                        ((os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE')=='headers' and
+                          os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES')=='3') or
+                         (os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_PHASE')=='body' and
+                          os.environ.get('OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES','1')=='1')) and
                         not skill_zip and sys.argv[1] in ('codex','claude'))
 assert not packet_capture_requested or (dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or rebind_mode or fallback_mode or exfil_mode or attack_mode or slow_http_mode or connect_blackhole_mode or tls_mode or tls_slow_mode or malformed_mode or framing_mode or response_limit_mode or header_limit_mode or interim_slow_mode or frame_eof_mode or control_packet_capture), 'packet capture requires an explicit adversarial native replay'
 upgrade_headers_mode=upgrade_variant=='headers'
