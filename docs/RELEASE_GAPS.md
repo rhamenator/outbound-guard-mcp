@@ -16,6 +16,8 @@ A [bounded DNS answer-set validation campaign](policy-fuzzing.md#dns-answer-set-
 
 The [initial raw HTTP wire campaign](policy-fuzzing.md#raw-http-wire-parser-campaign-2026-11-09) is **nonqualifying** for response parsing: a positive control found its fixture closed before the request, so Hyper accepted no valid response. The [corrected narrow raw-header oracle](policy-fuzzing.md#narrow-raw-http-framing-oracle-2026-11-09) sends responses after a request, asserts valid-response acceptance, and compares accepted responses in a strict `Content-Length`/`Transfer-Encoding` grammar against independent byte parsing. Other wire shapes have no semantic oracle. The corrected in-process campaign still lacks a real network or native-client path, does not close priority 1, and does not qualify an official candidate.
 
+The [HTTP/1.0 and partial-content extension](policy-fuzzing.md#http10-and-partial-content-raw-wire-extension-2026-11-10) adds accepted-response controls and raw-byte framing comparisons for three more exact status lines. Its retained 60-second corpus is verified in CI, but it remains an in-process parser campaign with no arbitrary-wire, network or native-client proof.
+
 ## Priority engineering and verification
 
 | Priority | Remaining gap | Concrete next step and completion evidence |
