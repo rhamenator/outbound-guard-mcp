@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recheck retained native malformed-HTTP captures against evidence and wire oracles."""
+"""Recheck retained native hostile-HTTP captures against evidence and wire oracles."""
 
 import json
 from pathlib import Path
@@ -20,6 +20,8 @@ CASES = (
     ("codex", "coding", "tools/verify_native_framing_http_pcap.py", "2026-11-09", ("--mode", "coding")),
     ("claude", "obs-fold", "tools/verify_native_framing_http_pcap.py", "2026-11-10", ("--mode", "obs-fold")),
     ("codex", "obs-fold", "tools/verify_native_framing_http_pcap.py", "2026-11-10", ("--mode", "obs-fold")),
+    ("claude", "bombs", "tools/verify_native_compressed_bomb_pcap.py", "2026-11-10", ()),
+    ("codex", "bombs", "tools/verify_native_compressed_bomb_pcap.py", "2026-11-10", ()),
 )
 
 
@@ -27,7 +29,7 @@ def main() -> None:
     results = []
     seen = set()
     for client, kind, verifier, date, options in CASES:
-        filename = (f"native-{client}-{kind}-http-pcap-{date}.json" if kind in ("comma", "coding", "obs-fold") else
+        filename = (f"native-{client}-{kind}-http-pcap-{date}.json" if kind in ("comma", "coding", "obs-fold", "bombs") else
                     f"native-{client}-{kind}-http-upgrade-pcap-{date}.json")
         document = json.loads((ROOT / "docs/evidence" / filename).read_text())
         assert document["result"] == "passed", filename
