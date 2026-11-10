@@ -442,6 +442,18 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                              else "http://second.test/should-not-hit")
             self.end_headers()
             return
+        if self.path in ("/http10-ok", "/http10-comma-length",
+                         "/http11-partial-ok", "/http11-partial-comma-length"):
+            status, length = {
+                "/http10-ok": (b"HTTP/1.0 200 OK", b"2"),
+                "/http10-comma-length": (b"HTTP/1.0 200 OK", b"2, 2"),
+                "/http11-partial-ok": (b"HTTP/1.1 206 Partial Content", b"2"),
+                "/http11-partial-comma-length": (b"HTTP/1.1 206 Partial Content", b"2, 2"),
+            }[self.path]
+            self.wfile.write(status + b"\r\nContent-Type: text/plain\r\nContent-Length: "
+                             + length + b"\r\n\r\nok")
+            self.close_connection = True
+            return
         if self.path == "/conflict-framing":
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -2591,6 +2603,19 @@ def main(binary, cancellation_probe):
             assert "body_text" not in decision, (path, decision)
             assert HTTP.hits[-1] == f"/{path}"
             framing_results[path] = decision["rule"]
+        for path, status in (("http10-ok", 200), ("http11-partial-ok", 206)):
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == "EGRESS_ALLOWED", (path, decision)
+            assert decision["status_code"] == status and decision["body_text"] == "ok", decision
+            assert HTTP.hits[-1] == f"/{path}"
+            framing_results[path] = decision["rule"]
+        for path in ("http10-comma-length", "http11-partial-comma-length"):
+            decision = call(binary, "allowed.test", path)
+            assert decision["rule"] == "EGRESS_INVALID_FRAMING", (path, decision)
+            assert "body_text" not in decision and HTTP.hits[-1] == f"/{path}", decision
+            framing_results[path] = decision["rule"]
+        print("raw HTTP version/status fixture: HTTP/1.0 200 and HTTP/1.1 206 allowed "
+              "with body ok; comma-length variants denied without body; exact hits passed")
         length_mutant_rules = {}
         for index, value in enumerate(INVALID_LENGTH_CORPUS):
             path = f"length-mutant-{index}"

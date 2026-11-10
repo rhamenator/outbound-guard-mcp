@@ -18,6 +18,8 @@ The [initial raw HTTP wire campaign](policy-fuzzing.md#raw-http-wire-parser-camp
 
 The [HTTP/1.0 and partial-content extension](policy-fuzzing.md#http10-and-partial-content-raw-wire-extension-2026-11-10) adds accepted-response controls and raw-byte framing comparisons for three more exact status lines. Its retained 60-second corpus is verified in CI, but it remains an in-process parser campaign with no arbitrary-wire, network or native-client proof.
 
+The [route-free network follow-up](adversarial-netns.md#route-free-raw-http-version-and-status-replay--2026-11-10) confirms exact `HTTP/1.0 200` and `HTTP/1.1 206` allowed responses and comma-separated length denials through direct MCP against controlled DNS/HTTP. Its retained log and live CI probe cover those four finite responses. Native-client and independent packet evidence for this version/status matrix remain open.
+
 ## Priority engineering and verification
 
 | Priority | Remaining gap | Concrete next step and completion evidence |

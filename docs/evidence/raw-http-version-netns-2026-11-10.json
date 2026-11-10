@@ -1,0 +1,37 @@
+{
+  "binary_sha256": "2c4f44e5d618b57be21cfcceb9eb720f0f8edd5d1f05c86cdb17313d4bf9fd48",
+  "date_utc": "2026-11-10",
+  "expected_allowed_body": "ok",
+  "expected_rules": {
+    "http10-comma-length": "EGRESS_INVALID_FRAMING",
+    "http10-ok": "EGRESS_ALLOWED",
+    "http11-partial-comma-length": "EGRESS_INVALID_FRAMING",
+    "http11-partial-ok": "EGRESS_ALLOWED"
+  },
+  "expected_status_codes": {
+    "http10-ok": 200,
+    "http11-partial-ok": 206
+  },
+  "fixture": "route-free disposable Linux network namespace, controlled allowed.test DNS and HTTP; four raw 200/206 response shapes",
+  "harness_sha256": "e589912756e33fff633436c2ab5115e203b807e7fdd4b094fb89759a7870efa7",
+  "limits": [
+    "Direct synthetic MCP driver, not a native Codex/Claude/Cursor client.",
+    "No packet capture or independent TCP payload oracle; the Python fixture defines the response bytes and asserts request hits.",
+    "Two exact valid statuses and two comma-separated length denials; no arbitrary HTTP version/status/parser safety.",
+    "No claim about traffic sent through other tools or any of the four AI Scraping Defense repositories.",
+    "Unsigned experimental source build; official candidate and owner acceptance remain open."
+  ],
+  "log": "docs/evidence/raw-http-version-netns-2026-11-10.log.gz",
+  "log_gzip_sha256": "60c8d144fe9ae2dd00898d8abe0bca515a1861167d1100d99fa352706d9b0a5e",
+  "log_sha256": "24675b03cee6739739ca8cc659887584f85c843e21aa9120667a02ac94e9f8aa",
+  "reproduction": "cargo build --locked && bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "source_baseline_main_sha": "92a1648bc25ce289b6f637dbd4e7b2f451a3d118",
+  "suite_mcp_decisions": 2252,
+  "tools": {
+    "iproute2": "6.19.0",
+    "openssl": "3.5.5",
+    "python": "3.14.4",
+    "rustc": "1.99.1"
+  },
+  "wrapper_sha256": "bf88393fc644413a56ba54dac1f589bdb4df49c3b04ae8302e9dd442c6d7165f"
+}
