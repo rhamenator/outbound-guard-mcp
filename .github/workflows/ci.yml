@@ -12,7 +12,7 @@ jobs:
   retained-dns-packets:
     name: Retained DNS and HTTP packet evidence
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
       - name: Install packet inspection tool
@@ -21,8 +21,8 @@ jobs:
           # test-tool install on the official Noble archive and bound I/O wait.
           echo 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu noble main universe' > "$RUNNER_TEMP/outbound-ubuntu.list"
           apt_source=(-o "Dir::Etc::sourcelist=$RUNNER_TEMP/outbound-ubuntu.list" -o Dir::Etc::sourceparts=-)
-          sudo timeout 180s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 -o Acquire::Languages=none update
-          sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 install -y tshark
+          sudo timeout 360s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 -o Acquire::Languages=none update
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 300s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 install -y tshark
           tshark --version
       - name: Recheck retained DNS capture digests and wire behavior
         run: python3 tools/verify_native_dns_corpus.py
