@@ -26,6 +26,8 @@ jobs:
         run: python3 tools/verify_native_dns_spoof_corpus.py
       - name: Recheck retained malformed HTTP capture digests and wire behavior
         run: python3 tools/verify_native_http_framing_corpus.py
+      - name: Reject altered native compressed-bomb captures
+        run: python3 tools/verify_native_bomb_oracle_negative_controls.py
       - name: Recheck native informational slow-drip packet evidence
         run: python3 tools/verify_native_interim_slow_corpus.py
       - name: Recheck native connect-blackhole packet evidence
