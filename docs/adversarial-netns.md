@@ -337,6 +337,8 @@ The [redacted early-close record](evidence/unsupported-transfer-coding-early-clo
 
 The [encoded-body hold probe](evidence/encoded-response-early-close-2026-11-10.json) tests `Content-Encoding: gzip` with a declared 8 MiB body but only a three-byte gzip prefix sent. It requires `EGRESS_ENCODED_RESPONSE` before the held body can arrive, no returned body text, peer-observed socket closure, and an approved recovery call in the same process. This is a finite synthetic stdio test; it does not decode a bomb or establish native-client timing, host-client/other-tool coverage, or general shutdown bounds.
 
+A separate [native-client replay](evidence/native-held-encoded-response-2026-11-10.json) uses the same route-free fixture through explicit Claude and Codex installed-skill calls. Its bridge transcript asserts the three guarded decisions and the fixture records peer closure. There is no retained pcap for this replay; it does not establish client behavior outside those explicit calls or traffic sent through other tools.
+
 This deterministic matrix broadens the prior five fixed forms. It is not a coverage-guided HTTP fuzz campaign, formal parser proof, native-client package replay, or assertion that every socket/packet was absent. The two earlier native clients and package-installed replays remain separately scoped evidence.
 
 ## Retained native DNS SSRF packet captures (2026-11-06)

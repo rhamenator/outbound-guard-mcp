@@ -62,9 +62,10 @@ import sys,os,json,pathlib,subprocess,tempfile,time,threading,queue,shutil,hashl
 assert len(sys.argv) in (3,4) and sys.argv[1] in ('claude','codex','cursor'), __doc__
 skill_zip=pathlib.Path(sys.argv[3]).resolve(strict=True) if len(sys.argv)==4 else None
 trap_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_TRAPS')
-assert trap_variant in (None,'1','bombs'), 'unsupported trap replay mode'
-attack_mode=trap_variant in ('1','bombs')
+assert trap_variant in (None,'1','bombs','held'), 'unsupported trap replay mode'
+attack_mode=trap_variant in ('1','bombs','held')
 bomb_mode=trap_variant=='bombs'
+held_encoded_mode=trap_variant=='held'
 dns_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SSRF')=='1'
 dns_spoof_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_DNS_SPOOF')
 assert dns_spoof_variant in (None,'1','busy'), 'unsupported forged DNS replay mode'
@@ -485,7 +486,7 @@ if skill_zip:
   skill_prompt='First invoke the outbound-guard skill using the Skill tool. Follow its instructions for this controlled fixture: use guarded_fetch to GET http://127.0.0.1/ once, GET http://allowed.test/plain once and HEAD http://allowed.test/head-ok once, in that order. The operator already approved allowed.test and installed the server. Use no other tools; report actual results.'
   expected_rules=['EGRESS_INVALID_HOST','EGRESS_ALLOWED','EGRESS_ALLOWED']
   expected_methods=['GET','GET','HEAD']
-  if attack_mode and not bomb_mode:
+  if attack_mode and not (bomb_mode or held_encoded_mode):
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this controlled fixture, use ONLY guarded_fetch for these six calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://allowed.test/redirect ; GET http://allowed.test/gzip-bomb ; GET http://allowed.test/plain . Make every call once even when an earlier call is denied. Do not retry or use any other tool. The operator approved allowed.test and installed the server. Report the actual results.'
    expected_rules+=['EGRESS_REDIRECT_DENIED','EGRESS_ENCODED_RESPONSE','EGRESS_ALLOWED']
    expected_methods+=['GET','GET','GET']
@@ -493,6 +494,10 @@ if skill_zip:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/gzip-bomb ; GET http://allowed.test/deflate-bomb ; GET http://allowed.test/plain . The middle responses contain compressed bodies that expand to 8 MiB. The operator approved allowed.test. Make each call once after a denial. Do not retry or use any other tool. Report actual results.'
    expected_rules=['EGRESS_ALLOWED','EGRESS_ENCODED_RESPONSE','EGRESS_ENCODED_RESPONSE','EGRESS_ALLOWED']
    expected_methods=['GET']*4
+  if held_encoded_mode:
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these three calls in order: GET http://allowed.test/plain ; GET http://allowed.test/encoded-body-hold ; GET http://allowed.test/plain . The middle server declares an 8 MiB gzip response but holds its body after three bytes. The operator approved allowed.test. Make each call once, even after a denial. Do not retry or use any other tool. Report actual results.'
+   expected_rules=['EGRESS_ALLOWED','EGRESS_ENCODED_RESPONSE','EGRESS_ALLOWED']
+   expected_methods=['GET']*3
   if dns_mode:
    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled DNS fixture, use ONLY guarded_fetch for these nine calls in order: GET http://127.0.0.1/ ; GET http://allowed.test/plain ; HEAD http://allowed.test/head-ok ; GET http://private.test/plain ; GET http://alias-private.test/plain ; GET http://mixed.test/plain ; GET http://metadata.test/plain ; GET http://loop-dns.test/plain ; GET http://allowed.test/plain . The operator approved all six exact DNS names for this negative security test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
    expected_rules+=['EGRESS_FORBIDDEN_ADDRESS']*4+['EGRESS_DNS_FAILURE','EGRESS_ALLOWED']
@@ -773,11 +778,12 @@ if skill_zip:
    print(json.dumps({'probe_diagnostic':{'http_methods':[e['http_method'] for e in fetches],
     'rules':[e['rule'] for e in events if 'rule' in e]}}),flush=True)
   assert [e['http_method'] for e in fetches]==expected_methods
-  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if ((attack_mode and not bomb_mode) or dns_mode or dns_boundary_mode or exfil_mode or malformed_mode or rebind_mode or html_quarantine_mode) else [200,200])
+  expected_statuses = [200] if (json_injection_mode or tls_mode) else ([200,200,200] if ((attack_mode and not (bomb_mode or held_encoded_mode)) or dns_mode or dns_boundary_mode or exfil_mode or malformed_mode or rebind_mode or html_quarantine_mode) else [200,200])
   if not framing_mode:
    assert [e['status_code'] for e in events if 'status_code' in e]==expected_statuses
   if attack_mode:
-   expected_hits=(['/plain','/gzip-bomb','/deflate-bomb','/plain'] if bomb_mode else
+   expected_hits=(['/plain','/encoded-body-hold','/plain'] if held_encoded_mode else
+                  ['/plain','/gzip-bomb','/deflate-bomb','/plain'] if bomb_mode else
                   ['/plain','/head-ok','/redirect','/gzip-bomb','/plain'])
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
@@ -787,9 +793,15 @@ if skill_zip:
    dns_names=json.loads((root/'dns.json').read_text())
    assert 'private.test' not in dns_names, 'redirect destination was resolved'
    denied=[e for e in events if e.get('rule') in ('EGRESS_REDIRECT_DENIED','EGRESS_ENCODED_RESPONSE')]
-   assert len(denied)==2 and all(e.get('body_text_present') is False for e in denied), denied
+   assert len(denied)==(1 if held_encoded_mode else 2) and all(e.get('body_text_present') is False for e in denied), denied
    if bomb_mode:
     assert [e.get('rule') for e in denied]==['EGRESS_ENCODED_RESPONSE']*2, denied
+   if held_encoded_mode:
+    assert [e.get('rule') for e in denied]==['EGRESS_ENCODED_RESPONSE'], denied
+    for _ in range(200):
+     if (root/'header-denial-closed').exists():break
+     time.sleep(.01)
+    assert (root/'header-denial-closed').exists(), 'held encoded response socket stayed open'
   if dns_mode:
    for _ in range(100):
     dns_names=json.loads((root/'dns.json').read_text())
@@ -1026,7 +1038,7 @@ if skill_zip:
    'native_project_source_observed':True,'setting_sources':['project'] if name=='claude' else None,'builtin_tools':['Skill'] if name=='claude' else (['observed native read'] if name=='cursor' else None),
    'http_methods':[e['http_method'] for e in fetches], 'url_classes':[e['url_class'] for e in fetches],
    'rules':[e['rule'] for e in events if 'rule' in e],
-   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'bomb_mode':bomb_mode, 'dns_mode':dns_mode, 'dns_spoof_mode':dns_spoof_mode, 'dns_spoof_busy_mode':dns_spoof_busy_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_answer_limit_mode':dns_answer_limit_mode, 'dns_answer_boundary_mode':dns_boundary_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'connect_blackhole_mode':connect_blackhole_mode, 'blackhole_connect_seconds':blackhole_connect_seconds, 'blackhole_dropped_packets':blackhole_drops, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
+   'status_codes':[e['status_code'] for e in events if 'status_code' in e], 'attack_mode':attack_mode, 'bomb_mode':bomb_mode, 'held_encoded_mode':held_encoded_mode, 'held_encoded_socket_closed':(root/'header-denial-closed').exists() if held_encoded_mode else None, 'dns_mode':dns_mode, 'dns_spoof_mode':dns_spoof_mode, 'dns_spoof_busy_mode':dns_spoof_busy_mode, 'dns_truncated_mode':dns_truncated_mode, 'dns_answer_limit_mode':dns_answer_limit_mode, 'dns_answer_boundary_mode':dns_boundary_mode, 'dns_tcp_private_mode':dns_tcp_private_mode, 'dns_tcp_mixed_v6_mode':dns_tcp_mixed_v6_mode, 'exfil_mode':exfil_mode, 'rebind_mode':rebind_mode, 'malformed_mode':malformed_mode, 'framing_mode':framing_mode, 'comma_framing_mode':comma_framing_mode, 'response_limit_mode':response_limit_mode, 'frame_mode':frame_mode, 'argument_mode':argument_mode, 'header_limit_mode':header_limit_mode, 'json_injection_mode':json_injection_mode, 'json_duplicate_mode':json_duplicate_mode, 'fallback_mode':fallback_mode, 'tls_mode':tls_mode, 'tls_slow_mode':tls_slow_mode, 'active_proxy_mode':active_proxy_mode, 'slow_http_mode':slow_http_mode, 'connect_blackhole_mode':connect_blackhole_mode, 'blackhole_connect_seconds':blackhole_connect_seconds, 'blackhole_dropped_packets':blackhole_drops, 'upgrade_mode':upgrade_mode, 'interim_mode':interim_mode,'interim_slow_mode':interim_slow_mode,'html_quarantine_mode':html_quarantine_mode,'saturation_mode':saturation_mode,
    'fixture_hits':hits if (attack_mode or dns_mode or dns_spoof_mode or dns_truncated_mode or dns_answer_limit_mode or exfil_mode or rebind_mode or malformed_mode or framing_mode or response_limit_mode or frame_mode or argument_mode or header_limit_mode or json_injection_mode or fallback_mode or tls_mode or tls_slow_mode or slow_http_mode or connect_blackhole_mode or upgrade_mode or html_quarantine_mode or saturation_mode) else None,
    'bridge_saturation':{'queued_replies':len(synthetic_replies),'busy_rule':busy['protocol_rule'],
     'cancel_notification_seen':True,'cancelled_fetch_replied':False,'socket_closed':True,

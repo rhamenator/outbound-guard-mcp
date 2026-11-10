@@ -127,6 +127,7 @@ while True:
   last_spoofed_ids=spoofed_ids
  if HTTP.cancel_started.is_set() and not (root/'started').exists():(root/'started').touch()
  if HTTP.cancel_closed.is_set() and not (root/'closed').exists():(root/'closed').touch()
+ if HTTP.header_denial_closed.is_set() and not (root/'header-denial-closed').exists():(root/'header-denial-closed').touch()
  if (root/'reset-cancel').exists():
   assert HTTP.cancel_closed.is_set(), 'cannot reset an open cancellation fixture'
   HTTP.cancel_started.clear();HTTP.cancel_closed.clear()
