@@ -1,0 +1,138 @@
+{
+  "client_versions": {
+    "claude": "Claude Code 2.1.319",
+    "codex": "Codex CLI 0.151.0"
+  },
+  "clients": {
+    "claude": {
+      "approved_status_codes": [
+        200,
+        200
+      ],
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "held_gzip_header_denial",
+        "peer_observed_socket_close",
+        "approved_recovery",
+        "no_denied_body_text",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_binary_sha256": "c2f098bb48f92f6101ea1ab52a9c1146676c6ec92344c9ebcf4d1a066bcfd994",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18264064,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/encoded-body-hold",
+        "/plain"
+      ],
+      "held_encoded_socket_closed": true,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ENCODED_RESPONSE",
+        "EGRESS_ALLOWED"
+      ]
+    },
+    "codex": {
+      "approved_status_codes": [
+        200,
+        200
+      ],
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "held_gzip_header_denial",
+        "peer_observed_socket_close",
+        "approved_recovery",
+        "no_denied_body_text",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_binary_sha256": "959c3b2fcf36a8b5a8e0cbe0aadfc1303696d52eb16de2ce8c0901d8caa5cee8",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17108992,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "fixture_hits": [
+        "/plain",
+        "/encoded-body-hold",
+        "/plain"
+      ],
+      "held_encoded_socket_closed": true,
+      "http_methods": [
+        "GET",
+        "GET",
+        "GET"
+      ],
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ENCODED_RESPONSE",
+        "EGRESS_ALLOWED"
+      ]
+    }
+  },
+  "fixture": "route-free disposable network namespace, approved allowed.test; HTTP 200 Content-Encoding: gzip and Content-Length: 8388608, only three gzip header bytes sent before waiting for peer closure",
+  "limitations": [
+    "Only explicit skill-driven guarded_fetch calls in two tested native-client versions; no automatic invocation or host-client/other-tool traffic coverage.",
+    "The fixture sends a three-byte gzip prefix, not a full decompression bomb; the product rejects encoded responses before decompression.",
+    "No retained packet capture in this replay; peer closure is a fixture socket observation and rules are bridge-transcript observations.",
+    "Experimental unsigned Debian 12 amd64 package; no preceding-candidate upgrade in this replay or official-candidate qualification.",
+    "Owner self-review, residual-risk acceptance and separate adversarial evidence for each of four AI Scraping Defense repositories remain open."
+  ],
+  "observed_at_utc": "2026-11-10T06:45:57.164447+00:00",
+  "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT PACKAGE.deb PACKAGE_SHA SKILL.zip SKILL_SHA --fixture-mode encoded-body-hold --container-memory-mib 128 --sample-server-resources",
+  "result": "passed",
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_commit": "ba75a5645e56acc67bd51f1b492468629a204672"
+}
