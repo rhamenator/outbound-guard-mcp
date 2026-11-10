@@ -4,7 +4,7 @@ set -euo pipefail
 : "${LIBFUZZER_RUNTIME:?Set LIBFUZZER_RUNTIME to libclang_rt.fuzzer_no_main-x86_64.a}"
 : "${POLICY_FUZZ_OUTPUT:?Set POLICY_FUZZ_OUTPUT to a dedicated evidence directory}"
 target="${POLICY_FUZZ_TARGET:-policy}"
-case "$target" in policy|frame|rpc|json|http|wire) ;; *) exit 2 ;; esac
+case "$target" in policy|frame|rpc|json|http|wire|dns) ;; *) exit 2 ;; esac
 seconds="${POLICY_FUZZ_SECONDS:-60}"
 case "$seconds" in 60|300|600) ;; *) exit 2 ;; esac
 cpu_seconds=$((seconds + 30))
@@ -34,6 +34,22 @@ p=Path(sys.argv[1])
 (p/'oversize').write_bytes(b'x'*65537+b'\nping\n')
 SEEDS
   max_len=131072
+elif [ "$target" = dns ]; then
+  python3 - "$POLICY_FUZZ_OUTPUT/corpus" <<'SEEDS'
+from pathlib import Path
+import sys
+p=Path(sys.argv[1])
+(p/'empty').write_bytes(b'\x00')
+(p/'public-v4').write_bytes(b'\x01\x00')
+(p/'private').write_bytes(b'\x01\x04')
+(p/'mixed-last').write_bytes(b'\x03\x00\x01\x03')
+(p/'public-v6').write_bytes(b'\x01\x08')
+(p/'private-v6').write_bytes(b'\x01\x09')
+(p/'wrong-port').write_bytes(b'\x01\x0b')
+(p/'limit').write_bytes(b'\x10'+b'\x00'*16)
+(p/'overflow').write_bytes(b'\x11'+b'\x00'*17)
+SEEDS
+  max_len=64
 elif [ "$target" = wire ]; then
   python3 - "$POLICY_FUZZ_OUTPUT/corpus" <<'SEEDS'
 from pathlib import Path
