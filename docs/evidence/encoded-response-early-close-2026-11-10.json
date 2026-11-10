@@ -1,0 +1,24 @@
+{
+  "result": "passed",
+  "source_commit": "13f4ee6174d9ffbee9019d716143a1883ba9c865",
+  "binary_sha256": "2c4f44e5d618b57be21cfcceb9eb720f0f8edd5d1f05c86cdb17313d4bf9fd48",
+  "environment": "route-free Linux network namespace; synthetic MCP stdio driver; local controlled DNS and HTTP fixture",
+  "reproduction": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp target/debug/examples/cancel_fetch_probe",
+  "fixture": {
+    "request": "GET http://allowed.test/encoded-body-hold",
+    "response_headers": ["HTTP/1.1 200 OK", "Content-Type: text/plain", "Content-Encoding: gzip", "Content-Length: 8388608"],
+    "body_sent": "three-byte gzip prefix only; fixture waits for peer socket closure"
+  },
+  "assertions": [
+    "EGRESS_ENCODED_RESPONSE returned within two seconds without body_text",
+    "HTTP peer observed socket closure within its two-second wait",
+    "same MCP process remained alive and allowed a subsequent /plain GET",
+    "full route-free adversarial probe passed 2252 MCP decisions"
+  ],
+  "limitations": [
+    "This is a finite synthetic stdio and HTTP fixture; no native MCP client was used in this run.",
+    "The partial gzip prefix was not a decompression bomb; the guard denies encoded responses before decompression.",
+    "The assertion does not bound every transport shutdown path, host-client or other-tool traffic, or the four separate AI Scraping Defense repositories.",
+    "Official candidate, platform qualification, owner self-review and residual-risk acceptance remain open."
+  ]
+}

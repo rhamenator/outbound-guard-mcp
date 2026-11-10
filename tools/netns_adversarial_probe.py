@@ -221,7 +221,7 @@ class HTTP(http.server.BaseHTTPRequestHandler):
     sensitive_headers = []
     cancel_started = threading.Event()
     cancel_closed = threading.Event()
-    unsupported_coding_closed = threading.Event()
+    header_denial_closed = threading.Event()
 
     def log_message(self, *_args):
         pass
@@ -285,19 +285,24 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"2\r\nok\r\n0\r\n\r\n")
             return
-        if self.path == "/unsupported-coding-drip":
+        if self.path in ("/unsupported-coding-drip", "/encoded-body-hold"):
             self.protocol_version = "HTTP/1.1"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
-            self.send_header("Transfer-Encoding", "gzip999, chunked")
+            if self.path == "/unsupported-coding-drip":
+                self.send_header("Transfer-Encoding", "gzip999, chunked")
+            else:
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Content-Length", "8388608")
             self.end_headers()
             try:
-                self.wfile.write(b"2\r\nx")
+                self.wfile.write(b"2\r\nx" if self.path == "/unsupported-coding-drip"
+                                 else b"\x1f\x8b\x08")
                 self.wfile.flush()
                 if select.select([self.connection], [], [], 2)[0] and not self.connection.recv(1):
-                    type(self).unsupported_coding_closed.set()
+                    type(self).header_denial_closed.set()
             except (BrokenPipeError, ConnectionResetError):
-                type(self).unsupported_coding_closed.set()
+                type(self).header_denial_closed.set()
             return
         if self.path in ("/cancel-silent-headers", "/cancel-silent-headers-long", "/cancel-silent-body"):
             if self.path == "/cancel-silent-body":
@@ -832,11 +837,11 @@ def call(binary, host, path, scheme="http", extra_ca=None):
     return call_sequence(binary, [(host, path, scheme)], extra_ca=extra_ca)[0]
 
 
-def test_unsupported_coding_early_close(binary):
+def test_header_denial_early_close(binary, path, rule):
     """Observe response-socket cleanup while the MCP process stays alive."""
     env = dict(os.environ, OUTBOUND_GUARD_ALLOWED_HOSTS="allowed.test")
     env.pop("OUTBOUND_GUARD_EXTRA_CA_CERT", None)
-    HTTP.unsupported_coding_closed.clear()
+    HTTP.header_denial_closed.clear()
     before_hits = len(HTTP.hits)
     child = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, text=True, env=env)
@@ -857,20 +862,20 @@ def test_unsupported_coding_early_close(binary):
         child.stdin.flush()
         started = time.monotonic()
         decision = send("denied", "tools/call", {"name": "guarded_fetch", "arguments": {
-            "url": "http://allowed.test/unsupported-coding-drip"}})["structuredContent"]
+            "url": f"http://allowed.test{path}"}})["structuredContent"]
         elapsed = time.monotonic() - started
-        assert decision["rule"] == "EGRESS_UNSUPPORTED_TRANSFER_CODING", decision
+        assert decision["rule"] == rule, decision
         assert "body_text" not in decision and elapsed < 2, (decision, elapsed)
-        assert HTTP.unsupported_coding_closed.wait(2), "response socket stayed open"
+        assert HTTP.header_denial_closed.wait(2), "response socket stayed open"
         assert child.poll() is None, "MCP process exited before socket-closure check"
         recovery = send("recovery", "tools/call", {"name": "guarded_fetch", "arguments": {
             "url": "http://allowed.test/plain"}})["structuredContent"]
         assert recovery["rule"] == "EGRESS_ALLOWED" and recovery["body_text"] == "fixture-ok"
-        assert HTTP.hits[before_hits:] == ["/unsupported-coding-drip", "/plain"]
+        assert HTTP.hits[before_hits:] == [path, "/plain"]
         child.stdin.close()
         assert child.wait(timeout=5) == 0
         assert not child.stderr.read()
-        print(f"Unsupported transfer-coding slow body: exact denial in {elapsed:.2f}s, "
+        print(f"{path}: {rule} in {elapsed:.2f}s, "
               "socket closed before live-process recovery")
     finally:
         if child.poll() is None:
@@ -2608,7 +2613,10 @@ def main(binary, cancellation_probe):
         coding_sha256 = hashlib.sha256("\n".join(INVALID_TRANSFER_CODING_CORPUS).encode()).hexdigest()
         print(f"Transfer-Encoding property corpus: seed=347925108; cases={len(INVALID_TRANSFER_CODING_CORPUS)}; "
               f"sha256={coding_sha256}; denials={coding_mutant_rules}")
-        test_unsupported_coding_early_close(binary)
+        test_header_denial_early_close(binary, "/unsupported-coding-drip",
+                                       "EGRESS_UNSUPPORTED_TRANSFER_CODING")
+        test_header_denial_early_close(binary, "/encoded-body-hold",
+                                       "EGRESS_ENCODED_RESPONSE")
         for path, rule in (("delayed", "EGRESS_NETWORK_FAILURE"),
                            ("drip", "EGRESS_RESPONSE_TOO_SLOW"),
                            ("late-eof", "EGRESS_RESPONSE_TIMEOUT"),
