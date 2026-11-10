@@ -42,6 +42,26 @@ def corrupt_gzip(source: bytes) -> bytes:
     return bytes(data)
 
 
+def corrupt_deflate_checksum(source: bytes) -> bytes:
+    # The retained stream is a single captured zlib body. Change its Adler-32
+    # trailer, leaving the HTTP framing and the new capture digest valid.
+    prefix = bytes.fromhex("789cecc10101")
+    trailer = bytes.fromhex("00009c058f5f842e")
+    assert source.count(prefix) == source.count(trailer) == 1
+    start = source.index(prefix)
+    end = source.index(trailer) + len(trailer)
+    assert end - start == 8163, "unexpected retained deflate body"
+    data = bytearray(source)
+    data[end - 1] ^= 1
+    return bytes(data)
+
+
+def wrong_deflate_length(source: bytes) -> bytes:
+    header = b"Content-Encoding: deflate\r\nContent-Length: 8163"
+    assert source.count(header) == 1, "unexpected retained deflate header"
+    return source.replace(header, header[:-1] + b"2", 1)
+
+
 def rejection(path: Path, digest: str, expected_error: str) -> None:
     completed = subprocess.run(
         ["python3", str(VERIFIER), str(path), digest], capture_output=True,
@@ -65,6 +85,10 @@ def main() -> None:
             for name, mutant, error in (
                 ("off_fixture_syn", off_fixture_syn(source), "169.254.169.254"),
                 ("corrupt_gzip", corrupt_gzip(source), "unknown compression method"),
+                ("corrupt_deflate_checksum", corrupt_deflate_checksum(source),
+                 "incorrect data check"),
+                ("wrong_deflate_length", wrong_deflate_length(source),
+                 "Content-Length: 8162"),
             ):
                 altered = directory / f"{client}-{name}.pcap"
                 altered.write_bytes(mutant)
@@ -73,7 +97,8 @@ def main() -> None:
                 # must reject this mutation.
                 rejection(altered, hashlib.sha256(mutant).hexdigest(), error)
             results.append({"client": client,
-                            "rejected": ["wrong_digest", "off_fixture_syn", "corrupt_gzip"]})
+                            "rejected": ["wrong_digest", "off_fixture_syn", "corrupt_gzip",
+                                         "corrupt_deflate_checksum", "wrong_deflate_length"]})
     print(json.dumps({"negative_controls": results}, sort_keys=True))
 
 
