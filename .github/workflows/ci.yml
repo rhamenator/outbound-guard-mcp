@@ -46,6 +46,8 @@ jobs:
         run: python3 tools/verify_native_eof_corpus.py
       - name: Recheck native held encoded-response packet evidence
         run: python3 tools/verify_native_held_encoded_corpus.py
+      - name: Recheck before and after native held-response upgrade captures
+        run: python3 tools/verify_native_held_two_phase_upgrade_corpus.py
       - name: Reject altered native held encoded-response captures
         run: python3 tools/verify_native_held_encoded_negative_controls.py
       - name: Recheck exact trusted-main native rebinding captures
