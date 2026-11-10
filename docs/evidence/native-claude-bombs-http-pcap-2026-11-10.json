@@ -1,0 +1,151 @@
+{
+  "bomb_mode": true,
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "no_upgrade",
+    "native_skill_and_guarded_calls",
+    "gzip_bomb_denial",
+    "deflate_bomb_denial",
+    "no_denied_body_text",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "client": "Claude Code 2.1.319",
+  "client_version_source": "Host CLI --version checked after native replay on 2026-11-10; probe used the same CLI installation.",
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 128,
+    "memory_peak_bytes": 17899520,
+    "pids_peak": 10,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "explicit_skill_input_accepted": null,
+  "fixture_hits": [
+    "/plain",
+    "/gzip-bomb",
+    "/deflate-bomb",
+    "/plain"
+  ],
+  "fixture_mode": "compressed-bombs-packet",
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "limitations": [
+    "Fixture namespace only; host-client and other-tool traffic are not captured.",
+    "The production guard rejects encoded responses before decompression. The 8 MiB decoded size is verified offline from captured bytes; the product did not allocate or decode that payload.",
+    "Two finite bomb shapes and a 128 MiB cgroup run do not prove arbitrary compression safety or aggregate resource-exhaustion resistance.",
+    "This run tested clean install and uninstall; upgrade was not exercised.",
+    "Unsigned experimental package is not an owner-approved official candidate.",
+    "Independent human review is not claimed; four AI Scraping Defense repositories require separate evidence."
+  ],
+  "native_skill_discovered": null,
+  "native_skill_invoked": true,
+  "native_skill_loaded": true,
+  "native_turn_completed": null,
+  "new_package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "1039a00eaaaeaca03193208c2ca1f1c6406c8909b556f6603981f9fff64fde2e",
+    "revision": "11420f8858b432d738f9ce9b7cfc5c1dd2cbbf23",
+    "version": "0.1.0~candidate.326+g11420f8858b4"
+  },
+  "observed_at_utc": "2026-11-10T01:38:30.241151+00:00",
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "dns_query_count": 9,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "packet_count": 64,
+    "pcap_sha256": "86934cdf0b455156b25a10c91c0657030dcf7d1a61ca37dcd8033a49fb374172",
+    "raw_pcap_retained": true,
+    "tcp_syn_count": 4,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0
+  },
+  "packet_verifier": {
+    "bombs": {
+      "/deflate-bomb": {
+        "decoded_bytes": 8388608,
+        "encoding": "deflate",
+        "wire_body_bytes": 8163
+      },
+      "/gzip-bomb": {
+        "decoded_bytes": 8388608,
+        "encoding": "gzip",
+        "wire_body_bytes": 8175
+      }
+    },
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 9,
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/gzip-bomb"
+      ],
+      [
+        "allowed.test",
+        "/deflate-bomb"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "86934cdf0b455156b25a10c91c0657030dcf7d1a61ca37dcd8033a49fb374172",
+    "tcp_syn_count": 4
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-bombs-http-2026-11-10.pcap",
+  "pcap_sha256": "86934cdf0b455156b25a10c91c0657030dcf7d1a61ca37dcd8033a49fb374172",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_DIR/claude.pcap python3 tools/debian_native_container_probe.py claude PACKAGE.deb PACKAGE_SHA SKILL.zip SKILL_SHA --fixture-mode compressed-bombs-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_compressed_bomb_pcap.py RETAINED.pcap SHA",
+  "result": "passed",
+  "rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_ENCODED_RESPONSE",
+    "EGRESS_ENCODED_RESPONSE",
+    "EGRESS_ALLOWED"
+  ],
+  "scenario": "native claude gzip and deflate expansion-bomb denial and approved recovery",
+  "server_resource_observation": {
+    "max_sampled_fd": 7,
+    "max_sampled_rss_kib": 3948,
+    "sample_interval_ms": 50,
+    "samples": 276,
+    "scope": "Finite sampled server observations; sampling can miss transient peaks."
+  },
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "status_codes": [
+    200,
+    200
+  ]
+}
