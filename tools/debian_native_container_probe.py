@@ -139,7 +139,7 @@ def main():
     parser.add_argument("skill_sha256")
     parser.add_argument("--old-package", type=Path)
     parser.add_argument("--old-sha256")
-    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "dns-answer-limit-packet", "dns-answer-boundary-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-comma-packet", "framing-http-coding", "framing-http-coding-packet", "framing-http-obs-fold", "framing-http-obs-fold-packet", "redirect-encoded", "redirect-encoded-packet", "compressed-bombs-packet", "encoded-body-hold", "encoded-body-hold-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-spoof-packet", "dns-spoof-busy-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "eof-mcp-frame", "eof-mcp-frame-active", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"), default="tls")
+    parser.add_argument("--fixture-mode", choices=("tls", "tls-active-proxy", "tls-handshake-packet", "tls-slow-http", "tls-slow-http-packet", "slow-http", "slow-http-packet", "connect-blackhole", "connect-blackhole-packet", "dns-answer-limit", "dns-answer-limit-packet", "dns-answer-boundary-packet", "malformed-http", "malformed-http-packet", "framing-http", "framing-http-packet", "framing-http-comma", "framing-http-comma-packet", "framing-http-coding", "framing-http-coding-packet", "framing-http-obs-fold", "framing-http-obs-fold-packet", "redirect-encoded", "redirect-encoded-packet", "compressed-bombs-packet", "encoded-body-hold", "encoded-body-hold-packet", "http-upgrade", "http-upgrade-headers", "http-interim-flood", "http-interim-repeat", "http-interim-slow", "http-interim-slow-packet", "html-quarantine", "queue-saturation", "dns-ssrf", "dns-ssrf-packet", "dns-spoof-packet", "dns-spoof-busy-packet", "dns-truncated", "dns-truncated-packet", "dns-tcp-private", "dns-tcp-private-packet", "dns-tcp-mixed-v6", "dns-tcp-mixed-v6-packet", "dns-rebind", "dns-rebind-packet", "pinned-fallback-packet", "synthetic-exfil", "synthetic-exfil-packet", "synthetic-exfil-active-proxy", "argument-injection", "response-body-limit", "response-body-limit-packet", "response-header-limit", "response-header-limit-packet", "malformed-mcp-frame", "eof-mcp-frame", "eof-mcp-frame-active", "json-injection", "json-duplicate", "client-control-cancellation", "client-control-body-cancellation-packet", "client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"), default="tls")
     parser.add_argument("--container-memory-mib", type=int, choices=(128, 256, 512), default=512,
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
@@ -211,6 +211,9 @@ def main():
             env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         if args.fixture_mode in ("client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
             env["OUTBOUND_GUARD_CLIENT_CANCEL_CYCLES"] = str(args.cancel_cycles)
+        if args.fixture_mode == "client-control-body-cancellation-packet":
+            env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "body"
+            env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
         if args.fixture_mode == "client-control-repeated-cancellation-packet":
             assert args.cancel_cycles == 3, "packet oracle requires three cancellation cycles"
             env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
@@ -303,7 +306,7 @@ def main():
             with (root / "harness.stdout").open("w+") as output:
                 command = ["python3", str(Path(__file__).with_name("client_cancellation_probe.py")),
                            args.client, str(wrapper)]
-                if args.fixture_mode not in ("client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
+                if args.fixture_mode not in ("client-control-cancellation", "client-control-body-cancellation-packet", "client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
                     command.append(str(skill))
                 process = subprocess.Popen(command, env=env, stdout=output,
                                            start_new_session=True)
@@ -340,13 +343,13 @@ def main():
                     assert (root / "container.proxy-verified").read_text() == "verified\n", \
                         "proxy variables were not verified inside the Debian container"
                 control_result = None
-                if args.fixture_mode in ("client-control-cancellation", "client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
+                if args.fixture_mode in ("client-control-cancellation", "client-control-body-cancellation-packet", "client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
                     control_result = json.loads(harness_output.splitlines()[-1])
-                    assert control_result["cancel_phase"] == ("body" if args.fixture_mode == "client-control-cancellation" else "headers")
+                    assert control_result["cancel_phase"] == ("body" if args.fixture_mode in ("client-control-cancellation", "client-control-body-cancellation-packet") else "headers")
                     assert control_result["cancel_cycles"] == (args.cancel_cycles if args.fixture_mode in ("client-control-repeated-cancellation", "client-control-repeated-cancellation-packet") else 1)
                     assert control_result["live_client"] and control_result["client_control_acknowledged"]
                     assert control_result["socket_closed"] and control_result["recovery_allowed"]
-                    if args.fixture_mode == "client-control-repeated-cancellation-packet":
+                    if args.fixture_mode in ("client-control-repeated-cancellation-packet", "client-control-body-cancellation-packet"):
                         capture = control_result["packet_capture"]
                         assert capture and capture["raw_pcap_retained"]
                         assert len(capture["pcap_sha256"]) == 64
@@ -363,8 +366,8 @@ def main():
                         assert not control_result["cancelled_fetch_replied"]
                     else:
                         assert control_result["cancelled_fetch_replied"]
-                        expected_rule = ("EGRESS_NETWORK_FAILURE" if args.fixture_mode != "client-control-cancellation"
-                                         else "EGRESS_RESPONSE_TOO_SLOW")
+                        expected_rule = ("EGRESS_RESPONSE_TOO_SLOW" if args.fixture_mode in ("client-control-cancellation", "client-control-body-cancellation-packet")
+                                         else "EGRESS_NETWORK_FAILURE")
                         assert control_result["rules"][0] == expected_rule
                         if args.fixture_mode != "client-control-cancellation":
                             assert all(elapsed < 8 for elapsed in control_result["socket_closed_after_each_seconds"])
@@ -435,7 +438,7 @@ def main():
                             "matching_mcp_cancel_and_socket_close" if control_result["matching_wire_cancellation"]
                             else "missing_mcp_cancel_server_timeout_and_socket_close",
                             *(["repeated_same_process_cancel_recovery_cycles"] if control_result["cancel_cycles"] > 1 else []),
-                            *(["fixture_namespace_control_packet_capture"] if args.fixture_mode == "client-control-repeated-cancellation-packet" else [])]
+                            *(["fixture_namespace_control_packet_capture"] if args.fixture_mode in ("client-control-repeated-cancellation-packet", "client-control-body-cancellation-packet") else [])]
                            if control_result else [])
     print(json.dumps({"result": "passed", "client": args.client,
                       "platform": "Debian 12 amd64 container joined to route-free fixture namespace",

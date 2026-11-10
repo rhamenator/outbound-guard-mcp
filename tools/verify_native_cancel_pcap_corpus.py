@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 
 from verify_native_cancel_pcap import PATHS, verify
@@ -12,6 +13,7 @@ from verify_native_cancel_pcap import PATHS, verify
 
 ROOT = Path(__file__).resolve().parent.parent
 EVIDENCE = ROOT / "docs/evidence/native-three-cancellation-pcap-2026-11-10.json"
+HARNESS_MAIN_SHA = "9d2f89b9229a7dc36d4856afd2ad0e47eaa97de9"
 
 
 def main() -> None:
@@ -21,7 +23,11 @@ def main() -> None:
     assert evidence["package_sha256"] == "aceca10372aba3824847c2a140c85ac0b5b860a9b32433dd373f257249cd6d11"
     assert evidence["binary_sha256"] == "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d"
     for name, digest in evidence["harness_sha256"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        # The recorded package predates this capture harness. Verify the
+        # harness bytes from the merged evidence commit, not the evolving tree.
+        historical = subprocess.check_output(
+            ["git", "show", f"{HARNESS_MAIN_SHA}:{name}"], cwd=ROOT, timeout=10)
+        assert hashlib.sha256(historical).hexdigest() == digest, name
     images = set()
     for client in ("codex", "claude"):
         run = evidence["runs"][client]
