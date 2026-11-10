@@ -262,7 +262,13 @@ fn wire_framing_expectation(input: &[u8]) -> Option<Option<&'static str>> {
     let end = input.windows(4).position(|part| part == b"\r\n\r\n")?;
     let header = std::str::from_utf8(&input[..end]).ok()?;
     let mut lines = header.split("\r\n");
-    if lines.next()? != "HTTP/1.1 200 OK" {
+    if !matches!(
+        lines.next()?,
+        "HTTP/1.0 200 OK"
+            | "HTTP/1.1 200 OK"
+            | "HTTP/1.0 206 Partial Content"
+            | "HTTP/1.1 206 Partial Content"
+    ) {
         return None;
     }
     let mut lengths = Vec::new();
@@ -435,6 +441,10 @@ mod tests {
             (b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(Some("EGRESS_INVALID_FRAMING"))),
             (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n", Some(Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"))),
             (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(None)),
+            (b"HTTP/1.0 200 OK\r\nContent-Length: 2\r\n\r\nok", Some(None)),
+            (b"HTTP/1.0 206 Partial Content\r\nContent-Length: 1, 1\r\n\r\na", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 206 Partial Content\r\nContent-Length: 2\r\n\r\nok", Some(None)),
+            (b"HTTP/1.1 206 Partial Content\r\nTransfer-Encoding: gzip, chunked\r\n\r\n", Some(Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"))),
             (b"HTTP/1.1 200 OK\r\nX-Other: 1\r\n\r\n", None),
         ];
         for (wire, expected) in cases {
