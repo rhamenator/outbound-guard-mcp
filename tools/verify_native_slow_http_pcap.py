@@ -2,6 +2,7 @@
 """Independently inspect a retained route-free native slow-HTTP fixture capture."""
 
 import argparse
+from decimal import Decimal
 import hashlib
 import json
 from pathlib import Path
@@ -35,28 +36,37 @@ def verify(path: Path, digest: str) -> dict:
     names = {name for name, _, _ in queries}
     assert "allowed.test" in names and names <= {"allowed.test", "1.0.0.11.in-addr.arpa"}, names
 
-    requests = rows(path, "http.request", "http.host", "http.request.uri", "tcp.stream")
-    assert [(host, uri) for host, uri, _ in requests] == [
+    requests = rows(path, "http.request", "http.host", "http.request.uri", "tcp.stream",
+                    "frame.time_epoch")
+    assert [(host, uri) for host, uri, _, _ in requests] == [
         ("allowed.test", "/plain"), ("allowed.test", "/drip"),
         ("allowed.test", "/delayed"), ("allowed.test", "/plain")], requests
     closed = {}
+    close_seconds = {}
     for uri in ("/drip", "/delayed"):
-        streams = {stream for _, path_uri, stream in requests if path_uri == uri}
-        assert len(streams) == 1, (uri, streams)
-        stream = next(iter(streams))
+        matching = [(stream, Decimal(timestamp)) for _, path_uri, stream, timestamp in requests
+                    if path_uri == uri]
+        assert len(matching) == 1, (uri, matching)
+        stream, request_time = matching[0]
         client_fin_or_reset = rows(
             path, f"tcp.stream == {stream} && tcp.dstport == 80 && "
-                  "(tcp.flags.fin == 1 || tcp.flags.reset == 1)", "frame.number")
+                  "(tcp.flags.fin == 1 || tcp.flags.reset == 1)", "frame.time_epoch")
         assert client_fin_or_reset, (uri, stream)
+        elapsed = min(Decimal(row[0]) for row in client_fin_or_reset) - request_time
+        # The configured HTTP idle deadline is three seconds. The capture's first
+        # client close must follow the request and stay within 250 ms of that limit.
+        assert Decimal("0") < elapsed <= Decimal("3.25"), (uri, str(elapsed))
         closed[uri] = True
+        close_seconds[uri] = float(elapsed)
 
     destinations = rows(path, "ip || ipv6", "ip.dst", "ipv6.dst")
     addresses = {item for ipv4, ipv6 in destinations
                  for item in (ipv4 or ipv6).split(",") if item}
     assert addresses and addresses <= {"11.0.0.1", "127.0.0.1"}, addresses
     return {"sha256": actual, "tcp_syn_count": len(syns), "dns_query_count": len(queries),
-            "dns_names": sorted(names), "http_requests": [(host, uri) for host, uri, _ in requests],
+            "dns_names": sorted(names), "http_requests": [(host, uri) for host, uri, _, _ in requests],
             "timed_out_streams_client_closed": closed, "ip_destinations": sorted(addresses),
+            "request_to_client_close_seconds": close_seconds,
             "scope": "fixture namespace only"}
 
 
