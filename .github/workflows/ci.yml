@@ -139,7 +139,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [policy, frame, rpc, json, http, wire]
+        target: [policy, frame, rpc, json, http, wire, dns]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -193,6 +193,8 @@ jobs:
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/local-corpus.tar.gz tests/fixtures/wire-fuzz/local-report.json --max-member-bytes 4096
       - name: Verify retained raw HTTP framing oracle corpus
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/oracle-local-corpus.tar.gz tests/fixtures/wire-fuzz/oracle-local-report.json --max-member-bytes 4096
+      - name: Verify retained DNS answer-set fuzz corpus
+        run: python3 tools/verify_fuzz_archive.py tests/fixtures/dns-fuzz/local-corpus.tar.gz tests/fixtures/dns-fuzz/local-report.json --max-member-bytes 64
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo clippy --lib --features policy-fuzz --locked -- -D warnings

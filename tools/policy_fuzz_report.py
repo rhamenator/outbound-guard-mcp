@@ -21,6 +21,7 @@ corpus = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
           for p in sorted((root / 'corpus').iterdir())}
 scope = {
     'policy': 'validate only, stub DNS; no sockets, HTTP parser or MCP transport',
+    'dns': 'validate against a finite independently classified DNS answer vocabulary including mixed/private/IPv6/port/count cases; no system DNS, sockets, rebinding timing, cancellation or native clients',
     'frame': 'actual read_frame_tracked versus LF slice oracle; no RPC dispatch, clocks or sockets',
     'json': 'actual JSON response scanner versus canonical-value recursive key oracle; duplicate-key, invalid-JSON and Value-private-number collision seeds; oracle cannot classify Value parse errors; no HTTP transport or MCP client',
     'rpc': 'actual MCP dispatch/session transitions and tool validation; empty allowlist; no DNS, sockets, queues or cancellation timing',
