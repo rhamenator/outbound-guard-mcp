@@ -152,3 +152,5 @@ The [silent TLS cancellation fixture](docs/adversarial-netns.md#cancellation-dur
 ### Optional Linux deployment quotas
 
 See [process limits and recovery](docs/linux-deployment-limits.md) for tested user-systemd/cgroup-v2 deployment, bounded OOM, task-exhaustion and CPU-saturation probes and a stdio wrapper. OS limits can disconnect a client before structured errors; audit and rate state reset on restart. This optional deployment recipe does not change the experimental release status.
+
+Rate limits and audit history are held in each running server process. If two MCP clients start separate server processes, each has its own 60-calls-per-host minute window and 1,000-call process-hour window; starting another process or restarting one does not preserve a shared limit. [The controlled two-process SDK probe](docs/adversarial-netns.md#two-process-sdk-host-budget-scope-2026-11-11) makes this boundary observable. Operators needing one limit across clients must enforce it outside this server, including all processes that can make outbound requests.

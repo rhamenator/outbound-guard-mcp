@@ -3,6 +3,7 @@
   "observed_utc": "2026-11-11T06:48:10Z",
   "scope": "Two route-free Linux namespace runs using official MCP SDK 2.3.1 as the client and the development server binary; not an installed package or native Codex, Claude, or Cursor workflow",
   "source_base": "3eb990eb7e7a5b07fedad049b2e0c6dba1c179e5",
+  "probe_commit": "3211c1c1a587291d70647c877e036ca81c2848ca",
   "probe_source_sha256": {
     "tools/mcp-sdk-probe/budget_race_modern.mjs": "1288b9186cf749ddd1131bb538d3bd99c6b333550ec555061d190b3c91ab9494",
     "tools/netns_adversarial_probe.py": "eeb05706aff151e97a86e1c4d66a410358d95847f96d1541bdecccee3a5dfaf3"
