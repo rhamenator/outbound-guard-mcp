@@ -37,6 +37,15 @@ SCENARIOS = {
                       "http://allowed.test/plain"],
                      ["EGRESS_ALLOWED", "EGRESS_ENCODED_RESPONSE", "EGRESS_ALLOWED"],
                      ["/plain", "/encoded-body-hold", "/plain"]),
+    "version": (["http://allowed.test/plain", "http://allowed.test/http10-ok",
+                 "http://allowed.test/http10-comma-length",
+                 "http://allowed.test/http11-partial-ok",
+                 "http://allowed.test/http11-partial-comma-length",
+                 "http://allowed.test/plain"],
+                ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_INVALID_FRAMING",
+                 "EGRESS_ALLOWED", "EGRESS_INVALID_FRAMING", "EGRESS_ALLOWED"],
+                ["/plain", "/http10-ok", "/http10-comma-length",
+                 "/http11-partial-ok", "/http11-partial-comma-length", "/plain"]),
 }
 TOOL = "mcp__outbound_guard__guarded_fetch"
 
@@ -57,7 +66,7 @@ def replay_claude(config, output, urls, rules, prompt):
                 uses.append(block)
             elif block.get("type") == "tool_result":
                 replies[block["tool_use_id"]] = block
-    assert len(uses) == 3 and [use["name"] for use in uses] == [TOOL] * 3, uses
+    assert len(uses) == len(urls) and [use["name"] for use in uses] == [TOOL] * len(urls), uses
     assert [use["input"].get("url") for use in uses] == urls, uses
     assert all(use["input"].get("method", "GET") == "GET" for use in uses), uses
     decisions = []
@@ -72,7 +81,9 @@ def replay_claude(config, output, urls, rules, prompt):
         assert decision["status"] == ("SAFE" if allowed else "BLOCKED"), decision
         assert bool(reply.get("is_error", False)) == (not allowed), reply
         if allowed:
-            assert decision["body_text"] == "fixture-ok", decision
+            assert decision["body_text"] == ("fixture-ok" if urls[index].endswith("/plain") else "ok"), decision
+            if "/http10-" in urls[index] or "/http11-partial-" in urls[index]:
+                assert decision["status_code"] == (206 if "/http11-partial-" in urls[index] else 200), decision
         else:
             assert "body_text" not in decision, decision
         decisions.append({"url": urls[index], "rule": decision["rule"],
@@ -95,19 +106,21 @@ def replay_codex(root, output, urls, rules, prompt):
                   if item["type"] not in ("agent_message", "error", "mcp_tool_call")]
     assert not unexpected, f"Codex used other tools: {unexpected}"
     calls = [item for item in completed if item["type"] == "mcp_tool_call"]
-    assert len(calls) == 3, f"Codex made {len(calls)} MCP calls, expected three"
+    assert len(calls) == len(urls), f"Codex made {len(calls)} MCP calls, expected {len(urls)}"
     assert [(call["server"], call["tool"]) for call in calls] == [
-        ("outbound_guard", "guarded_fetch")] * 3, calls
+        ("outbound_guard", "guarded_fetch")] * len(urls), calls
     assert [call["arguments"].get("url") for call in calls] == urls, calls
     assert all(call["arguments"].get("method", "GET") == "GET" for call in calls), calls
     assert all(call.get("error") is None for call in calls), calls
     decisions = [call["result"]["structured_content"] for call in calls]
     assert [decision["rule"] for decision in decisions] == rules, decisions
-    for decision, rule in zip(decisions, rules):
+    for index, (decision, rule) in enumerate(zip(decisions, rules)):
         allowed = rule == "EGRESS_ALLOWED"
         assert decision["status"] == ("SAFE" if allowed else "BLOCKED"), decision
         if allowed:
-            assert decision.get("body_text") == "fixture-ok", decision
+            assert decision.get("body_text") == ("fixture-ok" if urls[index].endswith("/plain") else "ok"), decision
+            if "/http10-" in urls[index] or "/http11-partial-" in urls[index]:
+                assert decision["status_code"] == (206 if "/http11-partial-" in urls[index] else 200), decision
         else:
             assert "body_text" not in decision, decision
     return [{"url": urls[index], "rule": decision["rule"], "status": decision["status"]}
@@ -153,7 +166,7 @@ def fixture_state(root, expected_hits, previous_dns_count, scenario):
             continue
         phase_dns = dns_a[previous_dns_count:]
         expected_dns = (["allowed.test", "private.test"] if scenario == "dns"
-                        else ["allowed.test"] * 3)
+                        else ["allowed.test"] * (6 if scenario == "version" else 3))
         if hits == expected_hits and phase_dns == expected_dns:
             assert "unlisted.test" not in dns_all and \
                 (scenario != "redirect" or "private.test" not in dns_all), dns_all
@@ -177,7 +190,7 @@ def main():
                         help="Retain and verify a fixture-namespace packet capture")
     args = parser.parse_args()
     urls, rules, phase_hits = SCENARIOS[args.scenario]
-    prompt = ("Use ONLY outbound_guard guarded_fetch. Make exactly three GET calls, "
+    prompt = (f"Use ONLY outbound_guard guarded_fetch. Make exactly {len(urls)} GET calls, "
               "in order: " + ", ".join(urls) + ". Do not use any other tools or "
               "retry. Report the actual tool results.")
     assert args.client != "codex" or args.allow_codex_approval_bypass, \
