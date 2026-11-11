@@ -1,0 +1,119 @@
+{
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "no_upgrade",
+    "native_skill_and_guarded_calls",
+    "http10_200_allow",
+    "http11_206_allow",
+    "comma_length_denial",
+    "no_denied_body_text",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "client": "claude",
+  "client_rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_ALLOWED",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_ALLOWED"
+  ],
+  "client_status_codes": [
+    200,
+    200,
+    206,
+    200
+  ],
+  "client_version": "Claude Code 2.1.319",
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 128,
+    "memory_peak_bytes": 18063360,
+    "pids_peak": 9,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "date_utc": "2026-11-11",
+  "fixture_mode": "framing-http-version-packet",
+  "limitations": [
+    "Exact explicit installed-skill workflow only; no automatic invocation or desktop UI control.",
+    "Fixture namespace capture excludes host-client and other-tool traffic.",
+    "Finite four raw HTTP responses, no arbitrary framing safety.",
+    "No package upgrade in this replay; clean install, removal and residue were checked.",
+    "Experimental unsigned Debian package; no official candidate or owner acceptance.",
+    "No AI Scraping Defense repository tested."
+  ],
+  "native_skill_invoked": true,
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "499f7d96e86c27a67209257363f9ae25301a7f066a1d8149b0f84285992907f9",
+    "revision": "902b02272c559f34bfa9df32a8c824a9c0bf3d96",
+    "version": "0.1.0~candidate.348+g902b02272c55"
+  },
+  "packet_verifier": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 13,
+    "framing_metadata_and_body": {
+      "/http10-comma-length": true,
+      "/http10-ok": true,
+      "/http11-partial-comma-length": true,
+      "/http11-partial-ok": true
+    },
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/http10-ok"
+      ],
+      [
+        "allowed.test",
+        "/http10-comma-length"
+      ],
+      [
+        "allowed.test",
+        "/http11-partial-ok"
+      ],
+      [
+        "allowed.test",
+        "/http11-partial-comma-length"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "d4ea2780676ace1def2fd9d9733d51e8106248ab388d6a5ce01aace92d1a411c",
+    "tcp_syn_count": 6
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-version-http-2026-11-11.pcap",
+  "pcap_sha256": "d4ea2780676ace1def2fd9d9733d51e8106248ab388d6a5ce01aace92d1a411c",
+  "reproduction": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_DIR/claude.pcap python3 tools/debian_native_container_probe.py claude VERIFIED.deb PACKAGE_SHA256 VERIFIED_SKILL.zip SKILL_SHA256 --fixture-mode framing-http-version-packet --container-memory-mib 128 --sample-server-resources; python3 tools/verify_native_framing_http_pcap.py RETAINED.pcap SHA256 --mode version",
+  "result": "passed",
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29",
+  "source_main_sha": "902b02272c559f34bfa9df32a8c824a9c0bf3d96",
+  "tshark_version": "4.6.4"
+}
