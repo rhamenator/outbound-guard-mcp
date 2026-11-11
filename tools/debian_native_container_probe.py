@@ -193,6 +193,17 @@ def main():
                          ("__MONITOR_PATH__", shlex.quote(str(monitor))),
                          ("__IMAGE__", shlex.quote(BUILDER_IMAGE))):
             source = source.replace(old, new)
+        if args.fixture_mode in ("tls-active-proxy", "synthetic-exfil-active-proxy"):
+            # Scope the hostile proxy environment to the server bridge. Native
+            # clients still need their ordinary host connection to the model.
+            trap = "http://127.0.0.1:3128"
+            proxy_exports = "\n".join(
+                f"export {name}={shlex.quote(trap)}"
+                for name in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy",
+                             "ALL_PROXY", "all_proxy"))
+            proxy_exports += "\nexport NO_PROXY= no_proxy=\n"
+            assert source.count("proxy_env=()") == 1
+            source = source.replace("proxy_env=()", proxy_exports + "proxy_env=()", 1)
         wrapper.write_text(source)
         wrapper.chmod(0o700)
         env = os.environ.copy()
