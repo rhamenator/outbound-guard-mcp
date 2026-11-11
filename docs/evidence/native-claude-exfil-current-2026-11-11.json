@@ -1,0 +1,246 @@
+{
+  "active_proxy_mode": false,
+  "alias_cname_a_queried": null,
+  "argument_mode": false,
+  "argument_probe_allowed_dns_queries": null,
+  "argument_probe_dns_queries": null,
+  "attack_mode": false,
+  "binary_sha256": "51b978bf36071f6b7d9760b1cd78104822a195839562920685667fb9c77be49e",
+  "blackhole_connect_seconds": null,
+  "blackhole_dropped_packets": null,
+  "bomb_mode": false,
+  "bridge_saturation": null,
+  "builtin_tools": [
+    "Skill"
+  ],
+  "checks": [
+    "checksum",
+    "clean_dpkg_install",
+    "no_upgrade",
+    "native_skill_and_guarded_calls",
+    "loopback_denial",
+    "secret_path_denial",
+    "unicode_lookalike_denial",
+    "no_exfil_dns_or_marker_echo",
+    "fixture_namespace_tcp_syn_capture",
+    "approved_recovery",
+    "package_remove",
+    "residue"
+  ],
+  "ci_sha256sums_path": "docs/evidence/native-current-exfil-2026-11-11-SHA256SUMS",
+  "ci_sha256sums_sha256": "9cf67961da95fcb5af1809d34bcf428987d1ddb1ce0b6e3a6a460b8d478a40c9",
+  "client": "claude",
+  "client_control_result": null,
+  "client_probe_sha256": "75b906ee51556e3435a94db39e797a53951e5e6e436961377884eace064162c1",
+  "client_version": "2.1.319 (Claude Code)",
+  "comma_framing_mode": false,
+  "compression_loop_a_queried": null,
+  "connect_blackhole_mode": false,
+  "container_resource_observation": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_limit_mib": 128,
+    "memory_peak_bytes": 18829312,
+    "pids_peak": 9,
+    "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+  },
+  "controlled_json_instruction_seen": null,
+  "dns_answer_boundary_mode": false,
+  "dns_answer_limit_mode": false,
+  "dns_mode": false,
+  "dns_spoof_busy_mode": false,
+  "dns_spoof_mode": false,
+  "dns_tcp_mixed_v6_mode": false,
+  "dns_tcp_private_mode": false,
+  "dns_truncated_mode": false,
+  "exfil_dns_queried": false,
+  "exfil_mode": true,
+  "explicit_skill_input_accepted": null,
+  "fallback_a_queries": null,
+  "fallback_mode": false,
+  "fixture_hits": [
+    "/plain",
+    "/head-ok",
+    "/plain"
+  ],
+  "fixture_mode": "synthetic-exfil-packet",
+  "forbidden_dns_names": null,
+  "frame_mode": false,
+  "framing_mode": false,
+  "harness_attempt_note": "An initial attempt used nonprivate /tmp for the pcap and failed the archive privacy precondition; its test-owned container cleaned up. The recorded retry used an owner-only 0700 directory and passed.",
+  "harness_sha256": "a40b22c7702fe2b52fc7b7ade78831d5c8005d5d52795ac187324333a98335e8",
+  "header_limit_mode": false,
+  "held_encoded_mode": false,
+  "held_encoded_socket_closed": null,
+  "html_quarantine_mode": false,
+  "http_methods": [
+    "GET",
+    "GET",
+    "HEAD",
+    "GET",
+    "GET",
+    "GET"
+  ],
+  "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+  "injected_argument_denials": null,
+  "injected_argument_marker_echo": null,
+  "installation_scope": "temporary project .claude/skills/outbound-guard",
+  "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+  "interim_mode": false,
+  "interim_slow_mode": false,
+  "json_duplicate_mode": false,
+  "json_injection_mode": false,
+  "limitations": [
+    "The packet capture is limited to the controlled fixture namespace; native client host traffic and traffic through other tools are not observed.",
+    "Synthetic secret-shaped and Unicode lookalike inputs are finite cases, not proof against arbitrary exfiltration.",
+    "Finite 50 ms FD/RSS samples can miss transient peaks. No upgrade or saved-configuration migration is tested.",
+    "Unsigned experimental Debian 12 amd64 package, not an official candidate or owner acceptance. Independent human review is absent and four AI Scraping Defense repositories need separate testing."
+  ],
+  "malformed_mode": false,
+  "mutant_parse_error_seen": null,
+  "native_project_read_completed": null,
+  "native_project_source_observed": true,
+  "native_skill_discovered": null,
+  "native_skill_invoked": true,
+  "native_skill_loaded": true,
+  "native_turn_completed": null,
+  "observed_at_utc": "2026-11-11T09:45:33.567288+00:00",
+  "old_package": null,
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+    "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+    "version": "0.1.0~candidate.356+g045610525169"
+  },
+  "package_name": "outbound-guard-mcp_0.1.0~candidate.356+g045610525169_amd64.deb",
+  "packet_capture": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "dns_query_count": 7,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "eof_active_close": null,
+    "eof_approved_http_requests": null,
+    "exfil_dns_query_count": 0,
+    "fallback_a_answers": null,
+    "fallback_a_query_count": null,
+    "ip_destination_entries": 50,
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "packet_count": 49,
+    "pcap_sha256": "3398cc1aab2dd6391ca81aa5f2a763fe90ffae259fc9f9f3f99d51a86427b00f",
+    "raw_pcap_retained": true,
+    "rebind_a_answers": null,
+    "rebind_a_query_count": null,
+    "redirect_private_dns_query_count": null,
+    "spoofed_dns_transaction_ids": null,
+    "tcp_syn_count": 3,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "timed_out_streams_client_closed": null,
+    "tls_client_hello_streams": null,
+    "tls_pinning_sni": null,
+    "truncated_dns_responses": null,
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0
+  },
+  "packet_verifier": {
+    "active_close": null,
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 7,
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/head-ok"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scenario": "synthetic-exfil",
+    "scope": "fixture namespace only",
+    "sha256": "3398cc1aab2dd6391ca81aa5f2a763fe90ffae259fc9f9f3f99d51a86427b00f",
+    "tcp_syn_count": 3
+  },
+  "pcap_path": "tests/fixtures/packet-capture/native-claude-exfil-current-2026-11-11.pcap",
+  "pcap_sha256": "3398cc1aab2dd6391ca81aa5f2a763fe90ffae259fc9f9f3f99d51a86427b00f",
+  "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+  "provenance_note": "Exact-main CI 42990714476 signing/provenance job passed. The local gh CLI lacks the attestation subcommand, so this replay did not independently verify an attestation.",
+  "proxy_environment_verified_in_container": false,
+  "proxy_flows": null,
+  "rebind_a_queries": null,
+  "rebind_mode": false,
+  "response_limit_mode": false,
+  "result": "passed",
+  "rules": [
+    "EGRESS_INVALID_HOST",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_SECRET_DETECTED",
+    "EGRESS_INVALID_URL",
+    "EGRESS_ALLOWED"
+  ],
+  "saturation_mode": false,
+  "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+  "server_resource_observation": {
+    "max_sampled_fd": 3,
+    "max_sampled_rss_kib": 3900,
+    "sample_interval_ms": 50,
+    "samples": 447,
+    "scope": "Finite sampled server observations; sampling can miss transient peaks."
+  },
+  "setting_sources": [
+    "project"
+  ],
+  "skill_name": "outbound-guard-skill-045610525169.zip",
+  "skill_tool_result_success": true,
+  "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+  "slow_http_mode": false,
+  "source_base": "0456105251691f2a11892f5bef65ef5b4592eb38",
+  "spoofed_dns_attempts": null,
+  "status_codes": [
+    200,
+    200,
+    200
+  ],
+  "synthetic_marker_echo": false,
+  "tcp_private_dns_queries": null,
+  "tls_handshake_a_queries": null,
+  "tls_mode": false,
+  "tls_slow_mode": false,
+  "tls_sni": null,
+  "truncated_dns_queries": null,
+  "trusted_main_package_ci_run": 42990714476,
+  "upgrade_mode": false,
+  "url_classes": [
+    "other",
+    "allowed_plain",
+    "other",
+    "other",
+    "other",
+    "allowed_plain"
+  ]
+}
