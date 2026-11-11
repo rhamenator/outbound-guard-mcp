@@ -1875,6 +1875,18 @@ def test_sdk_overload(binary):
         assert DNS.a_names[a_before:] == ["allowed.test"] * 60
         assert DNS.aaaa_names[aaaa_before:] == ["allowed.test"] * 60
         assert HTTP.hits[hits_before:] == ["/plain"] * 60
+        # Two simultaneously live SDK server processes each have their own
+        # 60-call host window. This is an enforcement-scope observation, not a
+        # shared-budget security claim.
+        a_before, aaaa_before, hits_before = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
+        two_process = subprocess.run([os.environ["OUTBOUND_GUARD_TEST_NODE"],
+                                     os.path.join(sdk_dir, "two_process_budget_modern.mjs"), binary],
+                                     capture_output=True, text=True, env=env, timeout=40, check=True)
+        assert two_process.stdout.strip() == "SDK_TWO_PROCESS_BUDGET:120:2", two_process.stdout
+        assert not two_process.stderr, two_process.stderr
+        assert DNS.a_names[a_before:] == ["allowed.test"] * 120
+        assert DNS.aaaa_names[aaaa_before:] == ["allowed.test"] * 120
+        assert HTTP.hits[hits_before:] == ["/plain"] * 120
         print(f"official SDK 2.3.1 overload: {cycles} client-originated bounded busy denials, "
               f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s); "
               "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; "
@@ -1886,7 +1898,10 @@ def test_sdk_overload(binary):
               f"16 concurrent submissions ({race_allowed} allowed, {race_denied} rate denied, "
               f"{race_busy} input busy), serial fill to 60 and final rate denial; "
               "exactly 60 approved A/AAAA queries and HTTP hits")
-        return 12 * cycles + 37 + 61 + 180 + 2 + 699 + accepted + 1 + 61 + race_denied
+        print("official SDK 2.3.1 two-process host-budget scope: 120 approvals "
+              "(60 per process), two independent rate denials; exactly 120 A/AAAA "
+              "queries and HTTP hits; no shared rate window")
+        return 12 * cycles + 37 + 61 + 180 + 2 + 699 + accepted + 1 + 61 + race_denied + 122
     finally:
         if process is not None and process.poll() is None:
             process.kill()

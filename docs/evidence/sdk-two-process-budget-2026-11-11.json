@@ -1,0 +1,31 @@
+{
+  "result": "passed",
+  "observed_utc": "2026-11-11T08:42:14.034098+00:00",
+  "scope": "Official MCP SDK 2.3.1 two-live-stdio-process boundary in the route-free DNS/HTTP fixture; development binary and checksum-verified unsigned experimental Debian 12 amd64 package",
+  "reproduce": "Set OUTBOUND_GUARD_TEST_SDK_DIR=$PWD/tools/mcp-sdk-probe and run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp; for installed replay also set OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb and OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its recorded digest.",
+  "source_commit": "3211c1c1a587291d70647c877e036ca81c2848ca",
+  "source_ci_run": 42976396612,
+  "sdk_probe_sha256": "88e4794edf278ae599a519bd47c418c77e7e1ca91852d1129b423534b9f27e7f",
+  "development_binary_sha256": "2c4f44e5d618b57be21cfcceb9eb720f0f8edd5d1f05c86cdb17313d4bf9fd48",
+  "package_name": "outbound-guard-mcp_0.1.0~candidate.354+g3211c1c1a587_amd64.deb",
+  "package_sha256": "53764d4d42b98faf2c7dab751624abc5d3ff0a49ec8d83474c2ddd31f6ccdebc",
+  "installed_binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+  "ci_sha256sums_path": "docs/evidence/sdk-concurrent-budget-installed-2026-11-11-SHA256SUMS",
+  "ci_sha256sums_sha256": "8237741961ee7e292c9db60a8bc8bbbf3eb5a243ea5b20a2ad72c2d069842406",
+  "runs": [
+    {
+      "kind": "development",
+      "log": "sdk-two-process-budget-dev-2026-11-11.log",
+      "sha256": "1f4013ae168c7458f2bc93f0ec2a82358ad69e8c74a490e5f46f2b942d349e63",
+      "suite_decisions": 3578
+    },
+    {
+      "kind": "installed",
+      "log": "sdk-two-process-budget-installed-2026-11-11.log",
+      "sha256": "e7e67bde78cf6626753eba2772e22bc0e85c596568e7fdf9d7798fb544e0bf80",
+      "suite_decisions": 3577
+    }
+  ],
+  "checks": "Two SDK transports simultaneously keep independent server processes alive. Alternating calls allow 60 GETs in each process, followed by one EGRESS_RATE_LIMIT in each. Each audit has 60 approvals and one denial. The fixture requires exactly 120 allowed.test A queries, 120 AAAA queries and 120 /plain HTTP hits, with no DNS/HTTP for either denied marker URL. Installed replay checks package installation, 128 MiB/64 PID quotas, 64-FD server limit, removal, residue and cleanup in the full suite.",
+  "limitations": "The rate budget and audit are process-local and can be reset by starting a new process. This is a deliberately exposed boundary, not shared enforcement. No native Codex/Claude/Cursor calls, host-wide packet capture, traffic from other tools, arbitrary process count, official candidate, owner acceptance, independent human review, or AI Scraping Defense repository coverage."
+}

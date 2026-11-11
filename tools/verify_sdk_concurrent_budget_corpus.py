@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,7 +35,12 @@ def main() -> None:
     record = json.loads(EVIDENCE.read_text())
     assert record["result"] == "passed" and len(record["runs"]) == 2
     for name, digest in record["probe_source_sha256"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        # The harness acquired a later two-process case. Bind the original
+        # observation to the retained exact-main source instead of rewriting
+        # the historical digest to match a different script.
+        data = (subprocess.check_output(["git", "show", f'{record["probe_commit"]}:{name}'], cwd=ROOT)
+                if name == "tools/netns_adversarial_probe.py" else (ROOT / name).read_bytes())
+        assert hashlib.sha256(data).hexdigest() == digest, name
     for index, run in enumerate(record["runs"], 1):
         assert run["log"] == f"sdk-concurrent-budget-2026-11-11-run{index}.log"
         data = (EVIDENCE.parent / run["log"]).read_bytes()

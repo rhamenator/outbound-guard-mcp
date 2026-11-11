@@ -34,6 +34,8 @@ The [repeated installed SDK overload replay](evidence/installed-sdk-repeat-overl
 
 The [installed SDK host-budget replay](evidence/installed-sdk-rate-budget-2026-11-06.json) adds a client-generated 60/61 per-host rate-boundary check against an experimental package built from trusted main. The denied call opened no DNS/HTTP path, and the server remained responsive. Final candidate, multi-process, reset-window, other-client and owner gates remain open.
 
+The [two-process SDK scope replay](evidence/sdk-two-process-budget-2026-11-11.json) deliberately starts two live stdio server instances and observes 60 allowed calls plus one denied call in each. Exactly 120 approved DNS A/AAAA queries and HTTP hits expose the process-local accounting boundary. The test runs on both a development binary and an unsigned installed Debian package; it does not supply shared enforcement or prove a host-wide rate limit. Operators need an external quota to combine clients, and the exact official-candidate and owner gates remain open.
+
 The [installed SDK failed-DNS budget replay](evidence/installed-sdk-dns-failure-budget-2026-11-06.json) adds a second 60/61 boundary: failed lookups consume their hostname's rate slots, and the next SDK call is denied before DNS or HTTP. This is finite experimental Debian evidence; the release and owner gates remain open.
 
 The [installed SDK audit-retention replay](evidence/installed-sdk-audit-retention-2026-11-06.json) drives 302 guarded decisions in one process and checks that the audit resource retains only the newest 256, in order, without URLs or body text. The server remains responsive after the controlled DNS failures. General resource bounds and the exact-candidate gate remain open.
