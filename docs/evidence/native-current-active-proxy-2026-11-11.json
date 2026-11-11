@@ -1,0 +1,716 @@
+{
+  "client_versions_observed_after_runs": {
+    "claude": "2.1.319 (Claude Code)",
+    "codex": "codex-cli 0.151.0"
+  },
+  "date_utc": "2026-11-11T17:46:16.873479+00:00",
+  "exploratory_attempts": [
+    "An initial Claude attempt set the hostile proxy in the host client environment; Claude made no guarded call. Its test-owned fixture/container cleaned up. The harness now injects the trap only into the server bridge, preserving the client host connection.",
+    "The first Codex TLS run after the harness fix made an incorrect second URL and returned EGRESS_INVALID_URL; it did not meet expected native-call assertions. A fresh separate run passed."
+  ],
+  "harness_sha256": {
+    "tools/client_cancellation_probe.py": "75b906ee51556e3435a94db39e797a53951e5e6e436961377884eace064162c1",
+    "tools/debian_native_container_probe.py": "9bd44d3a141c20d2773c6826043989c4c73a1ff39d6690a361633b55f2bcf3b0",
+    "tools/mitmproxy_flow_probe.py": "2eaf23a9cf058a63962a5469ff91066c9f240ba97ede85116d5435e5cbc16cd8"
+  },
+  "harness_source_commit": "58d8c6a7c3bf9c4f5faff0d1ce8614705d7b1aa6",
+  "limits": [
+    "Four finite explicit native client skill sessions; mitmdump observed only the positive-control request per run, but there is no retained raw packet capture proving absence of all proxy connections",
+    "The proxy trap is a single loopback HTTP endpoint and six environment variables; other proxy schemes, system settings and credential providers are not covered",
+    "The native clients run on the host; only the installed server and fixture use the route-free Debian container namespace. Traffic from other tools is outside the guard boundary",
+    "No general exfiltration or TLS safety proof, official candidate, owner residual-risk acceptance or independent human review",
+    "Four AI Scraping Defense repositories have separate adversarial gates"
+  ],
+  "manifest_path": "docs/evidence/native-current-exfil-2026-11-11-SHA256SUMS",
+  "manifest_sha256": "9cf67961da95fcb5af1809d34bcf428987d1ddb1ce0b6e3a6a460b8d478a40c9",
+  "mitmdump_version_observed_after_runs": "8.1.1",
+  "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+  "proxy_environment": "HTTP_PROXY/http_proxy, HTTPS_PROXY/https_proxy, ALL_PROXY/all_proxy set to trap only inside server bridge; NO_PROXY/no_proxy present and empty",
+  "proxy_trap": "http://127.0.0.1:3128",
+  "result": "passed",
+  "runs": {
+    "claude-exfil": {
+      "install": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "loopback_denial",
+          "secret_path_denial",
+          "unicode_lookalike_denial",
+          "no_exfil_dns_or_marker_echo",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17829888,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "synthetic-exfil-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+          "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+          "version": "0.1.0~candidate.356+g045610525169"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3972,
+          "sample_interval_ms": 50,
+          "samples": 391,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de"
+      },
+      "mode": "exfil",
+      "native": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "7e0f4a564c7e08972e3aa18d7b238430d4629b86348e9710d318e64a8f0477f4",
+        "blackhole_connect_seconds": null,
+        "blackhole_dropped_packets": null,
+        "bomb_mode": false,
+        "bridge_saturation": null,
+        "builtin_tools": [
+          "Skill"
+        ],
+        "client": "claude",
+        "comma_framing_mode": false,
+        "compression_loop_a_queried": null,
+        "connect_blackhole_mode": false,
+        "controlled_json_instruction_seen": null,
+        "dns_answer_boundary_mode": false,
+        "dns_answer_limit_mode": false,
+        "dns_mode": false,
+        "dns_spoof_busy_mode": false,
+        "dns_spoof_mode": false,
+        "dns_tcp_mixed_v6_mode": false,
+        "dns_tcp_private_mode": false,
+        "dns_truncated_mode": false,
+        "exfil_dns_queried": false,
+        "exfil_mode": true,
+        "explicit_skill_input_accepted": null,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain",
+          "/head-ok",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "framing_mode": false,
+        "header_limit_mode": false,
+        "held_encoded_mode": false,
+        "held_encoded_socket_closed": null,
+        "html_quarantine_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+        "interim_mode": false,
+        "interim_slow_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "packet_capture": null,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_SECRET_DETECTED",
+          "EGRESS_INVALID_URL",
+          "EGRESS_ALLOWED"
+        ],
+        "saturation_mode": false,
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": [
+          "project"
+        ],
+        "skill_tool_result_success": true,
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+        "slow_http_mode": false,
+        "spoofed_dns_attempts": null,
+        "status_codes": [
+          200,
+          200,
+          200
+        ],
+        "synthetic_marker_echo": false,
+        "tcp_private_dns_queries": null,
+        "tls_handshake_a_queries": null,
+        "tls_mode": false,
+        "tls_slow_mode": false,
+        "tls_sni": null,
+        "truncated_dns_queries": null,
+        "upgrade_mode": false,
+        "url_classes": [
+          "other",
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      }
+    },
+    "claude-tls": {
+      "install": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "tls_hostname_denial",
+          "private_dns_flip_denial",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 18231296,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "tls-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+          "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+          "version": "0.1.0~candidate.356+g045610525169"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 7,
+          "max_sampled_rss_kib": 4816,
+          "sample_interval_ms": 50,
+          "samples": 224,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de"
+      },
+      "mode": "tls",
+      "native": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "cb37470838715a13d5eb7124b69c87ed44f46a1112d57833b917858c984781c5",
+        "blackhole_connect_seconds": null,
+        "blackhole_dropped_packets": null,
+        "bomb_mode": false,
+        "bridge_saturation": null,
+        "builtin_tools": [
+          "Skill"
+        ],
+        "client": "claude",
+        "comma_framing_mode": false,
+        "compression_loop_a_queried": null,
+        "connect_blackhole_mode": false,
+        "controlled_json_instruction_seen": null,
+        "dns_answer_boundary_mode": false,
+        "dns_answer_limit_mode": false,
+        "dns_mode": false,
+        "dns_spoof_busy_mode": false,
+        "dns_spoof_mode": false,
+        "dns_tcp_mixed_v6_mode": false,
+        "dns_tcp_private_mode": false,
+        "dns_truncated_mode": false,
+        "exfil_dns_queried": null,
+        "exfil_mode": false,
+        "explicit_skill_input_accepted": null,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "framing_mode": false,
+        "header_limit_mode": false,
+        "held_encoded_mode": false,
+        "held_encoded_socket_closed": null,
+        "html_quarantine_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .claude/skills/outbound-guard",
+        "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+        "interim_mode": false,
+        "interim_slow_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "packet_capture": null,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_ALLOWED"
+        ],
+        "saturation_mode": false,
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": [
+          "project"
+        ],
+        "skill_tool_result_success": true,
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+        "slow_http_mode": false,
+        "spoofed_dns_attempts": null,
+        "status_codes": [
+          200
+        ],
+        "synthetic_marker_echo": null,
+        "tcp_private_dns_queries": null,
+        "tls_handshake_a_queries": 2,
+        "tls_mode": true,
+        "tls_slow_mode": false,
+        "tls_sni": [
+          [
+            "11.0.0.2",
+            "tls-handshake.test"
+          ]
+        ],
+        "truncated_dns_queries": null,
+        "upgrade_mode": false,
+        "url_classes": [
+          "tls_fixture",
+          "tls_fixture",
+          "allowed_plain"
+        ]
+      }
+    },
+    "codex-exfil": {
+      "install": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "loopback_denial",
+          "secret_path_denial",
+          "unicode_lookalike_denial",
+          "no_exfil_dns_or_marker_echo",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 16236544,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "synthetic-exfil-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+          "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+          "version": "0.1.0~candidate.356+g045610525169"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3956,
+          "sample_interval_ms": 50,
+          "samples": 245,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de"
+      },
+      "mode": "exfil",
+      "native": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "7d6f0f3fb9e340b5461c6c9d88c3a2aeacede24627591b0605f6e9321ffb4de2",
+        "blackhole_connect_seconds": null,
+        "blackhole_dropped_packets": null,
+        "bomb_mode": false,
+        "bridge_saturation": null,
+        "builtin_tools": null,
+        "client": "codex",
+        "comma_framing_mode": false,
+        "compression_loop_a_queried": null,
+        "connect_blackhole_mode": false,
+        "controlled_json_instruction_seen": null,
+        "dns_answer_boundary_mode": false,
+        "dns_answer_limit_mode": false,
+        "dns_mode": false,
+        "dns_spoof_busy_mode": false,
+        "dns_spoof_mode": false,
+        "dns_tcp_mixed_v6_mode": false,
+        "dns_tcp_private_mode": false,
+        "dns_truncated_mode": false,
+        "exfil_dns_queried": false,
+        "exfil_mode": true,
+        "explicit_skill_input_accepted": true,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain",
+          "/head-ok",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "framing_mode": false,
+        "header_limit_mode": false,
+        "held_encoded_mode": false,
+        "held_encoded_socket_closed": null,
+        "html_quarantine_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "HEAD",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+        "interim_mode": false,
+        "interim_slow_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "packet_capture": null,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_INVALID_HOST",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED",
+          "EGRESS_SECRET_DETECTED",
+          "EGRESS_INVALID_URL",
+          "EGRESS_ALLOWED"
+        ],
+        "saturation_mode": false,
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": null,
+        "skill_tool_result_success": null,
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+        "slow_http_mode": false,
+        "spoofed_dns_attempts": null,
+        "status_codes": [
+          200,
+          200,
+          200
+        ],
+        "synthetic_marker_echo": false,
+        "tcp_private_dns_queries": null,
+        "tls_handshake_a_queries": null,
+        "tls_mode": false,
+        "tls_slow_mode": false,
+        "tls_sni": null,
+        "truncated_dns_queries": null,
+        "upgrade_mode": false,
+        "url_classes": [
+          "other",
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      }
+    },
+    "codex-tls": {
+      "install": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "tls_hostname_denial",
+          "private_dns_flip_denial",
+          "active_proxy_positive_control_only",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17244160,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "tls-active-proxy",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+          "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+          "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+          "version": "0.1.0~candidate.356+g045610525169"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": true,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 4704,
+          "sample_interval_ms": 50,
+          "samples": 212,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de"
+      },
+      "mode": "tls",
+      "native": {
+        "active_proxy_mode": true,
+        "alias_cname_a_queried": null,
+        "argument_mode": false,
+        "argument_probe_allowed_dns_queries": null,
+        "argument_probe_dns_queries": null,
+        "attack_mode": false,
+        "binary_sha256": "3d806817b0d4e3c2875ba65ded3a69916f2256b73d2296d69dc333965a7ec799",
+        "blackhole_connect_seconds": null,
+        "blackhole_dropped_packets": null,
+        "bomb_mode": false,
+        "bridge_saturation": null,
+        "builtin_tools": null,
+        "client": "codex",
+        "comma_framing_mode": false,
+        "compression_loop_a_queried": null,
+        "connect_blackhole_mode": false,
+        "controlled_json_instruction_seen": null,
+        "dns_answer_boundary_mode": false,
+        "dns_answer_limit_mode": false,
+        "dns_mode": false,
+        "dns_spoof_busy_mode": false,
+        "dns_spoof_mode": false,
+        "dns_tcp_mixed_v6_mode": false,
+        "dns_tcp_private_mode": false,
+        "dns_truncated_mode": false,
+        "exfil_dns_queried": null,
+        "exfil_mode": false,
+        "explicit_skill_input_accepted": true,
+        "fallback_a_queries": null,
+        "fallback_mode": false,
+        "fixture_hits": [
+          "/proxy-control",
+          "/plain"
+        ],
+        "forbidden_dns_names": null,
+        "frame_mode": false,
+        "framing_mode": false,
+        "header_limit_mode": false,
+        "held_encoded_mode": false,
+        "held_encoded_socket_closed": null,
+        "html_quarantine_mode": false,
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "injected_argument_denials": null,
+        "injected_argument_marker_echo": null,
+        "installation_scope": "temporary project .agents/skills/outbound-guard",
+        "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+        "interim_mode": false,
+        "interim_slow_mode": false,
+        "json_duplicate_mode": false,
+        "json_injection_mode": false,
+        "malformed_mode": false,
+        "mutant_parse_error_seen": null,
+        "native_project_read_completed": null,
+        "native_project_source_observed": true,
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "packet_capture": null,
+        "proxy_flows": [
+          {
+            "host": "allowed.test",
+            "method": "GET",
+            "path": "/proxy-control"
+          }
+        ],
+        "rebind_a_queries": null,
+        "rebind_mode": false,
+        "response_limit_mode": false,
+        "rules": [
+          "EGRESS_NETWORK_FAILURE",
+          "EGRESS_FORBIDDEN_ADDRESS",
+          "EGRESS_ALLOWED"
+        ],
+        "saturation_mode": false,
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "setting_sources": null,
+        "skill_tool_result_success": null,
+        "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+        "slow_http_mode": false,
+        "spoofed_dns_attempts": null,
+        "status_codes": [
+          200
+        ],
+        "synthetic_marker_echo": null,
+        "tcp_private_dns_queries": null,
+        "tls_handshake_a_queries": 2,
+        "tls_mode": true,
+        "tls_slow_mode": false,
+        "tls_sni": [
+          [
+            "11.0.0.2",
+            "tls-handshake.test"
+          ]
+        ],
+        "truncated_dns_queries": null,
+        "upgrade_mode": false,
+        "url_classes": [
+          "tls_fixture",
+          "tls_fixture",
+          "allowed_plain"
+        ]
+      }
+    }
+  },
+  "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+  "source_commit": "0456105251691f2a11892f5bef65ef5b4592eb38",
+  "trusted_main_package_ci_run": 42990714476
+}

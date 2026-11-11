@@ -123,6 +123,8 @@ jobs:
         run: python3 tools/verify_native_current_dns_upgrade_corpus.py
       - name: Recheck current-package native TLS pinning captures
         run: python3 tools/verify_native_current_tls_pinning_corpus.py
+      - name: Recheck current-package native active-proxy decisions
+        run: python3 tools/verify_native_current_active_proxy_corpus.py
   sdk-audit:
     name: Locked ${{ matrix.probe.name }} npm audit
     strategy:

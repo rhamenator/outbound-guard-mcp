@@ -9,6 +9,7 @@
     "tools/debian_native_container_probe.py": "a40b22c7702fe2b52fc7b7ade78831d5c8005d5d52795ac187324333a98335e8",
     "tools/verify_native_tls_pinning_pcap.py": "9744742cd359739b81150a61ca573844efb49a59932cf836698a1594da7b196e"
   },
+  "harness_source_commit": "2a8123bb88ef0f3c6a3083f64003b294f5e654b3",
   "limits": [
     "One wrong-host certificate on first pinned public address and one later private DNS answer; no arbitrary certificate chain, resolver race or intra-call reconnect proof",
     "Fixture-namespace capture excludes native-client host and other-tool traffic",
