@@ -55,7 +55,7 @@ def main() -> None:
     assert set(evidence["harness_sha256"]) == {
         "tools/debian_native_container_probe.py", "tools/client_cancellation_probe.py",
         "tools/mitmproxy_flow_probe.py"}
-    assert evidence["harness_source_commit"] == "58d8c6a7c3bf9c4f5faff0d1ce8614705d7b1aa6"
+    assert evidence["harness_source_commit"] == "69a2caa02e5565c3938daabfe1648d0889c7d65d"
     for filename, digest in evidence["harness_sha256"].items():
         source = subprocess.check_output(["git", "show", f'{evidence["harness_source_commit"]}:{filename}'],
                                          cwd=ROOT, timeout=10)
