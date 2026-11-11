@@ -32,6 +32,21 @@ jobs:
               break
             fi
           done
+          if [ "$installed" -eq 0 ]; then
+            # The 2026-11-11 hosted runners could not resolve either archive
+            # hostname. Use their observed public IPs only as a last resort;
+            # HTTPS hostname validation and Ubuntu package signatures remain on.
+            echo '185.125.190.81 archive.ubuntu.com' | sudo tee -a /etc/hosts
+            echo '52.147.219.192 azure.archive.ubuntu.com' | sudo tee -a /etc/hosts
+            for mirror in https://archive.ubuntu.com/ubuntu https://azure.archive.ubuntu.com/ubuntu; do
+              echo "deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] $mirror noble main universe" > "$RUNNER_TEMP/outbound-ubuntu.list"
+              sudo timeout 180s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 -o Acquire::Languages=none update || continue
+              if sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 install -y tshark; then
+                installed=1
+                break
+              fi
+            done
+          fi
           test "$installed" -eq 1
           tshark --version
       - name: Recheck retained DNS capture digests and wire behavior
