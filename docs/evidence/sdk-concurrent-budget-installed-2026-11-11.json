@@ -1,0 +1,39 @@
+{
+  "result": "passed",
+  "observed_utc": "2026-11-11T07:37:30Z",
+  "scope": "Two route-free official MCP SDK 2.3.1 replays against a checksum-verified unsigned experimental Debian 12 amd64 package from exact-main source 3211c1c1a587291d70647c877e036ca81c2848ca; each used a disposable 128 MiB, 64 PID container with a 64-FD server soft limit",
+  "source_commit": "3211c1c1a587291d70647c877e036ca81c2848ca",
+  "source_ci_run": 42976396612,
+  "package_name": "outbound-guard-mcp_0.1.0~candidate.354+g3211c1c1a587_amd64.deb",
+  "package_sha256": "53764d4d42b98faf2c7dab751624abc5d3ff0a49ec8d83474c2ddd31f6ccdebc",
+  "ci_sha256sums_path": "docs/evidence/sdk-concurrent-budget-installed-2026-11-11-SHA256SUMS",
+  "ci_sha256sums_sha256": "8237741961ee7e292c9db60a8bc8bbbf3eb5a243ea5b20a2ad72c2d069842406",
+  "installed_binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+  "reproduce": "Download the experimental-candidate-linux-x86_64 artifact from CI run 42976396612; verify every SHA256SUMS entry; set OUTBOUND_GUARD_TEST_SDK_DIR=$PWD/tools/mcp-sdk-probe, OUTBOUND_GUARD_TEST_SDK_PACKAGE to the verified .deb, and OUTBOUND_GUARD_TEST_SDK_PACKAGE_SHA256 to its digest; run bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp twice.",
+  "runs": [
+    {
+      "log": "sdk-concurrent-budget-installed-2026-11-11-run1.log",
+      "sha256": "221943670626c3e61a4529f4f12ba2089458f1d5f56bff97329a891941cb0a5c",
+      "suite_decisions": 3455,
+      "burst_allowed": 8,
+      "burst_rate_denied": 1,
+      "burst_input_busy": 7,
+      "server_vm_hwm_kib": 5092,
+      "container_memory_peak_bytes": 27131904,
+      "container_pids_peak": 14
+    },
+    {
+      "log": "sdk-concurrent-budget-installed-2026-11-11-run2.log",
+      "sha256": "303abe6480b887cc5d0eb9d8f00807740aa3bb4f49aa0c842034b7bda1f9d270",
+      "suite_decisions": 3462,
+      "burst_allowed": 8,
+      "burst_rate_denied": 1,
+      "burst_input_busy": 7,
+      "server_vm_hwm_kib": 5208,
+      "container_memory_peak_bytes": 19288064,
+      "container_pids_peak": 14
+    }
+  ],
+  "checks": "The independent SDK probe made 52 serial allowed calls, submitted 16 concurrent calls with eight host slots left, filled to 60 approvals and confirmed a final rate denial. Both runs returned eight allowed, one rate denial and seven input-busy results in the burst. Fixture counters required exactly 60 allowed.test A and AAAA queries and 60 /plain HTTP hits; SDK audit counts, discovery, package installation, removal, residue and container cleanup passed. The overall suite decision totals vary with a separate earlier concurrent audit phase.",
+  "limitations": "Client submissions are concurrent; simultaneous server execution is not proven. No packet capture or host-client/other-tool traffic coverage. This is one experimental Debian package and SDK client, not native Codex/Claude/Cursor, multi-process budget proof, official candidate, owner acceptance, independent human review, or evidence for the four AI Scraping Defense repositories."
+}
