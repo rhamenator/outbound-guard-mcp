@@ -1,0 +1,511 @@
+{
+  "cases": {
+    "claude": {
+      "after": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http10-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http10-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http11-partial-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http11-partial-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "before": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http10-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http10-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http11-partial-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http11-partial-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "checks": [
+        "same_container",
+        "unchanged_saved_client_config",
+        "old_native_calls",
+        "in_place_package_upgrade",
+        "new_native_calls",
+        "controlled_http_and_dns",
+        "remove",
+        "residue",
+        "route_free_fixture",
+        "packet_capture_verified"
+      ],
+      "client": "2.1.319 (Claude Code)",
+      "fixture_dns_a_after": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_a_before": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_all": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_http_hits": [
+        "/plain",
+        "/http10-ok",
+        "/http10-comma-length",
+        "/http11-partial-ok",
+        "/http11-partial-comma-length",
+        "/plain",
+        "/plain",
+        "/http10-ok",
+        "/http10-comma-length",
+        "/http11-partial-ok",
+        "/http11-partial-comma-length",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "limits": [
+        "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+        "no TLS or host-client/other-tool traffic coverage",
+        "Claude native tool availability is model dependent",
+        "unsigned experimental packages, not an approved candidate"
+      ],
+      "native_client": "claude",
+      "new_installed": {
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "version": "0.1.0~candidate.349+g894e1024c6e5"
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "934647f2cf8e4482d297b0f0c77018db46b213597b01a0f4c169f3d64b2641b0",
+        "revision": "894e1024c6e5048838102f2f70b842fb65b4bab1",
+        "version": "0.1.0~candidate.349+g894e1024c6e5"
+      },
+      "old_installed": {
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "packet_capture": {
+        "dns_a_queries": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/http10-ok"
+          ],
+          [
+            "allowed.test",
+            "/http10-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-ok"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/http10-ok"
+          ],
+          [
+            "allowed.test",
+            "/http10-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-ok"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "version",
+        "scope": "fixture namespace only",
+        "sha256": "f03aee434ce5a49d46331ad63e64f2d7255cdf82570668d8e870b370f1b42770",
+        "tcp_syn_count": 12,
+        "verified_raw_version_responses": 8
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-claude-version-changed-2026-11-11.pcap",
+      "platform": "Debian 12 amd64",
+      "result": "passed",
+      "saved_mcp_config_sha256": "06f56fefb4c33b0127b1a7ef65f4920056841a483b1b45906675ac5c8102d6ff",
+      "scenario": "version"
+    },
+    "codex": {
+      "after": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http10-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http10-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http11-partial-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http11-partial-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "before": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http10-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http10-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/http11-partial-ok"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/http11-partial-comma-length"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "checks": [
+        "same_container",
+        "unchanged_saved_client_config",
+        "old_native_calls",
+        "in_place_package_upgrade",
+        "new_native_calls",
+        "controlled_http_and_dns",
+        "remove",
+        "residue",
+        "route_free_fixture",
+        "packet_capture_verified"
+      ],
+      "client": "codex-cli 0.151.0",
+      "fixture_dns_a_after": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_a_before": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_all": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_http_hits": [
+        "/plain",
+        "/http10-ok",
+        "/http10-comma-length",
+        "/http11-partial-ok",
+        "/http11-partial-comma-length",
+        "/plain",
+        "/plain",
+        "/http10-ok",
+        "/http10-comma-length",
+        "/http11-partial-ok",
+        "/http11-partial-comma-length",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "limits": [
+        "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+        "no TLS or host-client/other-tool traffic coverage",
+        "Codex approval bypass ran from private test cwd but retained host access",
+        "unsigned experimental packages, not an approved candidate"
+      ],
+      "native_client": "codex",
+      "new_installed": {
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "version": "0.1.0~candidate.349+g894e1024c6e5"
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "934647f2cf8e4482d297b0f0c77018db46b213597b01a0f4c169f3d64b2641b0",
+        "revision": "894e1024c6e5048838102f2f70b842fb65b4bab1",
+        "version": "0.1.0~candidate.349+g894e1024c6e5"
+      },
+      "old_installed": {
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "packet_capture": {
+        "dns_a_queries": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/http10-ok"
+          ],
+          [
+            "allowed.test",
+            "/http10-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-ok"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/http10-ok"
+          ],
+          [
+            "allowed.test",
+            "/http10-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-ok"
+          ],
+          [
+            "allowed.test",
+            "/http11-partial-comma-length"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "version",
+        "scope": "fixture namespace only",
+        "sha256": "fc6c54486b4ca15791043351762b335c194f88527d17b7d5a9fc858782c27e9a",
+        "tcp_syn_count": 12,
+        "verified_raw_version_responses": 8
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-codex-version-changed-2026-11-11.pcap",
+      "platform": "Debian 12 amd64",
+      "result": "passed",
+      "saved_mcp_config_sha256": "c664b7387040ad4fbe26e48a1a99d4b69c82d039b484c2b1f062a9158a7f233d",
+      "scenario": "version"
+    }
+  },
+  "date_utc": "2026-11-11",
+  "limits": [
+    "Experimental Debian package revisions 332\u2192349 with different executable bytes; skips intervening revisions, not a general upgrade guarantee.",
+    "Saved client MCP configuration unchanged; no saved server configuration migration.",
+    "Explicit native calls only; no automatic skill use, Cursor or desktop UI.",
+    "Fixture namespace packet capture excludes host-client and other-tool traffic.",
+    "Finite four HTTP version/status shapes; no arbitrary parser safety or official candidate acceptance.",
+    "No AI Scraping Defense repository tested."
+  ],
+  "new_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/42935287394",
+  "new_package_sha256": "934647f2cf8e4482d297b0f0c77018db46b213597b01a0f4c169f3d64b2641b0",
+  "new_source_commit": "894e1024c6e5048838102f2f70b842fb65b4bab1",
+  "old_package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+  "old_source_commit": "ba75a5645e56acc67bd51f1b492468629a204672",
+  "reproduction": "python3 tools/debian_same_container_native_http_upgrade.py --client CLIENT --scenario version --capture RESULT.pcap --old OLD.deb --old-sha256 OLD_SHA256 --new NEW.deb --new-sha256 NEW_SHA256 --output RESULT.json; add --allow-codex-approval-bypass only for Codex",
+  "result": "passed",
+  "scenario": "version"
+}
