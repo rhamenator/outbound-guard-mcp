@@ -119,6 +119,8 @@ jobs:
         run: python3 tools/verify_exact_main_rebind_corpus.py
       - name: Recheck current-package native rebinding captures
         run: python3 tools/verify_native_current_rebind_corpus.py
+      - name: Recheck changed-binary current-package native DNS upgrade captures
+        run: python3 tools/verify_native_current_dns_upgrade_corpus.py
   sdk-audit:
     name: Locked ${{ matrix.probe.name }} npm audit
     strategy:
