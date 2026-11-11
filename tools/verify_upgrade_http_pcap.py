@@ -22,7 +22,7 @@ def fields(path, display_filter, *names):
 
 
 def verify(path, expected_sha256, scenario="dns"):
-    assert scenario in ("dns", "redirect", "held-encoded"), "unsupported capture scenario"
+    assert scenario in ("dns", "redirect", "held-encoded", "version"), "unsupported capture scenario"
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture size outside fixture bounds"
     digest = hashlib.sha256(data).hexdigest()
@@ -37,7 +37,7 @@ def verify(path, expected_sha256, scenario="dns"):
 def verify_fields(path, digest, scenario):
     syns = fields(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0", "ip.dst", "ipv6.dst", "tcp.dstport")
     tcp_destinations = [(ipv4 or ipv6, port) for ipv4, ipv6, port in syns]
-    syn_count_ok = len(tcp_destinations) == (2 if scenario == "dns" else 6)
+    syn_count_ok = len(tcp_destinations) == (2 if scenario == "dns" else 12 if scenario == "version" else 6)
     assert syn_count_ok and \
         set(tcp_destinations) == {("11.0.0.1", "80")}, tcp_destinations
     queries = fields(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
@@ -45,7 +45,7 @@ def verify_fields(path, digest, scenario):
     a_names = [name for name, _, _ in fields(
         path, "dns.flags.response == 0 && dns.qry.type == 1", "dns.qry.name", "ip.dst", "udp.dstport")]
     expected_a_names = (["allowed.test", "private.test"] * 2 if scenario == "dns"
-                        else ["allowed.test"] * 6)
+                        else ["allowed.test"] * (12 if scenario == "version" else 6))
     assert a_names == expected_a_names, a_names
     forbidden_queries = {"unlisted.test"}
     if scenario == "redirect":
@@ -55,8 +55,25 @@ def verify_fields(path, digest, scenario):
     expected_requests = (["/plain"] * 2 if scenario == "dns"
                          else ["/plain", "/redirect", "/plain"] * 2
                          if scenario == "redirect" else
-                         ["/plain", "/encoded-body-hold", "/plain"] * 2)
+                         ["/plain", "/encoded-body-hold", "/plain"] * 2
+                         if scenario == "held-encoded" else
+                         ["/plain", "/http10-ok", "/http10-comma-length",
+                          "/http11-partial-ok", "/http11-partial-comma-length", "/plain"] * 2)
     assert requests == [["allowed.test", uri] for uri in expected_requests], requests
+    version_responses = 0
+    if scenario == "version":
+        streams = fields(path, "http.request", "http.request.uri", "tcp.stream")
+        for uri, stream in streams:
+            if uri.startswith("/http10-") or uri.startswith("/http11-partial-"):
+                payload = server_payload(path, stream)
+                headers, separator, body = payload.partition(b"\r\n\r\n")
+                expected_status = (b"HTTP/1.0 200 OK" if uri.startswith("/http10-")
+                                   else b"HTTP/1.1 206 Partial Content")
+                expected_length = (b"2, 2" if uri.endswith("comma-length") else b"2")
+                assert separator and headers == (expected_status + b"\r\nContent-Type: text/plain\r\nContent-Length: "
+                                                 + expected_length) and body == b"ok", (uri, payload)
+                version_responses += 1
+        assert version_responses == 8, version_responses
     held_closes = 0
     if scenario == "held-encoded":
         streams = fields(path, "http.request", "http.request.uri", "tcp.stream")
@@ -90,6 +107,8 @@ def verify_fields(path, digest, scenario):
               "ip_destinations": sorted(addresses), "scope": "fixture namespace only"}
     if scenario == "held-encoded":
         result["held_client_close_after_partial_response_count"] = held_closes
+    if scenario == "version":
+        result["verified_raw_version_responses"] = version_responses
     return result
 
 
@@ -97,7 +116,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--scenario", choices=("dns", "redirect", "held-encoded"), default="dns")
+    parser.add_argument("--scenario", choices=("dns", "redirect", "held-encoded", "version"), default="dns")
     args = parser.parse_args()
     print(json.dumps(verify(args.pcap, args.sha256, args.scenario), sort_keys=True))
 
