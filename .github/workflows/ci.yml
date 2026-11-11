@@ -19,12 +19,20 @@ jobs:
           fetch-depth: 0 # Historical native evidence hashes source files from the recorded commit.
       - name: Install packet inspection tool
         run: |
-          # Hosted runners may point at an unresponsive Azure mirror. Keep this
-          # test-tool install on the official Noble archive and bound I/O wait.
-          echo 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu noble main universe' > "$RUNNER_TEMP/outbound-ubuntu.list"
+          # A runner's DNS for either official Ubuntu mirror may fail transiently.
+          # Try each source with bounded waits; apt update can return zero after
+          # an index fetch failure, so only a successful install ends the loop.
           apt_source=(-o "Dir::Etc::sourcelist=$RUNNER_TEMP/outbound-ubuntu.list" -o Dir::Etc::sourceparts=-)
-          sudo timeout 360s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 -o Acquire::Languages=none update
-          sudo env DEBIAN_FRONTEND=noninteractive timeout 300s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 install -y tshark
+          installed=0
+          for mirror in https://archive.ubuntu.com/ubuntu https://azure.archive.ubuntu.com/ubuntu; do
+            echo "deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] $mirror noble main universe" > "$RUNNER_TEMP/outbound-ubuntu.list"
+            sudo timeout 180s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 -o Acquire::Languages=none update || continue
+            if sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get "${apt_source[@]}" -o Acquire::Retries=0 -o Acquire::https::Timeout=30 install -y tshark; then
+              installed=1
+              break
+            fi
+          done
+          test "$installed" -eq 1
           tshark --version
       - name: Recheck retained DNS capture digests and wire behavior
         run: python3 tools/verify_native_dns_corpus.py
