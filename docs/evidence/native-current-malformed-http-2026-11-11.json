@@ -1,0 +1,309 @@
+{
+  "ci_sha256sums_path": "docs/evidence/native-current-exfil-2026-11-11-SHA256SUMS",
+  "ci_sha256sums_sha256": "9cf67961da95fcb5af1809d34bcf428987d1ddb1ce0b6e3a6a460b8d478a40c9",
+  "command_template": "OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode malformed-http-packet --container-memory-mib 128 --sample-server-resources",
+  "fixture": "Route-free namespace: approved GET and HEAD, invalid chunk-size response, truncated chunk response, then approved recovery.",
+  "harness_sha256": {
+    "tools/client_cancellation_probe.py": "75b906ee51556e3435a94db39e797a53951e5e6e436961377884eace064162c1",
+    "tools/debian_native_container_probe.py": "a40b22c7702fe2b52fc7b7ade78831d5c8005d5d52795ac187324333a98335e8",
+    "tools/verify_native_malformed_http_pcap.py": "f6da5d72468e28979b4ef648e0a717607300b6b44121e6496acc8c6a3651d599"
+  },
+  "limitations": [
+    "Captures see only the disposable fixture namespace, not native client host traffic or requests through other tools.",
+    "Two finite malformed chunk shapes do not prove general HTTP framing resistance or resource-exhaustion safety.",
+    "This is clean installation and removal of an unsigned experimental package, not upgrade, saved-configuration migration, an official candidate, owner residual-risk acceptance or independent human review.",
+    "Four AI Scraping Defense repositories require their own adversarial evidence."
+  ],
+  "observed_utc": "2026-11-11T12:34:17.511297+00:00",
+  "package_name": "outbound-guard-mcp_0.1.0~candidate.356+g045610525169_amd64.deb",
+  "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+  "result": "passed",
+  "runs": {
+    "claude": {
+      "capture_path": "tests/fixtures/packet-capture/native-claude-malformed-http-current-2026-11-11.pcap",
+      "capture_sha256": "4dae7b544a583d1adb7dfcc67f32add93325d51eef8344db357fbd8e1de19837",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "bad_chunk_size_denial",
+        "truncated_chunk_denial",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "2.1.319 (Claude Code)",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 18022400,
+        "pids_peak": 9,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": null,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/chunked-bad-size",
+        "/chunked-truncated",
+        "/plain"
+      ],
+      "fixture_mode": "malformed-http-packet",
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "independent_packet_verification": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 11,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/head-ok"
+          ],
+          [
+            "allowed.test",
+            "/chunked-bad-size"
+          ],
+          [
+            "allowed.test",
+            "/chunked-truncated"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "malformed_chunk_bodies": {
+          "/chunked-bad-size": true,
+          "/chunked-truncated": true
+        },
+        "scope": "fixture namespace only",
+        "sha256": "4dae7b544a583d1adb7dfcc67f32add93325d51eef8344db357fbd8e1de19837",
+        "tcp_syn_count": 5
+      },
+      "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+      "native_skill_invoked": true,
+      "native_skill_loaded": true,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+        "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+        "version": "0.1.0~candidate.356+g045610525169"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 11,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "eof_active_close": null,
+        "eof_approved_http_requests": null,
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 83,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 82,
+        "pcap_sha256": "4dae7b544a583d1adb7dfcc67f32add93325d51eef8344db357fbd8e1de19837",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "spoofed_dns_transaction_ids": null,
+        "tcp_syn_count": 5,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 4,
+        "max_sampled_rss_kib": 3936,
+        "sample_interval_ms": 50,
+        "samples": 306,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    },
+    "codex": {
+      "capture_path": "tests/fixtures/packet-capture/native-codex-malformed-http-current-2026-11-11.pcap",
+      "capture_sha256": "13cd1cc9e05d4a496ba067bccd692ecd2585256d4bd043579fcd039c2e3e357d",
+      "checks": [
+        "checksum",
+        "clean_dpkg_install",
+        "no_upgrade",
+        "native_skill_and_guarded_calls",
+        "bad_chunk_size_denial",
+        "truncated_chunk_denial",
+        "fixture_namespace_tcp_syn_capture",
+        "approved_recovery",
+        "package_remove",
+        "residue"
+      ],
+      "client_version": "codex-cli 0.151.0",
+      "container_resource_observation": {
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory_limit_mib": 128,
+        "memory_peak_bytes": 17514496,
+        "pids_peak": 10,
+        "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+      },
+      "explicit_skill_input_accepted": true,
+      "fixture_hits": [
+        "/plain",
+        "/head-ok",
+        "/chunked-bad-size",
+        "/chunked-truncated",
+        "/plain"
+      ],
+      "fixture_mode": "malformed-http-packet",
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "independent_packet_verification": {
+        "dns_names": [
+          "1.0.0.11.in-addr.arpa",
+          "allowed.test"
+        ],
+        "dns_query_count": 11,
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/head-ok"
+          ],
+          [
+            "allowed.test",
+            "/chunked-bad-size"
+          ],
+          [
+            "allowed.test",
+            "/chunked-truncated"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "malformed_chunk_bodies": {
+          "/chunked-bad-size": true,
+          "/chunked-truncated": true
+        },
+        "scope": "fixture namespace only",
+        "sha256": "13cd1cc9e05d4a496ba067bccd692ecd2585256d4bd043579fcd039c2e3e357d",
+        "tcp_syn_count": 5
+      },
+      "installed_skill_sha256": "1fcd127c7c8f0624ae98258688e084c83efc4d00dfb4303d77ba26e950b48712",
+      "native_skill_invoked": null,
+      "native_skill_loaded": true,
+      "package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+        "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+        "version": "0.1.0~candidate.356+g045610525169"
+      },
+      "packet_capture": {
+        "capture_scope": "fixture network namespace only; host client network not captured",
+        "dns_query_count": 11,
+        "dns_query_destinations": [
+          "127.0.0.1:53"
+        ],
+        "eof_active_close": null,
+        "eof_approved_http_requests": null,
+        "exfil_dns_query_count": null,
+        "fallback_a_answers": null,
+        "fallback_a_query_count": null,
+        "ip_destination_entries": 82,
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "packet_count": 81,
+        "pcap_sha256": "13cd1cc9e05d4a496ba067bccd692ecd2585256d4bd043579fcd039c2e3e357d",
+        "raw_pcap_retained": true,
+        "rebind_a_answers": null,
+        "rebind_a_query_count": null,
+        "redirect_private_dns_query_count": null,
+        "spoofed_dns_transaction_ids": null,
+        "tcp_syn_count": 5,
+        "tcp_syn_destinations": [
+          "11.0.0.1:80"
+        ],
+        "timed_out_streams_client_closed": null,
+        "tls_client_hello_streams": null,
+        "tls_pinning_sni": null,
+        "truncated_dns_responses": null,
+        "unexpected_ip_destinations": 0,
+        "unexpected_tcp_connection_attempts": 0
+      },
+      "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+      "rules": [
+        "EGRESS_ALLOWED",
+        "EGRESS_ALLOWED",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_READ_FAILURE",
+        "EGRESS_ALLOWED"
+      ],
+      "server_resource_observation": {
+        "max_sampled_fd": 3,
+        "max_sampled_rss_kib": 4032,
+        "sample_interval_ms": 50,
+        "samples": 237,
+        "scope": "Finite sampled server observations; sampling can miss transient peaks."
+      }
+    }
+  },
+  "skill_name": "outbound-guard-skill-045610525169.zip",
+  "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de",
+  "source_base": "0456105251691f2a11892f5bef65ef5b4592eb38",
+  "trusted_main_package_ci_run": 42990714476
+}
