@@ -47,6 +47,13 @@ def verify_fields(path, digest, scenario):
     expected_a_names = (["allowed.test", "private.test"] * 2 if scenario == "dns"
                         else ["allowed.test"] * (12 if scenario == "version" else 6))
     assert a_names == expected_a_names, a_names
+    if scenario == "version":
+        answers = fields(path, "dns.flags.response == 1", "dns.qry.type", "dns.qry.name",
+                         "dns.a", "dns.aaaa", "dns.flags.rcode", "dns.count.answers")
+        assert answers == ([
+            ["1", "allowed.test", "11.0.0.1", "", "0", "1"],
+            ["28", "allowed.test", "", "", "0", "0"],
+        ] * 12), answers
     forbidden_queries = {"unlisted.test"}
     if scenario == "redirect":
         forbidden_queries.add("private.test")

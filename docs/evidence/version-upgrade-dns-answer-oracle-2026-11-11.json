@@ -1,0 +1,19 @@
+{
+  "result": "passed",
+  "scope": "retrospective fixture-namespace packet oracle; no new live client run",
+  "source_evidence": [
+    "docs/evidence/native-version-two-phase-upgrade-2026-11-11.json",
+    "docs/evidence/native-version-changed-binary-upgrade-2026-11-11.json"
+  ],
+  "reproduce": "python3 tools/verify_native_version_two_phase_upgrade_corpus.py",
+  "verified_captures": 4,
+  "expected_dns_responses_per_capture": {
+    "allowed.test A 11.0.0.1": 12,
+    "allowed.test AAAA empty": 12
+  },
+  "recomputed_digest_mutations_rejected": {
+    "HTTP status": 2,
+    "DNS A answer to 127.0.0.1": 2
+  },
+  "limits": "Only the four retained version/status upgrade captures and their controlled DNS fixture are checked. This does not establish universal DNS answer safety, observe host-client or other-tool traffic, qualify an official candidate, or test any AI Scraping Defense repository."
+}

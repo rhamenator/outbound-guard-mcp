@@ -92,8 +92,24 @@ def main() -> None:
                 pass
             else:
                 raise AssertionError("altered HTTP status passed packet oracle")
+        # An approved socket destination alone cannot prove the DNS answer was safe.
+        answer = (b"\x07allowed\x04test\x00\x00\x01\x00\x01"
+                  b"\xc0\x0c\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04"
+                  b"\x0b\x00\x00\x01")
+        assert data.count(answer) == 12
+        changed_dns = data.replace(answer, answer[:-4] + b"\x7f\x00\x00\x01", 1)
+        with tempfile.TemporaryDirectory(prefix="outbound-version-dns-mutant-") as directory:
+            mutant = Path(directory) / "mutant.pcap"
+            mutant.write_bytes(changed_dns)
+            try:
+                verify(mutant, hashlib.sha256(changed_dns).hexdigest(), "version")
+            except AssertionError as error:
+                assert "127.0.0.1" in str(error), error
+            else:
+                raise AssertionError("altered DNS answer passed packet oracle")
     print(json.dumps({"verified_captures": len(captures),
-                      "semantic_status_mutations_rejected": len(VARIANTS)}, sort_keys=True))
+                      "semantic_status_mutations_rejected": len(VARIANTS),
+                      "semantic_dns_mutations_rejected": len(VARIANTS)}, sort_keys=True))
 
 
 if __name__ == "__main__":
