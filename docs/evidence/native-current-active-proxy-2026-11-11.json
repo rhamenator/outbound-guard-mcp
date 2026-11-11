@@ -13,7 +13,7 @@
     "tools/debian_native_container_probe.py": "9bd44d3a141c20d2773c6826043989c4c73a1ff39d6690a361633b55f2bcf3b0",
     "tools/mitmproxy_flow_probe.py": "2eaf23a9cf058a63962a5469ff91066c9f240ba97ede85116d5435e5cbc16cd8"
   },
-  "harness_source_commit": "58d8c6a7c3bf9c4f5faff0d1ce8614705d7b1aa6",
+  "harness_source_commit": "69a2caa02e5565c3938daabfe1648d0889c7d65d",
   "limits": [
     "Four finite explicit native client skill sessions; mitmdump observed only the positive-control request per run, but there is no retained raw packet capture proving absence of all proxy connections",
     "The proxy trap is a single loopback HTTP endpoint and six environment variables; other proxy schemes, system settings and credential providers are not covered",
