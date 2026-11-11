@@ -1,0 +1,289 @@
+{
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/debian_same_container_native_http_upgrade.py": "43f76d3f837d334397f7b6752a0cc3e347e4cd9ddcef4e97e11818b5dabdffbf",
+    "tools/verify_upgrade_http_pcap.py": "0d5397bbdb567f3d964638c390eb0d81c3cff931d9fa8fc896185ab79a7ab0f0"
+  },
+  "limitations": [
+    "Package transition skips revisions 333 through 355",
+    "Existing saved MCP client configuration is checked; server-owned saved settings migration is not exercised",
+    "Capture covers only each route-free fixture namespace; no host-client or other-tool traffic",
+    "Finite DNS denial and recovery workflow; no universal SSRF or resource-exhaustion proof",
+    "Unsigned experimental packages; no official candidate, owner residual-risk acceptance or independent human review",
+    "Four AI Scraping Defense repositories have separate adversarial gates"
+  ],
+  "new_manifest_path": "docs/evidence/native-current-exfil-2026-11-11-SHA256SUMS",
+  "new_manifest_sha256": "9cf67961da95fcb5af1809d34bcf428987d1ddb1ce0b6e3a6a460b8d478a40c9",
+  "new_source_commit": "0456105251691f2a11892f5bef65ef5b4592eb38",
+  "old_manifest_path": "docs/evidence/native-current-upgrade-dns-old-SHA256SUMS",
+  "old_manifest_sha256": "cd708809989ef34e907077c1132f02402fc185c4f54cb0d652a2fbb2f1038b45",
+  "old_source_commit": "ba75a5645e56acc67bd51f1b492468629a204672",
+  "result": "passed",
+  "runs": {
+    "claude": {
+      "after": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_FORBIDDEN_ADDRESS",
+          "status": "BLOCKED",
+          "url": "http://private.test/plain"
+        },
+        {
+          "rule": "EGRESS_HOST_NOT_ALLOWED",
+          "status": "BLOCKED",
+          "url": "http://unlisted.test/plain"
+        }
+      ],
+      "before": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_FORBIDDEN_ADDRESS",
+          "status": "BLOCKED",
+          "url": "http://private.test/plain"
+        },
+        {
+          "rule": "EGRESS_HOST_NOT_ALLOWED",
+          "status": "BLOCKED",
+          "url": "http://unlisted.test/plain"
+        }
+      ],
+      "capture_path": "tests/fixtures/packet-capture/native-claude-current-dns-upgrade-2026-11-11.pcap",
+      "checks": [
+        "same_container",
+        "unchanged_saved_client_config",
+        "old_native_calls",
+        "in_place_package_upgrade",
+        "new_native_calls",
+        "controlled_http_and_dns",
+        "remove",
+        "residue",
+        "route_free_fixture",
+        "packet_capture_verified"
+      ],
+      "client": "2.1.319 (Claude Code)",
+      "fixture_dns_a_after": [
+        "allowed.test",
+        "private.test"
+      ],
+      "fixture_dns_a_before": [
+        "allowed.test",
+        "private.test"
+      ],
+      "fixture_dns_all": [
+        "allowed.test",
+        "allowed.test",
+        "private.test",
+        "private.test",
+        "allowed.test",
+        "allowed.test",
+        "private.test",
+        "private.test"
+      ],
+      "fixture_http_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "limits": [
+        "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+        "no TLS or host-client/other-tool traffic coverage",
+        "Claude native tool availability is model dependent",
+        "unsigned experimental packages, not an approved candidate"
+      ],
+      "native_client": "claude",
+      "new_installed": {
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "version": "0.1.0~candidate.356+g045610525169"
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+        "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+        "version": "0.1.0~candidate.356+g045610525169"
+      },
+      "old_installed": {
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "packet_capture": {
+        "dns_a_queries": [
+          "allowed.test",
+          "private.test",
+          "allowed.test",
+          "private.test"
+        ],
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "dns",
+        "scope": "fixture namespace only",
+        "sha256": "9680495b7bceba8fead039089bb2dfbb21d88df48a87b0df1c90bd85bc63edbb",
+        "tcp_syn_count": 2
+      },
+      "platform": "Debian 12 amd64",
+      "result": "passed",
+      "saved_mcp_config_sha256": "6935d3040956c6ecc467e332a7ac22773ec478420ba6676e901e9304e60487d7",
+      "scenario": "dns"
+    },
+    "codex": {
+      "after": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_FORBIDDEN_ADDRESS",
+          "status": "BLOCKED",
+          "url": "http://private.test/plain"
+        },
+        {
+          "rule": "EGRESS_HOST_NOT_ALLOWED",
+          "status": "BLOCKED",
+          "url": "http://unlisted.test/plain"
+        }
+      ],
+      "before": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "rule": "EGRESS_FORBIDDEN_ADDRESS",
+          "status": "BLOCKED",
+          "url": "http://private.test/plain"
+        },
+        {
+          "rule": "EGRESS_HOST_NOT_ALLOWED",
+          "status": "BLOCKED",
+          "url": "http://unlisted.test/plain"
+        }
+      ],
+      "capture_path": "tests/fixtures/packet-capture/native-codex-current-dns-upgrade-2026-11-11.pcap",
+      "checks": [
+        "same_container",
+        "unchanged_saved_client_config",
+        "old_native_calls",
+        "in_place_package_upgrade",
+        "new_native_calls",
+        "controlled_http_and_dns",
+        "remove",
+        "residue",
+        "route_free_fixture",
+        "packet_capture_verified"
+      ],
+      "client": "codex-cli 0.151.0",
+      "fixture_dns_a_after": [
+        "allowed.test",
+        "private.test"
+      ],
+      "fixture_dns_a_before": [
+        "allowed.test",
+        "private.test"
+      ],
+      "fixture_dns_all": [
+        "allowed.test",
+        "allowed.test",
+        "private.test",
+        "private.test",
+        "allowed.test",
+        "allowed.test",
+        "private.test",
+        "private.test"
+      ],
+      "fixture_http_hits": [
+        "/plain",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "limits": [
+        "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+        "no TLS or host-client/other-tool traffic coverage",
+        "Codex approval bypass ran from private test cwd but retained host access",
+        "unsigned experimental packages, not an approved candidate"
+      ],
+      "native_client": "codex",
+      "new_installed": {
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "version": "0.1.0~candidate.356+g045610525169"
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+        "package_sha256": "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952",
+        "revision": "0456105251691f2a11892f5bef65ef5b4592eb38",
+        "version": "0.1.0~candidate.356+g045610525169"
+      },
+      "old_installed": {
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901",
+        "package_sha256": "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e",
+        "revision": "ba75a5645e56acc67bd51f1b492468629a204672",
+        "version": "0.1.0~candidate.332+gba75a5645e56"
+      },
+      "packet_capture": {
+        "dns_a_queries": [
+          "allowed.test",
+          "private.test",
+          "allowed.test",
+          "private.test"
+        ],
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "dns",
+        "scope": "fixture namespace only",
+        "sha256": "4f537619b36ca9e791518504242283a9066bfb82e2f4ea6163eef72566541f88",
+        "tcp_syn_count": 2
+      },
+      "platform": "Debian 12 amd64",
+      "result": "passed",
+      "saved_mcp_config_sha256": "d577aaa9cdd6674926fa5592f5ef7bc5a5bd44d3708c365d9e81fc1cadfedcb4",
+      "scenario": "dns"
+    }
+  },
+  "scope": "experimental Debian 12 amd64 changed-executable package upgrade in separate native-client sessions"
+}
