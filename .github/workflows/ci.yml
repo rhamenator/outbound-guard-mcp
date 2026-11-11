@@ -66,6 +66,8 @@ jobs:
         run: python3 tools/verify_native_current_slow_close_corpus.py
       - name: Recheck saved operator configuration upgrade evidence
         run: python3 tools/verify_saved_operator_config_evidence.py
+      - name: Recheck installed SDK minute-window reset evidence
+        run: python3 tools/verify_installed_sdk_rate_reset_evidence.py
       - name: Recheck native synthetic-exfiltration packet evidence
         run: python3 tools/verify_native_exfil_corpus.py
       - name: Recheck native Codex and Claude EOF and active-HTTP EOF captures
