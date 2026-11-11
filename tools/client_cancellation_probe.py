@@ -378,10 +378,24 @@ def summarize_packet_capture():
   assert set(syn_destinations)<={('11.0.0.1','80'),('127.0.0.1','53')}, syn_destinations
  elif frame_eof_mode:
   assert syn_destinations==[('11.0.0.1','80')], syn_destinations
+ elif active_proxy_mode:
+  proxy_syns=[destination for destination in syn_destinations if destination==('127.0.0.1','3128')]
+  direct_syns=[destination for destination in syn_destinations if destination!=('127.0.0.1','3128')]
+  assert proxy_syns and direct_syns and set(direct_syns)==expected_syn_destinations, syn_destinations
  else:
   assert len(syn_destinations)>=2 and set(syn_destinations)==expected_syn_destinations, syn_destinations
- if tls_mode:assert len(syn_destinations)==2, syn_destinations
+ if tls_mode:
+  expected_direct=3 if active_proxy_mode else 2
+  assert len(direct_syns if active_proxy_mode else syn_destinations)==expected_direct, syn_destinations
+ if active_proxy_mode and exfil_mode:
+  assert len(direct_syns)==4, syn_destinations
  if tls_slow_mode:assert len(syn_destinations)==4, syn_destinations
+ proxy_requests=None
+ if active_proxy_mode:
+  proxy_requests=fields('tcp.dstport == 3128 && http.request',
+                        'http.request.method','http.host','http.request.uri')
+  assert len(proxy_requests)==1 and proxy_requests[0][:2]==['GET','allowed.test'], proxy_requests
+  assert proxy_requests[0][2].endswith('/proxy-control'), proxy_requests
  dns_queries=fields('dns.flags.response == 0 && udp.dstport == 53','ip.dst','ipv6.dst','udp.dstport')
  dns_destinations=[(ipv4 or ipv6,port) for ipv4,ipv6,port in dns_queries]
  assert dns_destinations and set(dns_destinations)=={('127.0.0.1','53')}, dns_destinations
@@ -470,6 +484,9 @@ def summarize_packet_capture():
    with capture_path.open('rb') as source:shutil.copyfileobj(source,archived)
  return {'capture_scope':'fixture network namespace only; host client network not captured',
          'tcp_syn_count':len(syn_destinations),'tcp_syn_destinations':[f'{ip}:{port}' for ip,port in sorted(set(syn_destinations))],
+         'proxy_tcp_syn_count':len(proxy_syns) if active_proxy_mode else None,
+         'direct_tcp_syn_count':len(direct_syns) if active_proxy_mode else None,
+         'proxy_control_http_requests':proxy_requests,
          'dns_query_count':len(dns_destinations),'dns_query_destinations':['127.0.0.1:53'],
          'truncated_dns_responses':truncated_responses if dns_truncated_mode else None,
          'spoofed_dns_transaction_ids':spoof_pairs,
