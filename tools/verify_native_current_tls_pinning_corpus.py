@@ -47,6 +47,8 @@ def main() -> None:
         "tools/debian_native_container_probe.py", "tools/client_cancellation_probe.py",
         "tools/verify_native_tls_pinning_pcap.py"}
     assert evidence["harness_source_commit"] == "2a8123bb88ef0f3c6a3083f64003b294f5e654b3"
+    subprocess.run(["git", "merge-base", "--is-ancestor", evidence["harness_source_commit"],
+                    "refs/remotes/origin/main"], cwd=ROOT, timeout=10, check=True)
     for name, digest in evidence["harness_sha256"].items():
         source = subprocess.check_output(["git", "show", f'{evidence["harness_source_commit"]}:{name}'],
                                          cwd=ROOT, timeout=10)
