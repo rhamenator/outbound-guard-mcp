@@ -1861,6 +1861,20 @@ def test_sdk_overload(binary):
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=8)
         assert process.returncode == 0 and not stdout and not stderr, (stdout, stderr)
+        # A fresh server process has eight host slots left when the SDK bursts
+        # sixteen calls. Only accepted reservations may reach DNS and HTTP.
+        a_before, aaaa_before, hits_before = len(DNS.a_names), len(DNS.aaaa_names), len(HTTP.hits)
+        race = subprocess.run([os.environ["OUTBOUND_GUARD_TEST_NODE"],
+                              os.path.join(sdk_dir, "budget_race_modern.mjs"), binary],
+                              capture_output=True, text=True, env=env, timeout=25, check=True)
+        assert not race.stderr, race.stderr
+        marker = race.stdout.strip().split(":")
+        assert len(marker) == 4 and marker[0] == "SDK_BUDGET_RACE", race.stdout
+        race_allowed, race_denied, race_busy = map(int, marker[1:])
+        assert 0 < race_allowed <= 8 and race_allowed + race_denied + race_busy == 16
+        assert DNS.a_names[a_before:] == ["allowed.test"] * 60
+        assert DNS.aaaa_names[aaaa_before:] == ["allowed.test"] * 60
+        assert HTTP.hits[hits_before:] == ["/plain"] * 60
         print(f"official SDK 2.3.1 overload: {cycles} client-originated bounded busy denials, "
               f"cancellations, socket closures and guarded recoveries ({elapsed:.2f}s); "
               "60 spent host slots and 60 DNS failures each followed by SDK EGRESS_RATE_LIMIT without DNS/HTTP; "
@@ -1868,7 +1882,11 @@ def test_sdk_overload(binary):
               "same-process host windows reset after 61 seconds with DNS/HTTP recovery; "
               f"1000/1001 process-hour budget and 16 concurrent SDK submissions: {accepted} audited "
               f"rate denials, {busy} fail-closed MCP_INPUT_BUSY rejections, serial recovery, no DNS/HTTP")
-        return 12 * cycles + 37 + 61 + 180 + 2 + 699 + accepted + 1
+        print(f"official SDK 2.3.1 per-host boundary burst: 52 serial allowed, "
+              f"16 concurrent submissions ({race_allowed} allowed, {race_denied} rate denied, "
+              f"{race_busy} input busy), serial fill to 60 and final rate denial; "
+              "exactly 60 approved A/AAAA queries and HTTP hits")
+        return 12 * cycles + 37 + 61 + 180 + 2 + 699 + accepted + 1 + 61 + race_denied
     finally:
         if process is not None and process.poll() is None:
             process.kill()

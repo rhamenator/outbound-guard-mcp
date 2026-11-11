@@ -1,0 +1,37 @@
+{
+  "result": "passed",
+  "observed_utc": "2026-11-11T06:48:10Z",
+  "scope": "Two route-free Linux namespace runs using official MCP SDK 2.3.1 as the client and the development server binary; not an installed package or native Codex, Claude, or Cursor workflow",
+  "source_base": "3eb990eb7e7a5b07fedad049b2e0c6dba1c179e5",
+  "probe_source_sha256": {
+    "tools/mcp-sdk-probe/budget_race_modern.mjs": "1288b9186cf749ddd1131bb538d3bd99c6b333550ec555061d190b3c91ab9494",
+    "tools/netns_adversarial_probe.py": "eeb05706aff151e97a86e1c4d66a410358d95847f96d1541bdecccee3a5dfaf3"
+  },
+  "server_binary_sha256": "2c4f44e5d618b57be21cfcceb9eb720f0f8edd5d1f05c86cdb17313d4bf9fd48",
+  "node_version": "v22.20.0",
+  "reproduce": "OUTBOUND_GUARD_TEST_SDK_DIR=$PWD/tools/mcp-sdk-probe bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "runs": [
+    {
+      "log": "sdk-concurrent-budget-2026-11-11-run1.log",
+      "sha256": "cd84b7793cf565bf2aae676163f2ca5af85bdd08aa760c2d95da0ca48da13a80",
+      "burst_allowed": 8,
+      "burst_rate_denied": 1,
+      "burst_input_busy": 7,
+      "approved_dns_a_queries": 60,
+      "approved_dns_aaaa_queries": 60,
+      "approved_http_hits": 60
+    },
+    {
+      "log": "sdk-concurrent-budget-2026-11-11-run2.log",
+      "sha256": "aa863bbfd92d8c6ced04f327c113bbcf73aca589b6f7db0095b0915545b97a19",
+      "burst_allowed": 8,
+      "burst_rate_denied": 1,
+      "burst_input_busy": 7,
+      "approved_dns_a_queries": 60,
+      "approved_dns_aaaa_queries": 60,
+      "approved_http_hits": 60
+    }
+  ],
+  "checks": "A fresh server received 52 serial approved calls, sixteen concurrent SDK submissions with eight per-host slots left, a serial fill to exactly 60 approved calls, and a final rate-limited call. The SDK checked each result and a bounded redacted audit. Fixture counters required exactly 60 allowed.test A and AAAA queries and 60 /plain HTTP hits; denied and busy requests added none. Each full route-free suite passed 3457 decisions.",
+  "limitations": "Client submissions are concurrent, but server execution is not proven simultaneous. Fixture counters are not a host-wide packet capture. No installed package lifecycle, arbitrary scheduler, multi-process budget, native Codex/Claude/Cursor, other-tool traffic, exact official candidate, owner acceptance, independent human review, or AI Scraping Defense repository is covered."
+}
