@@ -144,9 +144,12 @@ def main():
                         help="Debian server container memory and swap limit (default: 512 MiB)")
     parser.add_argument("--sample-server-resources", action="store_true",
                         help="Sample server file descriptors and RSS during native calls")
+    parser.add_argument("--active-proxy-packet", action="store_true",
+                        help="Capture fixture-namespace packets for an active-proxy mode")
     parser.add_argument("--cancel-cycles", type=int, choices=(2, 3), default=2,
                         help="Cycles for client-control-repeated-cancellation (default: 2)")
     args = parser.parse_args()
+    assert not args.active_proxy_packet or args.fixture_mode in ("tls-active-proxy", "synthetic-exfil-active-proxy"), "active proxy packet capture requires an active proxy fixture"
     package = args.package.resolve(strict=True)
     skill = args.skill_zip.resolve(strict=True)
     info = package_info(package, args.package_sha256)
@@ -218,6 +221,8 @@ def main():
             env.pop(mode_name, None)
         if args.fixture_mode in ("tls-active-proxy", "synthetic-exfil-active-proxy"):
             env["OUTBOUND_GUARD_CLIENT_ACTIVE_PROXY"] = "1"
+        if args.active_proxy_packet:
+            env["OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE"] = "1"
         if args.fixture_mode in ("client-control-header-cancellation", "client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
             env["OUTBOUND_GUARD_CLIENT_CANCEL_PHASE"] = "headers"
         if args.fixture_mode in ("client-control-repeated-cancellation", "client-control-repeated-cancellation-packet"):
@@ -548,6 +553,7 @@ def main():
                                     "json-injection": ["instruction_response_denial", "no_instruction_echo"],
                                     "json-duplicate": ["duplicate_key_json_denial", "no_instruction_echo"]}
                                    [args.fixture_mode]),
+                                 *(["fixture_namespace_proxy_packet_capture"] if args.active_proxy_packet else []),
                                  "approved_control_before_eof" if args.fixture_mode == "eof-mcp-frame" else "approved_active_http_before_eof" if args.fixture_mode == "eof-mcp-frame-active" else "approved_recovery",
                                  "package_remove", "residue"]}, sort_keys=True))
 
