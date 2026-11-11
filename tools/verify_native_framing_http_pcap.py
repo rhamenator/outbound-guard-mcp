@@ -45,7 +45,10 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
     assert "allowed.test" in names and names <= {"allowed.test", "1.0.0.11.in-addr.arpa"}, names
 
     requests = rows(path, "http.request", "http.host", "http.request.uri", "tcp.stream")
-    expected_paths = (["/plain", "/comma-length-equal", "/comma-length-conflict",
+    expected_paths = (["/plain", "/http10-ok", "/http10-comma-length",
+                       "/http11-partial-ok", "/http11-partial-comma-length", "/plain"]
+                      if mode == "version" else
+                      ["/plain", "/comma-length-equal", "/comma-length-conflict",
                        "/repeated-chunked-coding", "/plain"] if mode == "comma" else
                       ["/plain", "/coding-mutant-0", "/coding-mutant-3",
                        "/coding-mutant-5", "/plain"] if mode == "coding" else
@@ -66,7 +69,14 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
         "/duplicate-transfer-coding": ([b"Transfer-Encoding: chunked"] * 2,
                                        b"2\r\nok\r\n0\r\n\r\n"),
     }
-    if mode == "comma":
+    if mode == "version":
+        expected_metadata = {
+            "/http10-ok": ([b"Content-Type: text/plain", b"Content-Length: 2"], b"ok"),
+            "/http10-comma-length": ([b"Content-Type: text/plain", b"Content-Length: 2, 2"], b"ok"),
+            "/http11-partial-ok": ([b"Content-Type: text/plain", b"Content-Length: 2"], b"ok"),
+            "/http11-partial-comma-length": ([b"Content-Type: text/plain", b"Content-Length: 2, 2"], b"ok"),
+        }
+    elif mode == "comma":
         expected_metadata = {
             "/comma-length-equal": ([b"Content-Length: 2, 2"], b"ok"),
             "/comma-length-conflict": ([b"Content-Length: 2, 3"], b"ok"),
@@ -99,10 +109,13 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
         assert len(streams) == 1, (uri, streams)
         payload = server_payload(path, next(iter(streams)))
         headers, separator, body = payload.partition(b"\r\n\r\n")
-        assert separator and headers.startswith((b"HTTP/1.0 200 OK\r\n",
-                                                 b"HTTP/1.1 200 OK\r\n")), uri
+        expected_status = (b"HTTP/1.0 200 OK" if uri.startswith("/http10-") else
+                           b"HTTP/1.1 206 Partial Content" if uri.startswith("/http11-partial-") else None)
+        assert separator and (headers.startswith(expected_status + b"\r\n") if expected_status else
+                              headers.startswith((b"HTTP/1.0 200 OK\r\n",
+                                                  b"HTTP/1.1 200 OK\r\n"))), uri
         actual_headers = headers.split(b"\r\n")[1:]
-        checked_headers = (actual_headers if mode == "obs-fold" else
+        checked_headers = (actual_headers if mode in ("obs-fold", "version") else
                            [line for line in actual_headers if line.startswith(
                                (b"Content-Length:", b"Transfer-Encoding:"))])
         assert checked_headers == expected_headers, (uri, checked_headers)
@@ -123,7 +136,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold"), default="framing")
+    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold", "version"), default="framing")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-framing-pcap-verify-") as directory:

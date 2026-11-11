@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 
 from verify_native_body_cancel_pcap import PATHS, verify
@@ -12,6 +13,7 @@ from verify_native_body_cancel_pcap import PATHS, verify
 
 ROOT = Path(__file__).resolve().parent.parent
 EVIDENCE = ROOT / "docs/evidence/native-body-cancellation-pcap-2026-11-10.json"
+HARNESS_MAIN_SHA = "902b02272c559f34bfa9df32a8c824a9c0bf3d96"
 
 
 def main() -> None:
@@ -22,7 +24,11 @@ def main() -> None:
     assert evidence["binary_sha256"] == "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d"
     assert evidence["skill_zip_sha256"] == "b0cfcb1f8503d2181c2fd75112533c1f36fe3972ccfb65081a08c89a1402dd29"
     for name, digest in evidence["harness_sha256"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        # These retained observations used the harness before the later
+        # version/status replay extended it. Bind to immutable tested bytes.
+        historical = subprocess.check_output(
+            ["git", "show", f"{HARNESS_MAIN_SHA}:{name}"], cwd=ROOT, timeout=10)
+        assert hashlib.sha256(historical).hexdigest() == digest, name
     images = set()
     for client in ("codex", "claude"):
         run = evidence["runs"][client]
