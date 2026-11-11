@@ -4,6 +4,7 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,8 +55,11 @@ def main() -> None:
     assert set(evidence["harness_sha256"]) == {
         "tools/debian_native_container_probe.py", "tools/client_cancellation_probe.py",
         "tools/mitmproxy_flow_probe.py"}
+    assert evidence["harness_source_commit"] == "58d8c6a7c3bf9c4f5faff0d1ce8614705d7b1aa6"
     for filename, digest in evidence["harness_sha256"].items():
-        assert sha(ROOT / filename) == digest, filename
+        source = subprocess.check_output(["git", "show", f'{evidence["harness_source_commit"]}:{filename}'],
+                                         cwd=ROOT, timeout=10)
+        assert hashlib.sha256(source).hexdigest() == digest, filename
     assert set(evidence["runs"]) == {"claude-tls", "claude-exfil", "codex-tls", "codex-exfil"}
     for key, run in evidence["runs"].items():
         client, mode = key.split("-")

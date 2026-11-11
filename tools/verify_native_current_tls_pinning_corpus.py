@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 
 from verify_native_body_cancel_pcap_negative_controls import forbidden_syn
@@ -45,8 +46,11 @@ def main() -> None:
     assert set(evidence["harness_sha256"]) == {
         "tools/debian_native_container_probe.py", "tools/client_cancellation_probe.py",
         "tools/verify_native_tls_pinning_pcap.py"}
+    assert evidence["harness_source_commit"] == "2a8123bb88ef0f3c6a3083f64003b294f5e654b3"
     for name, digest in evidence["harness_sha256"].items():
-        assert sha(ROOT / name) == digest, name
+        source = subprocess.check_output(["git", "show", f'{evidence["harness_source_commit"]}:{name}'],
+                                         cwd=ROOT, timeout=10)
+        assert hashlib.sha256(source).hexdigest() == digest, name
     assert set(evidence["runs"]) == {"claude", "codex"}
     captures = set()
     for client, run in evidence["runs"].items():
