@@ -68,6 +68,8 @@ jobs:
         run: python3 tools/verify_saved_operator_config_evidence.py
       - name: Recheck installed SDK minute-window reset evidence
         run: python3 tools/verify_installed_sdk_rate_reset_evidence.py
+      - name: Recheck official SDK concurrent budget evidence
+        run: python3 tools/verify_sdk_concurrent_budget_corpus.py
       - name: Recheck native synthetic-exfiltration packet evidence
         run: python3 tools/verify_native_exfil_corpus.py
       - name: Recheck native Codex and Claude EOF and active-HTTP EOF captures
