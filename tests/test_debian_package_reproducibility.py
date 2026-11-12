@@ -22,7 +22,7 @@ class DebianPackageReproducibilityTests(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as folder:
                 outputs = []
-                for index, mask in enumerate((0o022, 0o077)):
+                for index, mask in enumerate((0o002, 0o022, 0o077)):
                     output = Path(folder) / str(index)
                     output.mkdir()
                     os.umask(mask)
@@ -35,7 +35,8 @@ class DebianPackageReproducibilityTests(unittest.TestCase):
                         directories = [entry for entry in archive if entry.isdir()]
                     self.assertTrue(directories)
                     self.assertTrue(all(entry.mode == 0o755 for entry in directories))
-                self.assertEqual(outputs[0], outputs[1])
+                for package_bytes in outputs[1:]:
+                    self.assertEqual(outputs[0], package_bytes)
         finally:
             os.umask(previous_umask)
 
