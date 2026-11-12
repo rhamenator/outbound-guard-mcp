@@ -22,7 +22,7 @@ class DebianPackageReproducibilityTests(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as folder:
                 outputs = []
-                for index, mask in enumerate((0o022, 0o077)):
+                for index, mask in enumerate((0o002, 0o022, 0o077)):
                     output = Path(folder) / str(index)
                     output.mkdir()
                     os.umask(mask)
