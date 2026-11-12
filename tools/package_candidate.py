@@ -71,7 +71,10 @@ def debian_candidate(binary, version, revision, revision_count, epoch, output, s
         )
         control.chmod(0o644)
         for path in sorted(root.rglob("*"), reverse=True):
+            if path.is_dir():
+                path.chmod(0o755)
             os.utime(path, (epoch, epoch), follow_symlinks=False)
+        root.chmod(0o755)
         os.utime(root, (epoch, epoch))
         env = os.environ.copy()
         env["SOURCE_DATE_EPOCH"] = str(epoch)
