@@ -1,0 +1,16 @@
+{
+  "attempted_mode": "OUTBOUND_GUARD_CLIENT_FRAMING=obs-fold with fixture namespace packet capture",
+  "capture_retained": false,
+  "client": "Cursor CLI 2026.10.19-6bbf2c4",
+  "date_utc": "2026-11-13",
+  "limitations": [
+    "No Cursor obs-fold security result or traffic-coverage claim follows from this attempt.",
+    "The private probe log and temporary fixture capture are not retained; the digest identifies the local failure log only.",
+    "Earlier Codex and Claude packet evidence remains separate from current Cursor behavior."
+  ],
+  "mcp_calls": 0,
+  "private_probe_log_sha256": "d51cf2b1a4047d5535c72caafbac983655a63139062e3a347b260bc13ed1fd13",
+  "result": "native_client_plan_gate_before_guarded_calls",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43513649058",
+  "source_main_sha": "1e3dc34c38900fd47dd0b5d8272b5c9f550ae5ca"
+}
