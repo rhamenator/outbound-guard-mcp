@@ -1,0 +1,101 @@
+{
+  "artifact": {
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "origin": "checksum-verified experimental CI Debian 12 amd64 package, extracted into a private disposable directory for host Cursor CLI",
+    "package_sha256": "696d08f8a00f638fa6a2bca0d8c9fb9204ad2727b3df78daf621cc1542a69711",
+    "skill_zip_sha256": "70810e2d3ac510838678bd54baf7fbfe6c6188917b497a4c67a83606d5bab9de"
+  },
+  "client": {
+    "control_interface": "authenticated ACP session/cancel",
+    "name": "Cursor CLI",
+    "version": "2026.10.19-6bbf2c4"
+  },
+  "date_utc": "2026-11-12",
+  "exact_main_ci": {
+    "ci_run": 43201817309,
+    "codeql_run": 43201817054,
+    "observed_conclusion": "success"
+  },
+  "harness": {
+    "command_template": "python3 tools/client_cancellation_probe.py cursor VERIFIED_BINARY [VERIFIED_SKILL_ZIP]",
+    "fixture": "isolated route-free DNS/HTTP network namespace with synthetic allowed.test and loopback controls",
+    "path": "tools/client_cancellation_probe.py",
+    "sha256": "5531d253b34466905b46a5057c9f50c83939fadc9faa4be3714b428defc7070b"
+  },
+  "inconclusive_skill_attempt": {
+    "reason": "A subsequent explicit skill attempt did not issue MCP tool calls before the harness deadline; it is not counted as a skill-workflow pass.",
+    "result": {
+      "client_error_count": 0,
+      "client_methods": [
+        "",
+        "session/update"
+      ],
+      "fixture_hits": [],
+      "methods": [],
+      "rules": [],
+      "stderr_size": 0,
+      "url_classes": []
+    }
+  },
+  "limits": [
+    "One controlled ACP cancellation and recovery sequence on the host Cursor CLI; not a desktop Stop button or terminal Escape test.",
+    "The client did not deliver MCP cancellation; the pending socket closed after the server response-rate deadline.",
+    "No packet capture was retained for this Cursor run; fixture-side logs and harness assertions are finite observations.",
+    "The binary was extracted from a checksum-verified Debian package rather than installed by Cursor on the host. CI separately tests Debian installation and removal.",
+    "The inconclusive skill attempt does not establish current native skill invocation.",
+    "Traffic sent by the Cursor host, model or other tools was not captured by this fixture namespace.",
+    "This experimental build is not an official candidate, release approval or evidence for the four AI Scraping Defense repositories."
+  ],
+  "native_control_result": {
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "cancel_cycles": 1,
+    "cancel_notifications": 0,
+    "cancel_phase": "body",
+    "cancelled_fetch_replied": true,
+    "client": "cursor",
+    "client_control_acknowledged": true,
+    "control_path": "ACP session/cancel",
+    "fetches": 4,
+    "fixture_paths": [
+      "/cancel-drip",
+      "/plain",
+      "/head-ok"
+    ],
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET",
+      "HEAD"
+    ],
+    "live_client": true,
+    "matching_wire_cancellation": false,
+    "packet_capture": null,
+    "recovery_allowed": true,
+    "rules": [
+      "EGRESS_RESPONSE_TOO_SLOW",
+      "EGRESS_ALLOWED",
+      "EGRESS_INVALID_HOST",
+      "EGRESS_ALLOWED"
+    ],
+    "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+    "socket_closed": true,
+    "socket_closed_after_each_seconds": [
+      3.012
+    ],
+    "socket_closed_after_seconds": 3.012,
+    "status_codes": [
+      200,
+      200
+    ]
+  },
+  "native_discovery": {
+    "command": "cursor-agent mcp enable outbound_guard; cursor-agent mcp list-tools outbound_guard",
+    "configured_in": "temporary project .cursor/mcp.json",
+    "observed_tools": [
+      "guarded_fetch (max_return_bytes, method, url)"
+    ],
+    "result": "one advertised tool"
+  },
+  "schema_version": 1,
+  "source_commit": "8527ca1c6b1316171513210a3d7bfa999ebdcd67"
+}
