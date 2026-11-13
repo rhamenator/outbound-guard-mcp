@@ -1,0 +1,220 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "daddefe50b291d1b5c79037ace8d6b33c6c9239a71f60bd4d293431870624067",
+  "capture_path": "tests/fixtures/packet-capture/native-cursor-current-http-upgrade-2026-11-13.pcap",
+  "capture_sha256": "da33d806d0377c447c98d41b1081da61ebcdfc6c242217ab1fbd01d27ff461d0",
+  "client_version": "Cursor CLI 2026.10.19-6bbf2c4",
+  "date_utc": "2026-11-13",
+  "harness_change": "The replay harness adds upgrade_mode to its explicit packet-capture mode allowlist in this PR; the checksum-verified experimental server executable remains from exact trusted main.",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "e45647f0c5b673daa4ff28cc99c2763dd05a1b4486e9c77b94f47551a49d003a",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22",
+    "tools/netns_adversarial_probe.py": "b2c692b8da8a82710319277e6208f4c13331b17a99d89f3ad38458be70333841"
+  },
+  "limitations": [
+    "One finite explicit native Cursor CLI project skill workflow with HTTP 101 and two HTTP 200 protocol-upgrade header traps. This does not prove arbitrary protocol ambiguity resistance.",
+    "The retained packet capture observes only the fixture network namespace. Host Cursor traffic, other tools and the full system network are outside this capture.",
+    "The unsigned experimental Debian package binary was extracted on Ubuntu, not installed with dpkg in this session. Package lifecycle requires separate disposable-system evidence.",
+    "The private raw harness log and downloaded package are not retained here. This record does not replace a fresh replay on the exact official candidate.",
+    "Automatic skill triggering, desktop UI behavior, owner self-review and explicit residual-risk acceptance remain open; no independent human review is claimed.",
+    "No evidence is transferred to the four AI Scraping Defense repositories."
+  ],
+  "native_client": {
+    "active_proxy_mode": false,
+    "alias_cname_a_queried": null,
+    "argument_mode": false,
+    "argument_probe_allowed_dns_queries": null,
+    "argument_probe_dns_queries": null,
+    "attack_mode": false,
+    "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+    "blackhole_connect_seconds": null,
+    "blackhole_dropped_packets": null,
+    "bomb_mode": false,
+    "bridge_saturation": null,
+    "builtin_tools": [
+      "observed native read"
+    ],
+    "client": "cursor",
+    "comma_framing_mode": false,
+    "compression_loop_a_queried": null,
+    "connect_blackhole_mode": false,
+    "controlled_json_instruction_seen": null,
+    "dns_answer_boundary_mode": false,
+    "dns_answer_limit_mode": false,
+    "dns_mode": false,
+    "dns_spoof_busy_mode": false,
+    "dns_spoof_mode": false,
+    "dns_tcp_mixed_v6_mode": false,
+    "dns_tcp_private_mode": false,
+    "dns_truncated_mode": false,
+    "exfil_dns_queried": null,
+    "exfil_mode": false,
+    "explicit_skill_input_accepted": null,
+    "fallback_a_queries": null,
+    "fallback_mode": false,
+    "fixture_hits": [
+      "/plain",
+      "/switch-protocols",
+      "/upgrade-header-200",
+      "/connection-upgrade-200",
+      "/plain"
+    ],
+    "forbidden_dns_names": null,
+    "frame_mode": false,
+    "framing_mode": false,
+    "header_limit_mode": false,
+    "held_encoded_mode": false,
+    "held_encoded_socket_closed": null,
+    "html_quarantine_mode": false,
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET",
+      "GET",
+      "GET"
+    ],
+    "injected_argument_denials": null,
+    "injected_argument_marker_echo": null,
+    "installation_scope": "temporary project .cursor/skills/outbound-guard",
+    "installed_skill_sha256": "7e1c42b01dcd35c934dc76b06974cdc9461344dc54b8f93b9dea81dd7abcb1ab",
+    "interim_mode": false,
+    "interim_slow_mode": false,
+    "json_duplicate_mode": false,
+    "json_injection_mode": false,
+    "malformed_mode": false,
+    "mutant_parse_error_seen": null,
+    "native_project_read_completed": true,
+    "native_project_source_observed": true,
+    "native_skill_discovered": null,
+    "native_skill_invoked": null,
+    "native_skill_loaded": true,
+    "native_turn_completed": null,
+    "packet_capture": {
+      "capture_scope": "fixture network namespace only; host client network not captured",
+      "direct_tcp_syn_count": null,
+      "dns_query_count": 11,
+      "dns_query_destinations": [
+        "127.0.0.1:53"
+      ],
+      "eof_active_close": null,
+      "eof_approved_http_requests": null,
+      "exfil_dns_query_count": null,
+      "fallback_a_answers": null,
+      "fallback_a_query_count": null,
+      "ip_destination_entries": 81,
+      "ip_destinations": [
+        "11.0.0.1",
+        "127.0.0.1"
+      ],
+      "packet_count": 80,
+      "pcap_sha256": "da33d806d0377c447c98d41b1081da61ebcdfc6c242217ab1fbd01d27ff461d0",
+      "proxy_control_http_requests": null,
+      "proxy_tcp_syn_count": null,
+      "raw_pcap_retained": true,
+      "rebind_a_answers": null,
+      "rebind_a_query_count": null,
+      "redirect_private_dns_query_count": null,
+      "spoofed_dns_transaction_ids": null,
+      "tcp_syn_count": 5,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ],
+      "timed_out_streams_client_closed": null,
+      "tls_client_hello_streams": null,
+      "tls_pinning_sni": null,
+      "truncated_dns_responses": null,
+      "unexpected_ip_destinations": 0,
+      "unexpected_tcp_connection_attempts": 0
+    },
+    "proxy_flows": null,
+    "rebind_a_queries": null,
+    "rebind_mode": false,
+    "response_limit_mode": false,
+    "rules": [
+      "EGRESS_ALLOWED",
+      "EGRESS_PROTOCOL_UPGRADE_DENIED",
+      "EGRESS_PROTOCOL_UPGRADE_DENIED",
+      "EGRESS_PROTOCOL_UPGRADE_DENIED",
+      "EGRESS_ALLOWED"
+    ],
+    "saturation_mode": false,
+    "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+    "setting_sources": null,
+    "skill_tool_result_success": null,
+    "skill_zip_sha256": "ebb3345c1ce2751d9182970bbfa7a10d334b29a06dbe295f1de8459b117fbdd5",
+    "slow_http_mode": false,
+    "spoofed_dns_attempts": null,
+    "status_codes": [
+      200,
+      200
+    ],
+    "synthetic_marker_echo": null,
+    "tcp_private_dns_queries": null,
+    "tls_handshake_a_queries": null,
+    "tls_mode": false,
+    "tls_slow_mode": false,
+    "tls_sni": null,
+    "truncated_dns_queries": null,
+    "upgrade_mode": true,
+    "url_classes": [
+      "allowed_plain",
+      "other",
+      "other",
+      "other",
+      "allowed_plain"
+    ]
+  },
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+    "package_sha256": "74b6e5cecc2650cfa45f1123d9e9d9868f8717e6c19266dcc83ddc1719b4114c",
+    "revision": "a33f4cb2ed702aeee5a5db03414115ebcdd672e9",
+    "version": "0.1.0~candidate.388+ga33f4cb2ed70"
+  },
+  "packet_analysis": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 11,
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/switch-protocols"
+      ],
+      [
+        "allowed.test",
+        "/upgrade-header-200"
+      ],
+      [
+        "allowed.test",
+        "/connection-upgrade-200"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "da33d806d0377c447c98d41b1081da61ebcdfc6c242217ab1fbd01d27ff461d0",
+    "tcp_syn_count": 5,
+    "upgrade_response_paths": [
+      "/switch-protocols",
+      "/upgrade-header-200",
+      "/connection-upgrade-200"
+    ]
+  },
+  "raw_log_sha256": "e958e59a4d5b7e3194adc90804c0c08ed15e05f3f0d8bbc88aeed93f5baae57d",
+  "reproduction": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=headers OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/client_cancellation_probe.py cursor EXTRACTED_VERIFIED_BINARY VERIFIED_SKILL_ZIP",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43476666539",
+  "source_main_sha": "a33f4cb2ed702aeee5a5db03414115ebcdd672e9"
+}
