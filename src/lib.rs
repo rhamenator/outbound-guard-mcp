@@ -652,7 +652,7 @@ fn looks_like_html(text: &str) -> bool {
                 && bytes.get(1 + tag.len()).is_some_and(tag_boundary)
         })
     }
-    text.split(|ch| matches!(ch, '\r' | '\n' | '\u{2028}' | '\u{2029}'))
+    text.split(['\r', '\n', '\u{2028}', '\u{2029}'])
         .any(line_looks_like_html)
 }
 
