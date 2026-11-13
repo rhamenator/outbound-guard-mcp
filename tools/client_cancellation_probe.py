@@ -634,8 +634,8 @@ if skill_zip:
     expected_rules=['EGRESS_ALLOWED','EGRESS_PROTOCOL_UPGRADE_DENIED','EGRESS_ALLOWED']
    expected_methods=['GET']*len(expected_rules)
   if html_quarantine_mode:
-   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/html-mislabeled ; GET http://allowed.test/html-root-div ; GET http://allowed.test/html-formfeed ; GET http://allowed.test/plain-angle-text ; GET http://allowed.test/plain . The three middle HTML responses are mislabeled text/plain and must be denied without their content; the angle-text sentence is ordinary text. The operator approved allowed.test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
-   expected_rules=['EGRESS_ALLOWED']+['EGRESS_HTML_MISLABELED']*3+['EGRESS_ALLOWED']*2
+   skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these seven calls in order: GET http://allowed.test/plain ; GET http://allowed.test/html-mislabeled ; GET http://allowed.test/html-root-div ; GET http://allowed.test/html-formfeed ; GET http://allowed.test/html-line-hidden ; GET http://allowed.test/plain-angle-text ; GET http://allowed.test/plain . The four middle HTML responses are mislabeled text/plain and must be denied without their content; the angle-text sentence is ordinary text. The operator approved allowed.test. Make every call once even when an earlier call is denied. Do not retry or use any other tool. Report the actual results.'
+   expected_rules=['EGRESS_ALLOWED']+['EGRESS_HTML_MISLABELED']*4+['EGRESS_ALLOWED']*2
    expected_methods=['GET']*len(expected_rules)
   if json_injection_mode:
    json_path='json-duplicate-shadow' if json_duplicate_mode else 'json-injection'
@@ -928,14 +928,14 @@ if skill_zip:
    denied=[e for e in events if e.get('rule')==('EGRESS_RESPONSE_TIMEOUT' if interim_slow_mode else 'EGRESS_RESPONSE_WIRE_LIMIT' if interim_mode else 'EGRESS_PROTOCOL_UPGRADE_DENIED')]
    assert len(denied)==(4 if interim_repeat_mode else 3 if upgrade_headers_mode else 1) and all(e.get('body_text_present') is False for e in denied), denied
   if html_quarantine_mode:
-   expected_hits=['/plain','/html-mislabeled','/html-root-div','/html-formfeed','/plain-angle-text','/plain']
+   expected_hits=['/plain','/html-mislabeled','/html-root-div','/html-formfeed','/html-line-hidden','/plain-angle-text','/plain']
    for _ in range(100):
     hits=json.loads((root/'hits.json').read_text())
     if hits==expected_hits:break
     time.sleep(.01)
    assert hits==expected_hits, hits
    denied=[e for e in events if e.get('rule')=='EGRESS_HTML_MISLABELED']
-   assert len(denied)==3 and all(e.get('body_text_present') is False for e in denied), denied
+   assert len(denied)==4 and all(e.get('body_text_present') is False for e in denied), denied
   if json_injection_mode:
    hits=json.loads((root/'hits.json').read_text())
    assert hits==['/json-duplicate-shadow' if json_duplicate_mode else '/json-injection','/plain'], hits

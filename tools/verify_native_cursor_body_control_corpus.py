@@ -4,6 +4,7 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 
 from verify_native_body_cancel_pcap import PATHS, verify
@@ -20,10 +21,13 @@ def main() -> None:
     evidence = json.loads(EVIDENCE.read_text())
     assert evidence["source_main_sha"] == "1cc67494d4a610696b4e651e1a893130766fe174"
     assert evidence["source_ci_run"].endswith("/43354585953")
+    assert evidence["harness_source_sha"] == "2963e329d31ef41e7747ab4a418b1891125b87da"
     assert evidence["package_sha256"] == "d025319c4c5c97ac769bfbab2ce45316a52656b5079068b512f8aa70d3b5d57d"
     assert evidence["client_version"] == "Cursor CLI 2026.10.19-6bbf2c4"
     for name, digest in evidence["harness_sha256"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        historical = subprocess.check_output(
+            ["git", "show", f"{evidence['harness_source_sha']}:{name}"], cwd=ROOT, timeout=10)
+        assert hashlib.sha256(historical).hexdigest() == digest, name
     capture = ROOT / evidence["capture"]
     assert capture.is_relative_to(ROOT / "tests/fixtures/packet-capture")
     data = capture.read_bytes()
