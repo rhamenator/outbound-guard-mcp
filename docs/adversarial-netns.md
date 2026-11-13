@@ -117,6 +117,8 @@ The Rust regression covers uppercase roots with closing, self-closing, space, ta
 
 This closes this leading-fragment gap only. It does not implement DOM/CSS visibility, complete HTML recognition, generic content sanitization, or coverage of requests sent by another tool. False positives for literal HTML examples remain possible. No dependencies were added.
 
+The line-leading follow-up adds a `text/plain` fixture with an ordinary preface followed by a CSS-hidden link on the next line. `guarded_fetch` must return `EGRESS_HTML_MISLABELED` without `body_text`; the fixture records only the requested path, not the link target. The existing inline prose example remains allowed. Unit cases also cover CR, CRLF and Unicode line separators. This narrow scan still permits markup after prose on the same line and unrecognized tags, and it can reject literal HTML examples at a line start. The route-free fixture runs in CI; local namespace replay requires privileges unavailable in restricted hosts.
+
 ## Absolute DNS and hostile search suffix
 
 The disposable namespace resolver configuration now includes `search search-trap.test` and `ndots:5`. Its DNS fixture maps `allowed.test.search-trap.test` to loopback while the approved `allowed.test` maps to the controlled public fixture. Before the fix, the existing debug executable failed its normal allowed-fetch case with EGRESS_FORBIDDEN_ADDRESS: search expansion selected the suffixed name. The address check still prevented a private connection; this was not evidence of a successful private-address bypass.
