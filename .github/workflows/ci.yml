@@ -95,6 +95,8 @@ jobs:
         run: python3 tools/verify_native_cursor_html_corpus.py
       - name: Recheck current Cursor CLI DNS and SSRF packets
         run: python3 tools/verify_native_cursor_dns_corpus.py
+      - name: Recheck current Cursor CLI rebinding packets
+        run: python3 tools/verify_native_cursor_rebind_corpus.py
       - name: Reject late native partial-body socket closure
         run: python3 tools/verify_native_body_cancel_pcap_negative_controls.py
       - name: Recheck current-package native slow HTTP socket closes
