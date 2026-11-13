@@ -1,5 +1,11 @@
 # Cursor CLI client evidence
 
+## Current experimental package control replay, 2026-11-12
+
+[The retained result](evidence/native-cursor-current-control-2026-11-12.json) uses authenticated Cursor CLI `2026.10.19-6bbf2c4` and the checksum-verified exact-main `8527ca1` Debian package binary, extracted to a private test directory. Cursor's project MCP configuration discovered exactly `guarded_fetch`. In one route-free ACP control replay, four native MCP calls produced a slow-response denial, approved GET, loopback denial and approved HEAD. Cursor acknowledged `session/cancel` but sent no matching MCP cancellation; the fixture socket closed about 3.012 seconds after control, at the server's response-rate deadline. An approved recovery passed.
+
+This tests the ACP control path and a binary extracted from the package, not a desktop or terminal control, host-side package installation, or traffic sent through other tools. There is no retained packet capture. A separate explicit skill attempt made no MCP tool calls before its deadline and is inconclusive. The exact official candidate, full supported-client matrix and owner acceptance remain open.
+
 On 2026-10-21, Cursor CLI `2026.10.19-6bbf2c4` was installed from the official HTTPS installer, and the user completed its browser login. Authenticated ACP sessions discovered the independently installed optimized Outbound Guard candidate `ec96881e4ca9` through stdio. Controlled GET and HEAD returned `EGRESS_ALLOWED` / HTTP 200; loopback returned `EGRESS_INVALID_HOST`. The [machine-readable record](evidence/client-cancellation-2026-10-21.json) pins the binary and observations.
 
 The CLI's ACP `session/cancel` acknowledged a cancelled agent turn but did **not** emit MCP `notifications/cancelled` in this tested version/path. The fetch continued until `EGRESS_RESPONSE_TOO_SLOW` around three seconds, then a subsequent guarded fetch succeeded. This is a documented client gap, not a prompt-cancellation pass. The [full review](client-cancellation.md) describes methodology and remaining desktop/terminal UI coverage.
