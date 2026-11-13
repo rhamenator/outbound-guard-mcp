@@ -1,0 +1,86 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "7960b641bc5ffb28bccc9295d911aa0cfbfbe10bffa0a4e29fdbb4ec65869e84",
+  "client_version": "Cursor CLI 2026.10.19-6bbf2c4",
+  "date_utc": "2026-11-13",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "91f94a584a379449b6befd22b126ddce04c05f44799bc360143ef0152096683a",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22",
+    "tools/netns_adversarial_probe.py": "b2c692b8da8a82710319277e6208f4c13331b17a99d89f3ad38458be70333841"
+  },
+  "limitations": [
+    "One finite explicit named-skill workflow in Cursor CLI. A completed native read of SKILL.md was observed; automatic trigger reliability and IDE UI behavior were not tested.",
+    "The checksum-verified unsigned experimental Debian package binary was extracted onto the Ubuntu host, not installed with dpkg in this Cursor session. Separate Debian package lifecycle tests do not make this a Cursor install test.",
+    "The route-free fixture recorded only its own requested paths and tool decisions. No packet capture was retained; traffic sent by the host client or other tools was not captured.",
+    "The private raw harness log is not retained in this repository; its digest and CI consistency checks do not replace a fresh live-client replay on an official candidate.",
+    "No official release-candidate qualification, general HTML sanitization or prompt-injection resistance is established. Owner self-review and residual-risk acceptance remain open; no independent human review is claimed.",
+    "These observations do not transfer to the four AI Scraping Defense repositories."
+  ],
+  "native_client": {
+    "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+    "builtin_tools": [
+      "observed native read"
+    ],
+    "client": "cursor",
+    "fixture_hits": [
+      "/plain",
+      "/html-mislabeled",
+      "/html-root-div",
+      "/html-formfeed",
+      "/html-line-hidden",
+      "/plain-angle-text",
+      "/plain"
+    ],
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET",
+      "GET",
+      "GET",
+      "GET",
+      "GET"
+    ],
+    "installation_scope": "temporary project .cursor/skills/outbound-guard",
+    "installed_skill_sha256": "7e1c42b01dcd35c934dc76b06974cdc9461344dc54b8f93b9dea81dd7abcb1ab",
+    "native_project_read_completed": true,
+    "native_project_source_observed": true,
+    "native_skill_loaded": true,
+    "rules": [
+      "EGRESS_ALLOWED",
+      "EGRESS_HTML_MISLABELED",
+      "EGRESS_HTML_MISLABELED",
+      "EGRESS_HTML_MISLABELED",
+      "EGRESS_HTML_MISLABELED",
+      "EGRESS_ALLOWED",
+      "EGRESS_ALLOWED"
+    ],
+    "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+    "skill_zip_sha256": "ebb3345c1ce2751d9182970bbfa7a10d334b29a06dbe295f1de8459b117fbdd5",
+    "status_codes": [
+      200,
+      200,
+      200
+    ],
+    "url_classes": [
+      "allowed_plain",
+      "other",
+      "other",
+      "other",
+      "other",
+      "other",
+      "allowed_plain"
+    ]
+  },
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+    "package_sha256": "d7a6934d6b9c140cd9c340d672018fec34f9174831f035a7e858279db3e72833",
+    "revision": "3294ae95a5fe7ded7255df653780555fe61d2670",
+    "version": "0.1.0~candidate.378+g3294ae95a5fe"
+  },
+  "raw_log_sha256": "77fb34426b6130ff1ae67750eec6b99d6f90560d0d7c45a69e67a68db3ab4858",
+  "reproduction": "OUTBOUND_GUARD_CLIENT_HTML_QUARANTINE=1 python3 tools/client_cancellation_probe.py cursor EXTRACTED_VERIFIED_BINARY VERIFIED_SKILL_ZIP",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43381810891",
+  "source_main_sha": "3294ae95a5fe7ded7255df653780555fe61d2670"
+}
