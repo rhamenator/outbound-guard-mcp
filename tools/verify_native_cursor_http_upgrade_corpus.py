@@ -42,12 +42,14 @@ def verify_record(record):
     assert "upgrade_mode" in record["harness_change"]
     assert set(record["harness_sha256"]) == SOURCES
     for name, digest in record["harness_sha256"].items():
+        source = subprocess.check_output(["git", "show", f"{SOURCE}:{name}"],
+                                         cwd=ROOT, timeout=10)
         if name == "tools/client_cancellation_probe.py":
-            source = (ROOT / name).read_bytes()
+            old = b"header_limit_mode or interim_slow_mode or frame_eof_mode"
+            new = b"header_limit_mode or upgrade_mode or interim_slow_mode or frame_eof_mode"
+            assert source.count(old) == 1
+            source = source.replace(old, new)
             assert digest == PROBE_SHA256
-        else:
-            source = subprocess.check_output(["git", "show", f"{SOURCE}:{name}"],
-                                             cwd=ROOT, timeout=10)
         assert hashlib.sha256(source).hexdigest() == digest, name
     package = record["package"]
     assert package["revision"] == SOURCE
