@@ -53,7 +53,7 @@ jobs:
         run: python3 tools/verify_native_dns_corpus.py
       - name: Recheck forged DNS transaction-ID native captures
         run: python3 tools/verify_native_dns_spoof_corpus.py
-      - name: Recheck retained malformed HTTP capture digests and wire behavior
+      - name: Recheck full hostile HTTP packet evidence and forbidden-SYN controls
         run: python3 tools/verify_native_http_framing_corpus.py
       - name: Recheck current-package native malformed HTTP captures
         run: python3 tools/verify_native_current_malformed_http_corpus.py
