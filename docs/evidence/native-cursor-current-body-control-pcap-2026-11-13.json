@@ -13,6 +13,7 @@
   ],
   "client_version": "Cursor CLI 2026.10.19-6bbf2c4",
   "date_utc": "2026-11-13",
+  "harness_source_sha": "2963e329d31ef41e7747ab4a418b1891125b87da",
   "harness_sha256": {
     "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
     "tools/client_cancellation_probe.py": "5d4adb8ebe123065054db6006f4ffd43f6a8bc0e9d26c385447e0f04040db4ca",
