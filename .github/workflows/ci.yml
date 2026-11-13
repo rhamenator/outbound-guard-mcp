@@ -89,6 +89,8 @@ jobs:
         run: python3 tools/verify_native_body_cancel_pcap_corpus.py
       - name: Recheck current Cursor ACP body-control packets
         run: python3 tools/verify_native_cursor_body_control_corpus.py
+      - name: Recheck native line-leading HTML quarantine record
+        run: python3 tools/verify_native_line_html_corpus.py
       - name: Reject late native partial-body socket closure
         run: python3 tools/verify_native_body_cancel_pcap_negative_controls.py
       - name: Recheck current-package native slow HTTP socket closes
