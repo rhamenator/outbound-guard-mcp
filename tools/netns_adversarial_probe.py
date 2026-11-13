@@ -454,6 +454,17 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                              + length + b"\r\n\r\nok")
             self.close_connection = True
             return
+        if self.path in ("/no-content-204", "/no-content-204-length",
+                         "/no-content-204-chunked", "/reset-content-205"):
+            response = {
+                "/no-content-204": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n",
+                "/no-content-204-length": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
+                "/no-content-204-chunked": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
+                "/reset-content-205": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\n",
+            }[self.path]
+            self.wfile.write(response)
+            self.close_connection = True
+            return
         if self.path == "/conflict-framing":
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -664,7 +675,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             body = b"fixture-ok"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
-        self.send_header("Content-Length", str(len(body)))
+        if self.path != "/json-no-content":
+            self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         try:
             self.wfile.write(body)
@@ -2656,6 +2668,25 @@ def main(binary, cancellation_probe):
             framing_results[path] = decision["rule"]
         print("raw HTTP version/status fixture: HTTP/1.0 200 and HTTP/1.1 206 allowed "
               "with body ok; comma-length variants denied without body; exact hits passed")
+        no_content, bad_length, bad_chunked, reset, recovered = call_sequence(binary, [
+            ("allowed.test", "no-content-204", "http"),
+            ("allowed.test", "no-content-204-length", "http"),
+            ("allowed.test", "no-content-204-chunked", "http"),
+            ("allowed.test", "reset-content-205", "http"),
+            ("allowed.test", "plain", "http"),
+        ])
+        observed_no_content = [(item["rule"], item.get("body_text")) for item in
+                               (no_content, bad_length, bad_chunked, reset, recovered)]
+        assert observed_no_content == [
+            ("EGRESS_ALLOWED", ""), ("EGRESS_INVALID_FRAMING", None),
+            ("EGRESS_INVALID_FRAMING", None), ("EGRESS_ALLOWED", ""),
+            ("EGRESS_ALLOWED", "fixture-ok"),
+        ], observed_no_content
+        assert [no_content["status_code"], reset["status_code"]] == [204, 205]
+        assert HTTP.hits[-5:] == ["/no-content-204", "/no-content-204-length",
+                                 "/no-content-204-chunked", "/reset-content-205", "/plain"]
+        print("no-content framing fixture: clean 204/205 and recovery allowed; "
+              "204 length/chunked traps denied without body")
         length_mutant_rules = {}
         for index, value in enumerate(INVALID_LENGTH_CORPUS):
             path = f"length-mutant-{index}"

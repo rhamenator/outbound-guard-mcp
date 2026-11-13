@@ -1,0 +1,47 @@
+{
+  "baseline_binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+  "baseline_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43522258542",
+  "baseline_log_sha256": "f3848b8d14e912e9539cb23888b909e1e157acb66640ba73fa5d65770dc3dc66",
+  "baseline_main_sha": "d04765ba8894ab0aa24e79a3decaf710b9c5412a",
+  "baseline_observed_rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED"
+  ],
+  "baseline_package_sha256": "bcf77967b5b8b55ca0adb76547802fddc5aa8bfef160eb9065aa3c00a3bcd5c8",
+  "checks": [
+    "baseline binary accepted two invalid 204 framing metadata cases",
+    "updated binary denied both without body text",
+    "clean empty 204 and 205 accepted",
+    "same-session approved recovery",
+    "full route-free probe passed"
+  ],
+  "date_utc": "2026-11-13",
+  "harness_file": "tools/netns_adversarial_probe.py",
+  "limitations": [
+    "The two raw response variants and one recovery do not prove arbitrary HTTP response-smuggling resistance.",
+    "The debug binary was locally built from this branch; exact official-candidate and native-client testing remain open.",
+    "Raw host-client traffic, other-tool traffic and all four AI Scraping Defense repositories are outside this probe.",
+    "Private local logs are identified by digest but not retained in this repository; the CI fixture is reproducible."
+  ],
+  "network_scope": "route-free controlled DNS/HTTP namespace; no retained packet capture",
+  "paths": [
+    "/no-content-204",
+    "/no-content-204-length",
+    "/no-content-204-chunked",
+    "/reset-content-205",
+    "/plain"
+  ],
+  "updated_debug_binary_sha256": "881b302bf49a5bdd9a14e73697ca4867c6dece969c371c97b5efcfd80f30ab67",
+  "updated_full_probe_decisions": 2252,
+  "updated_log_sha256": "b561d0184ccb7e5e0c32451ecc6bdda22fd789463c19f547f93f02e30867db1f",
+  "updated_observed_rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED"
+  ]
+}
