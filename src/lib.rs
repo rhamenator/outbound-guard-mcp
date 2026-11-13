@@ -1075,6 +1075,18 @@ async fn guarded_http_fetch(
     if let Some(denial) = response_framing_denial(response.headers()) {
         return denial.value();
     }
+    // HTTP 204 ends at the header terminator. Framing fields on that status
+    // make the peer's claimed body length ambiguous across HTTP parsers.
+    if response.status() == hyper::StatusCode::NO_CONTENT
+        && (response.headers().contains_key(header::CONTENT_LENGTH)
+            || response.headers().contains_key(header::TRANSFER_ENCODING))
+    {
+        return Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a 204 response without body-framing headers.",
+        )
+        .value();
+    }
     if response
         .headers()
         .get_all(header::CONTENT_TYPE)

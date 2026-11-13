@@ -11,6 +11,8 @@ cargo run --locked
 
 Configure an MCP client to launch the executable over stdio with this environment variable. Its first `tools/list` result advertises `guarded_fetch`. The client must send the actual request through this tool for its policy to apply. It cannot intercept traffic sent through unrelated tools or processes. The `ai-scraping-defense` projects may connect to it optionally, as they may connect to any MCP server.
 
+HTTP 204 responses must omit `Content-Length` and `Transfer-Encoding`; either field returns `EGRESS_INVALID_FRAMING` without body text. A clean empty 204 and a zero-length 205 remain allowed. This is a conservative response-framing rule for `guarded_fetch` only.
+
 ## Optional operator CA certificate
 
 For an approved HTTPS service using a private certificate authority, set the server environment variable `OUTBOUND_GUARD_EXTRA_CA_CERT` to an operator-controlled PEM certificate file. The server needs read permission on that regular file; it must contain exactly one certificate, be at most 64 KiB, and contain no private key. Invalid configuration stops startup. The certificate is loaded once; restart after changing it. It adds trust for all approved HTTPS hosts in that process, alongside the built-in roots, with hostname verification still required. Protect the file from modification by agents or untrusted users. The tool arguments cannot select a certificate. No client certificate authentication is implemented.
