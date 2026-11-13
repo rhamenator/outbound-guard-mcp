@@ -16,7 +16,7 @@ PATHS = ["/cancel-drip", "/plain", "/head-ok"]
 
 
 def verify(path: Path, digest: str, client: str) -> dict:
-    assert client in ("codex", "claude")
+    assert client in ("codex", "claude", "cursor")
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture outside fixture size limit"
     assert hashlib.sha256(data).hexdigest() == digest, "capture SHA-256 mismatch"
@@ -46,7 +46,7 @@ def verify(path: Path, digest: str, client: str) -> dict:
     close_time = min(Decimal(value[0]) for value in closes)
     request_to_close = close_time - Decimal(requests[0][3])
     first_body_to_close = close_time - Decimal(segments[1][1])
-    lower, upper = ((Decimal("2.75"), Decimal("3.25")) if client == "codex"
+    lower, upper = ((Decimal("2.75"), Decimal("3.25")) if client in ("codex", "cursor")
                     else (Decimal(0), Decimal("0.25")))
     assert lower < request_to_close < upper, (client, request_to_close)
     assert lower < first_body_to_close < upper, (client, first_body_to_close)
@@ -72,7 +72,7 @@ def verify(path: Path, digest: str, client: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("client", choices=("codex", "claude"))
+    parser.add_argument("client", choices=("codex", "claude", "cursor"))
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
     args = parser.parse_args()

@@ -1,5 +1,11 @@
 # Cursor CLI client evidence
 
+## Current experimental package packet replay, 2026-11-13
+
+[The retained ACP control result](evidence/native-cursor-current-body-control-pcap-2026-11-13.json) repeats one body-phase cancellation against the checksum-verified exact-main `1cc6749` experimental Debian package binary. Its [fixture-namespace packet capture](../tests/fixtures/packet-capture/native-cursor-current-body-control-2026-11-13.pcap) shows only approved fixture and DNS destinations, a partial response body, socket closure at the server's roughly three-second rate deadline, and approved GET/HEAD recovery. The independent CI oracle rejects a late-close mutation and a recomputed-digest metadata-address SYN mutation. Cursor acknowledged ACP `session/cancel` but sent no MCP cancellation in this run.
+
+To reproduce the capture with an authenticated Cursor CLI, a verified binary and a private absolute capture path, set `OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1` and `OUTBOUND_GUARD_PACKET_ARCHIVE=/private/path/cursor-control.pcap`, then run `python3 tools/client_cancellation_probe.py cursor VERIFIED_BINARY`. This requires passwordless sudo for the disposable route-free namespace, `tcpdump`, `tshark`, and `aa-exec`. The capture observes only the fixture namespace; it cannot prove what the host client or other tools sent. The binary was extracted from the package, and this replay does not test native skill invocation, desktop Stop, terminal Escape, package installation or official candidate qualification.
+
 ## Current experimental package control replay, 2026-11-12
 
 [The retained result](evidence/native-cursor-current-control-2026-11-12.json) uses authenticated Cursor CLI `2026.10.19-6bbf2c4` and the checksum-verified exact-main `8527ca1` Debian package binary, extracted to a private test directory. Cursor's project MCP configuration discovered exactly `guarded_fetch`. In one route-free ACP control replay, four native MCP calls produced a slow-response denial, approved GET, loopback denial and approved HEAD. Cursor acknowledged `session/cancel` but sent no matching MCP cancellation; the fixture socket closed about 3.012 seconds after control, at the server's response-rate deadline. An approved recovery passed.
