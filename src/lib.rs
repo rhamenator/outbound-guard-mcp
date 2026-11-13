@@ -625,28 +625,35 @@ fn looks_like_html(text: &str) -> bool {
     fn tag_boundary(byte: &u8) -> bool {
         matches!(byte, b'>' | b'/' | b' ' | b'\t' | b'\r' | b'\n' | 0x0c)
     }
-    let start = text.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '\u{feff}');
-    let bytes = start.as_bytes();
-    if [b"<!doctype".as_slice(), b"<!--"].iter().any(|tag| {
-        bytes
-            .get(..tag.len())
-            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(tag))
-            && (tag == b"<!--" || bytes.get(tag.len()).is_some_and(tag_boundary))
-    }) {
-        return true;
+    fn line_looks_like_html(line: &str) -> bool {
+        let start = line.trim_start_matches(|ch: char| ch.is_whitespace() || ch == '\u{feff}');
+        let bytes = start.as_bytes();
+        if [b"<!doctype".as_slice(), b"<!--"].iter().any(|tag| {
+            bytes
+                .get(..tag.len())
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case(tag))
+                && (tag == b"<!--" || bytes.get(tag.len()).is_some_and(tag_boundary))
+        }) {
+            return true;
+        }
+        if !bytes.starts_with(b"<") {
+            return false;
+        }
+        [
+            "html", "head", "body", "script", "style", "iframe", "svg", "a", "div", "span", "form",
+            "input", "button", "img", "meta", "link", "object", "embed", "template", "noscript",
+            "p",
+        ]
+        .iter()
+        .any(|tag| {
+            bytes
+                .get(1..1 + tag.len())
+                .is_some_and(|head| head.eq_ignore_ascii_case(tag.as_bytes()))
+                && bytes.get(1 + tag.len()).is_some_and(tag_boundary)
+        })
     }
-    [
-        "html", "head", "body", "script", "style", "iframe", "svg", "a", "div", "span", "form",
-        "input", "button", "img", "meta", "link", "object", "embed", "template", "noscript", "p",
-    ]
-    .iter()
-    .any(|tag| {
-        let prefix = format!("<{tag}");
-        bytes
-            .get(..prefix.len())
-            .is_some_and(|head| head.eq_ignore_ascii_case(prefix.as_bytes()))
-            && bytes.get(prefix.len()).is_some_and(tag_boundary)
-    })
+    text.split(|ch| matches!(ch, '\r' | '\n' | '\u{2028}' | '\u{2029}'))
+        .any(line_looks_like_html)
 }
 
 fn is_instruction_key(key: &str) -> bool {
@@ -1225,7 +1232,7 @@ async fn guarded_http_fetch(
     if plain_text && looks_like_html(&text) {
         return Denial::new(
             "EGRESS_HTML_MISLABELED",
-            "Return actual plain text or JSON; leading HTML markup is not accepted.",
+            "Return actual plain text or JSON; line-leading HTML markup is not accepted.",
         )
         .value();
     }
@@ -1514,6 +1521,14 @@ mod tests {
             "<a-not-a-tag>",
         ] {
             assert!(!looks_like_html(text), "{text}");
+        }
+        for text in [
+            "ordinary preface\n  <a style=\"display:none\" href=\"/trap\">hidden</a>",
+            "ordinary preface\r<SCRIPT>attack</SCRIPT>",
+            "ordinary preface\r\n\u{feff}<div hidden>trap</div>",
+            "ordinary preface\u{2028}<form hidden>trap</form>",
+        ] {
+            assert!(looks_like_html(text), "{text}");
         }
     }
     struct Fake(Vec<SocketAddr>);
