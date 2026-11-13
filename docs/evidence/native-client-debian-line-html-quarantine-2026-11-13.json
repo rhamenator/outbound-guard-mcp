@@ -1,0 +1,233 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "e7b96a886c7ad4eb0b97fbd8666b3a1120fda73567cbfbfc0fc77fd7e4418d49",
+  "client_versions": {
+    "claude": "2.1.323",
+    "codex": "0.168.0"
+  },
+  "date_utc": "2026-11-13",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "91f94a584a379449b6befd22b126ddce04c05f44799bc360143ef0152096683a",
+    "tools/debian_native_container_probe.py": "5133d97d44cde59e0bddbb64eaa4dff599156562c5f15157b4879c196c5789a3",
+    "tools/netns_adversarial_probe.py": "b2c692b8da8a82710319277e6208f4c13331b17a99d89f3ad38458be70333841"
+  },
+  "limitations": "Two finite explicit native skill workflows, not automatic triggering or proof of prompt-injection resistance. The route-free fixture records requested paths and tool decisions; it does not prove protection of traffic through other tools or comprehensive network packet absence. Native clients ran on Ubuntu; the checksum-verified unsigned experimental package ran in disposable Debian 12 amd64 containers. The 50 ms server sampler can miss peaks; cgroup peaks include setup/helper processes. No coverage claim for other clients, official candidates, or the four AI Scraping Defense repositories. Owner self-review and residual-risk acceptance remain outstanding; no independent human review is claimed.",
+  "reproduction": "python3 tools/debian_native_container_probe.py CLIENT VERIFIED_DEB DEB_SHA256 VERIFIED_SKILL_ZIP SKILL_SHA256 --fixture-mode html-quarantine --container-memory-mib 128 --sample-server-resources",
+  "runs": {
+    "claude": {
+      "native_client": {
+        "client": "claude",
+        "fixture_hits": [
+          "/plain",
+          "/html-mislabeled",
+          "/html-root-div",
+          "/html-formfeed",
+          "/html-line-hidden",
+          "/plain-angle-text",
+          "/plain"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": null,
+        "native_skill_invoked": true,
+        "native_skill_loaded": true,
+        "native_turn_completed": null,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "status_codes": [
+          200,
+          200,
+          200
+        ],
+        "url_classes": [
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "mislabeled_hidden_html_denial",
+          "mislabeled_root_html_denial",
+          "mislabeled_formfeed_html_denial",
+          "mislabeled_line_html_denial",
+          "ordinary_angle_text_allowed",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "claude",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 26251264,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "html-quarantine",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+          "package_sha256": "0998f7acc07526ab65356f06245c04a1437d63dc9cadfe7cabc27aa50cc1cc7e",
+          "revision": "09332b6f5b14ee46568e071a38c770a2832d41e4",
+          "version": "0.1.0~candidate.376+g09332b6f5b14"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": false,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3988,
+          "sample_interval_ms": 50,
+          "samples": 391,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "ebb3345c1ce2751d9182970bbfa7a10d334b29a06dbe295f1de8459b117fbdd5"
+      },
+      "raw_log_sha256": "04d9de3a846708e3a8cea2d3d413b4ff522f43696ed324b5cccfb59fcab28624"
+    },
+    "codex": {
+      "native_client": {
+        "client": "codex",
+        "fixture_hits": [
+          "/plain",
+          "/html-mislabeled",
+          "/html-root-div",
+          "/html-formfeed",
+          "/html-line-hidden",
+          "/plain-angle-text",
+          "/plain"
+        ],
+        "http_methods": [
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET",
+          "GET"
+        ],
+        "native_skill_discovered": true,
+        "native_skill_invoked": null,
+        "native_skill_loaded": true,
+        "native_turn_completed": true,
+        "rules": [
+          "EGRESS_ALLOWED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_HTML_MISLABELED",
+          "EGRESS_ALLOWED",
+          "EGRESS_ALLOWED"
+        ],
+        "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+        "status_codes": [
+          200,
+          200,
+          200
+        ],
+        "url_classes": [
+          "allowed_plain",
+          "other",
+          "other",
+          "other",
+          "other",
+          "other",
+          "allowed_plain"
+        ]
+      },
+      "package_probe": {
+        "checks": [
+          "checksum",
+          "clean_dpkg_install",
+          "no_upgrade",
+          "native_skill_and_guarded_calls",
+          "mislabeled_hidden_html_denial",
+          "mislabeled_root_html_denial",
+          "mislabeled_formfeed_html_denial",
+          "mislabeled_line_html_denial",
+          "ordinary_angle_text_allowed",
+          "approved_recovery",
+          "package_remove",
+          "residue"
+        ],
+        "client": "codex",
+        "client_control_result": null,
+        "container_resource_observation": {
+          "memory_events": {
+            "high": 0,
+            "low": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_group_kill": 0,
+            "oom_kill": 0,
+            "sock_throttled": 0
+          },
+          "memory_limit_mib": 128,
+          "memory_peak_bytes": 17850368,
+          "pids_peak": 9,
+          "scope": "Container cgroup high-water marks include setup and helper processes; not server-only RSS or FD peaks."
+        },
+        "fixture_mode": "html-quarantine",
+        "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+        "old_package": null,
+        "package": {
+          "app_version": "0.1.0",
+          "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+          "package_sha256": "0998f7acc07526ab65356f06245c04a1437d63dc9cadfe7cabc27aa50cc1cc7e",
+          "revision": "09332b6f5b14ee46568e071a38c770a2832d41e4",
+          "version": "0.1.0~candidate.376+g09332b6f5b14"
+        },
+        "platform": "Debian 12 amd64 container joined to route-free fixture namespace",
+        "proxy_environment_verified_in_container": false,
+        "result": "passed",
+        "server_resource_observation": {
+          "max_sampled_fd": 3,
+          "max_sampled_rss_kib": 3952,
+          "sample_interval_ms": 50,
+          "samples": 608,
+          "scope": "Finite sampled server observations; sampling can miss transient peaks."
+        },
+        "skill_zip_sha256": "ebb3345c1ce2751d9182970bbfa7a10d334b29a06dbe295f1de8459b117fbdd5"
+      },
+      "raw_log_sha256": "338fdf837a377199d608625bc68d8cd29e3dc44a0cae072e32466446cb6cf480"
+    }
+  },
+  "trusted_main_ci": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43368588221",
+  "trusted_main_sha": "09332b6f5b14ee46568e071a38c770a2832d41e4"
+}

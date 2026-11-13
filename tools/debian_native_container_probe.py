@@ -509,7 +509,7 @@ def main():
                                     "http-interim-repeat": ["four_sequential_103_wire_budget_denials", "approved_recovery_after_repeated_denial"],
                                     "http-interim-slow": ["small_103_slow_drip_total_deadline_denial", "approved_recovery_after_timeout"],
                                     "http-interim-slow-packet": ["small_103_slow_drip_total_deadline_denial", "approved_recovery_after_timeout", "timed_out_tcp_stream_closed", "fixture_namespace_tcp_syn_capture"],
-                                    "html-quarantine": ["mislabeled_hidden_html_denial", "mislabeled_root_html_denial", "mislabeled_formfeed_html_denial", "ordinary_angle_text_allowed"],
+                                    "html-quarantine": ["mislabeled_hidden_html_denial", "mislabeled_root_html_denial", "mislabeled_formfeed_html_denial", "mislabeled_line_html_denial", "ordinary_angle_text_allowed"],
                                     "queue-saturation": ["bridge_injected_busy_denial", "priority_cancellation_and_socket_close", "native_client_guarded_recovery"],
                                     "dns-spoof-packet": ["forged_transaction_id_dns_denial", "approved_recovery_after_dns_failure", "fixture_namespace_dns_id_and_tcp_capture"],
                                     "dns-spoof-busy-packet": ["forged_transaction_id_dns_timeout", "live_resolver_worker_busy_denial", "approved_recovery_after_worker_exits", "fixture_namespace_dns_id_and_tcp_capture"],
