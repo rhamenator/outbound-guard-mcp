@@ -1,0 +1,117 @@
+{
+  "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+  "capture": "tests/fixtures/packet-capture/native-cursor-current-body-control-2026-11-13.pcap",
+  "checks": [
+    "native_cursor_acp_control_acknowledged",
+    "no_mcp_cancel_notification",
+    "server_rate_deadline_closed_partial_body_socket",
+    "approved_same_process_recovery",
+    "loopback_denial",
+    "fixture_namespace_packet_capture",
+    "independent_tcp_http_dns_oracle",
+    "recomputed_digest_negative_controls"
+  ],
+  "client_version": "Cursor CLI 2026.10.19-6bbf2c4",
+  "date_utc": "2026-11-13",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "5d4adb8ebe123065054db6006f4ffd43f6a8bc0e9d26c385447e0f04040db4ca",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22"
+  },
+  "limitations": [
+    "One finite Cursor CLI ACP session/cancel body-phase replay; not a desktop Stop button or terminal Escape test.",
+    "Cursor sent no MCP cancellation in this run; the server closed the response socket at its own roughly three-second rate deadline.",
+    "Capture covers only packets in the route-free fixture network namespace, not host client or other-tool traffic.",
+    "The binary was extracted from a checksum-verified experimental Debian package rather than installed on the host; CI separately tests package installation.",
+    "No native skill invocation, arbitrary repeated cancellation, queue saturation, or official candidate qualification is established.",
+    "No evidence is transferred to the four AI Scraping Defense repositories."
+  ],
+  "native_client_control_result": {
+    "binary_sha256": "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d",
+    "cancel_cycles": 1,
+    "cancel_notifications": 0,
+    "cancel_phase": "body",
+    "cancelled_fetch_replied": true,
+    "client": "cursor",
+    "client_control_acknowledged": true,
+    "control_path": "ACP session/cancel",
+    "fetches": 4,
+    "fixture_paths": [
+      "/cancel-drip",
+      "/plain",
+      "/head-ok"
+    ],
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET",
+      "HEAD"
+    ],
+    "live_client": true,
+    "matching_wire_cancellation": false,
+    "packet_capture": {
+      "bytes": 5825,
+      "pcap_sha256": "89d418ceb1f9d4cc3f9ba2d3c0449b0cb057c22eb25ebe4140198d6fef1d6e50",
+      "raw_pcap_retained": true,
+      "scope": "fixture network namespace only; not native client transport or other tools"
+    },
+    "recovery_allowed": true,
+    "rules": [
+      "EGRESS_RESPONSE_TOO_SLOW",
+      "EGRESS_ALLOWED",
+      "EGRESS_INVALID_HOST",
+      "EGRESS_ALLOWED"
+    ],
+    "scope": "client control API, not desktop or terminal UI; no saturated input queue",
+    "socket_closed": true,
+    "socket_closed_after_each_seconds": [
+      3.013
+    ],
+    "socket_closed_after_seconds": 3.013,
+    "status_codes": [
+      200,
+      200
+    ]
+  },
+  "package_origin": "checksum-verified experimental CI Debian 12 amd64 package; binary extracted to private host directory",
+  "package_sha256": "d025319c4c5c97ac769bfbab2ce45316a52656b5079068b512f8aa70d3b5d57d",
+  "packet_analysis": {
+    "complete_http_statuses": [
+      200,
+      200
+    ],
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 7,
+    "first_body_byte_to_client_close_seconds": 3.004004,
+    "held_response_declared_bytes": 20,
+    "held_response_observed_body_bytes": 4,
+    "held_response_status_line": "HTTP/1.0 200 OK",
+    "http_methods": [
+      "GET",
+      "GET",
+      "HEAD"
+    ],
+    "http_requests": [
+      "/cancel-drip",
+      "/plain",
+      "/head-ok"
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "request_to_client_close_seconds": 3.004976,
+    "scope": "fixture network namespace TCP/HTTP/DNS only; MCP cancellation delivery is not visible",
+    "sha256": "89d418ceb1f9d4cc3f9ba2d3c0449b0cb057c22eb25ebe4140198d6fef1d6e50",
+    "tcp_syn_count": 3
+  },
+  "pcap_bytes": 5825,
+  "pcap_sha256": "89d418ceb1f9d4cc3f9ba2d3c0449b0cb057c22eb25ebe4140198d6fef1d6e50",
+  "schema_version": 1,
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43354585953",
+  "source_codeql_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43354585986",
+  "source_main_sha": "1cc67494d4a610696b4e651e1a893130766fe174"
+}
