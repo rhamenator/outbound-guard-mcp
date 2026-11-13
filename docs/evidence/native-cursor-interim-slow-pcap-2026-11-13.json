@@ -1,0 +1,204 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "670de235aff70b97c5da97c7b33b7ec79b21dc9bc14766b74f34f95637d15819",
+  "capture_path": "tests/fixtures/packet-capture/native-cursor-interim-slow-2026-11-13.pcap",
+  "capture_sha256": "08eb9decca29644ee887a533c68bc9d773e8ef8d34a59a8ce65c0d0f4c9107c5",
+  "client_version": "Cursor CLI 2026.10.19-6bbf2c4",
+  "date_utc": "2026-11-13",
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "e45647f0c5b673daa4ff28cc99c2763dd05a1b4486e9c77b94f47551a49d003a",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22",
+    "tools/netns_adversarial_probe.py": "b2c692b8da8a82710319277e6208f4c13331b17a99d89f3ad38458be70333841"
+  },
+  "limitations": [
+    "One finite explicit native Cursor CLI project skill workflow with a 21-head HTTP 103 half-second drip, ten-second total-deadline denial and recovery. This does not prove arbitrary slow-drip or aggregate resource-exhaustion resistance.",
+    "The retained packet capture observes only the fixture network namespace. Host Cursor traffic, other tools and the full system network are outside this capture.",
+    "The unsigned experimental Debian package binary was extracted on Ubuntu, not installed with dpkg in this session. Package lifecycle requires separate disposable-system evidence.",
+    "The private raw harness log and downloaded package are not retained here. This record does not replace a fresh replay on the exact official candidate.",
+    "Automatic skill triggering, desktop UI behavior, owner self-review and explicit residual-risk acceptance remain open; no independent human review is claimed.",
+    "No evidence is transferred to the four AI Scraping Defense repositories."
+  ],
+  "native_client": {
+    "active_proxy_mode": false,
+    "alias_cname_a_queried": null,
+    "argument_mode": false,
+    "argument_probe_allowed_dns_queries": null,
+    "argument_probe_dns_queries": null,
+    "attack_mode": false,
+    "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+    "blackhole_connect_seconds": null,
+    "blackhole_dropped_packets": null,
+    "bomb_mode": false,
+    "bridge_saturation": null,
+    "builtin_tools": [
+      "observed native read"
+    ],
+    "client": "cursor",
+    "comma_framing_mode": false,
+    "compression_loop_a_queried": null,
+    "connect_blackhole_mode": false,
+    "controlled_json_instruction_seen": null,
+    "dns_answer_boundary_mode": false,
+    "dns_answer_limit_mode": false,
+    "dns_mode": false,
+    "dns_spoof_busy_mode": false,
+    "dns_spoof_mode": false,
+    "dns_tcp_mixed_v6_mode": false,
+    "dns_tcp_private_mode": false,
+    "dns_truncated_mode": false,
+    "exfil_dns_queried": null,
+    "exfil_mode": false,
+    "explicit_skill_input_accepted": null,
+    "fallback_a_queries": null,
+    "fallback_mode": false,
+    "fixture_hits": [
+      "/plain",
+      "/interim-slow-drip",
+      "/plain"
+    ],
+    "forbidden_dns_names": null,
+    "frame_mode": false,
+    "framing_mode": false,
+    "header_limit_mode": false,
+    "held_encoded_mode": false,
+    "held_encoded_socket_closed": null,
+    "html_quarantine_mode": false,
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET"
+    ],
+    "injected_argument_denials": null,
+    "injected_argument_marker_echo": null,
+    "installation_scope": "temporary project .cursor/skills/outbound-guard",
+    "installed_skill_sha256": "7e1c42b01dcd35c934dc76b06974cdc9461344dc54b8f93b9dea81dd7abcb1ab",
+    "interim_mode": false,
+    "interim_slow_mode": true,
+    "json_duplicate_mode": false,
+    "json_injection_mode": false,
+    "malformed_mode": false,
+    "mutant_parse_error_seen": null,
+    "native_project_read_completed": true,
+    "native_project_source_observed": true,
+    "native_skill_discovered": null,
+    "native_skill_invoked": null,
+    "native_skill_loaded": true,
+    "native_turn_completed": null,
+    "packet_capture": {
+      "capture_scope": "fixture network namespace only; host client network not captured",
+      "direct_tcp_syn_count": null,
+      "dns_query_count": 7,
+      "dns_query_destinations": [
+        "127.0.0.1:53"
+      ],
+      "eof_active_close": null,
+      "eof_approved_http_requests": null,
+      "exfil_dns_query_count": null,
+      "fallback_a_answers": null,
+      "fallback_a_query_count": null,
+      "ip_destination_entries": 88,
+      "ip_destinations": [
+        "11.0.0.1",
+        "127.0.0.1"
+      ],
+      "packet_count": 87,
+      "pcap_sha256": "08eb9decca29644ee887a533c68bc9d773e8ef8d34a59a8ce65c0d0f4c9107c5",
+      "proxy_control_http_requests": null,
+      "proxy_tcp_syn_count": null,
+      "raw_pcap_retained": true,
+      "rebind_a_answers": null,
+      "rebind_a_query_count": null,
+      "redirect_private_dns_query_count": null,
+      "spoofed_dns_transaction_ids": null,
+      "tcp_syn_count": 3,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ],
+      "timed_out_streams_client_closed": {
+        "/interim-slow-drip": true
+      },
+      "tls_client_hello_streams": null,
+      "tls_pinning_sni": null,
+      "truncated_dns_responses": null,
+      "unexpected_ip_destinations": 0,
+      "unexpected_tcp_connection_attempts": 0
+    },
+    "proxy_flows": null,
+    "rebind_a_queries": null,
+    "rebind_mode": false,
+    "response_limit_mode": false,
+    "rules": [
+      "EGRESS_ALLOWED",
+      "EGRESS_RESPONSE_TIMEOUT",
+      "EGRESS_ALLOWED"
+    ],
+    "saturation_mode": false,
+    "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+    "setting_sources": null,
+    "skill_tool_result_success": null,
+    "skill_zip_sha256": "ebb3345c1ce2751d9182970bbfa7a10d334b29a06dbe295f1de8459b117fbdd5",
+    "slow_http_mode": false,
+    "spoofed_dns_attempts": null,
+    "status_codes": [
+      200,
+      200
+    ],
+    "synthetic_marker_echo": null,
+    "tcp_private_dns_queries": null,
+    "tls_handshake_a_queries": null,
+    "tls_mode": false,
+    "tls_slow_mode": false,
+    "tls_sni": null,
+    "truncated_dns_queries": null,
+    "upgrade_mode": true,
+    "url_classes": [
+      "allowed_plain",
+      "other",
+      "allowed_plain"
+    ]
+  },
+  "package": {
+    "app_version": "0.1.0",
+    "binary_sha256": "3a7a346425d17b5c4dfeba21605375034690208fd22d6484bb26b3d74679dc7b",
+    "package_sha256": "63d74554a6ba4f60fdfb0a3825f8d0d744f7723914c37b9c1e5a967fc827cb6a",
+    "revision": "770acd12e26b885a7a5164f0bf7753e641c6ea16",
+    "version": "0.1.0~candidate.390+g770acd12e26b"
+  },
+  "packet_analysis": {
+    "client_close_seconds_after_first_103": 10.001,
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 7,
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/interim-slow-drip"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "interim_103_count": 21,
+    "interim_span_seconds": 10.004,
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "08eb9decca29644ee887a533c68bc9d773e8ef8d34a59a8ce65c0d0f4c9107c5",
+    "tcp_syn_count": 3,
+    "timed_out_stream_client_closed": true
+  },
+  "raw_log_sha256": "d8b61b29cb670415464c5b11be02f2ae15e3a24cdd61471647b53394b6cb531d",
+  "reproduction": "OUTBOUND_GUARD_CLIENT_HTTP_UPGRADE=interim-slow OUTBOUND_GUARD_CLIENT_PACKET_CAPTURE=1 OUTBOUND_GUARD_PACKET_ARCHIVE=PRIVATE_ABSOLUTE_PCAP python3 tools/client_cancellation_probe.py cursor EXTRACTED_VERIFIED_BINARY VERIFIED_SKILL_ZIP",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43495622859",
+  "source_main_sha": "770acd12e26b885a7a5164f0bf7753e641c6ea16"
+}
