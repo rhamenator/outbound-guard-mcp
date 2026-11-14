@@ -133,6 +133,8 @@ jobs:
         run: python3 tools/verify_installed_codex_205_corpus.py
       - name: Recheck changed-binary Codex HTTP 205 upgrade packets
         run: python3 tools/verify_native_codex_upgrade_205_corpus.py
+      - name: Recheck changed-binary Claude HTTP 205 upgrade packets
+        run: python3 tools/verify_native_claude_upgrade_205_corpus.py
       - name: Reject late native partial-body socket closure
         run: python3 tools/verify_native_body_cancel_pcap_negative_controls.py
       - name: Recheck current-package native slow HTTP socket closes
