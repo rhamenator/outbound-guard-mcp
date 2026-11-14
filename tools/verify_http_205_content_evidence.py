@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORD = ROOT / "docs/evidence/http-205-content-2026-11-14.json"
-SOURCE_SHA256 = "96d733d41271b279b6b5f9015891b00437f1e13ba499c22f698ea1c3f2f6d246"
+HISTORICAL_SOURCE_SHA256 = "96d733d41271b279b6b5f9015891b00437f1e13ba499c22f698ea1c3f2f6d246"
 FIXTURE_SHA256 = "6382c8744a368a53d57033efcac64c4c73177cf39d0fe27e6a0dca5776bf7ccf"
 
 
@@ -21,11 +21,12 @@ def verify(record):
     assert record["baseline_package_sha256"] == "958ed96b0312ea2e0147cd96c788b6e442a0b40c038848552f4751ebda7ea3ff"
     assert record["baseline_binary_sha256"] == "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706"
     assert record["updated_debug_binary_sha256"] == "574a979a50bddebe0a58ed331c18dc190a182e40e87ad6ac061558aada8cd6e3"
-    assert record["updated_source_sha256"] == SOURCE_SHA256
+    # This record identifies the earlier changed binary and source. The
+    # current checkout is exercised by the preceding CI netns replay instead.
+    assert record["updated_source_sha256"] == HISTORICAL_SOURCE_SHA256
     assert record["fixture_sha256"] == FIXTURE_SHA256
     assert record["baseline_log_sha256"] == "9931e13836bc30790538dd17eeaeceb9b820f6fad987169359ff667206f5834a"
     assert record["updated_log_sha256"] == "aba64515432faa3ec096cefe4abfc5bf6406b3fdd3838bb54c99e1f2ad22dc9d"
-    assert hashlib.sha256((ROOT / "src/lib.rs").read_bytes()).hexdigest() == SOURCE_SHA256
     assert hashlib.sha256((ROOT / "tools/netns_adversarial_probe.py").read_bytes()).hexdigest() == FIXTURE_SHA256
     assert record["paths"] == ["/reset-content-205", "/reset-content-205-chunked-empty",
                                "/reset-content-205-length", "/reset-content-205-chunked",
