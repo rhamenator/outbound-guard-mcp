@@ -333,6 +333,25 @@ fn wire_framing_expectation(input: &[u8]) -> Option<Option<&'static str>> {
     Some(None)
 }
 
+// Only these exact 205 bodies have an independent raw-byte body oracle. Keep
+// malformed or more general chunk streams outside this semantic comparison.
+#[cfg(feature = "policy-fuzz")]
+fn wire_205_body_expectation(input: &[u8]) -> Option<bool> {
+    let end = input.windows(4).position(|part| part == b"\r\n\r\n")?;
+    let header = &input[..end];
+    let body = &input[end + 4..];
+    match header {
+        b"HTTP/1.1 205 Reset Content\r\nContent-Length: 0" if body.is_empty() => Some(false),
+        b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked" => match body {
+            b"0\r\n\r\n" => Some(false),
+            b"1\r\na\r\n0\r\n\r\n" => Some(true),
+            _ => None,
+        },
+        b"HTTP/1.1 205 Reset Content" if body == b"a" => Some(true),
+        _ => None,
+    }
+}
+
 // Development-only raw-wire parser campaign. The duplex peer is entirely in
 // process; this exercises Hyper's configured HTTP/1 parser and body framing
 // without DNS, a TCP socket, or TLS.
@@ -398,6 +417,7 @@ pub fn fuzz_http_wire(input: &[u8]) -> bool {
                     .expect("closed fixture response parser stalled");
             let accepted = parsed.is_ok();
             if let Ok(mut response) = parsed {
+                let body_expected = wire_205_body_expectation(input);
                 let actual =
                     crate::response_status_framing_denial(response.status(), response.headers());
                 if let Some(expected) = expected {
@@ -405,6 +425,8 @@ pub fn fuzz_http_wire(input: &[u8]) -> bool {
                 }
                 if actual.is_none() {
                     let mut completed = false;
+                    let mut body_ok = false;
+                    let mut body_bytes = Vec::new();
                     for _ in 0..1024 {
                         let frame = tokio::time::timeout(
                             Duration::from_millis(100),
@@ -413,14 +435,30 @@ pub fn fuzz_http_wire(input: &[u8]) -> bool {
                         .await
                         .expect("closed fixture body parser stalled");
                         match frame {
-                            Some(Ok(_)) => continue,
-                            _ => {
+                            Some(Ok(frame)) => {
+                                if let Some(data) = frame.data_ref() {
+                                    body_bytes.extend_from_slice(data);
+                                    assert!(body_bytes.len() <= 4096, "fixture body over budget");
+                                }
+                            }
+                            other => {
+                                body_ok = other.is_none();
                                 completed = true;
                                 break;
                             }
                         }
                     }
                     assert!(completed, "bounded fixture yielded too many body frames");
+                    if let Some(expected_nonempty) = body_expected {
+                        assert!(body_ok, "classified 205 fixture body failed to parse");
+                        assert_eq!(body_bytes.is_empty(), !expected_nonempty);
+                        let body_denial =
+                            crate::response_status_body_denial(response.status(), &body_bytes);
+                        assert_eq!(
+                            body_denial.as_ref().map(|denial| denial.rule),
+                            expected_nonempty.then_some("EGRESS_INVALID_FRAMING")
+                        );
+                    }
                 }
             }
             driver.abort();
@@ -465,6 +503,8 @@ mod tests {
             (b"HTTP/1.1 205 Reset Content\r\nContent-Length: 0\r\n\r\n", Some(None)),
             (b"HTTP/1.1 205 Reset Content\r\nContent-Length: 2\r\n\r\nok", Some(Some("EGRESS_INVALID_FRAMING"))),
             (b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n0\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 205 Reset Content\r\n\r\na", Some(None)),
             (b"HTTP/1.1 200 OK\r\nX-Other: 1\r\n\r\n", None),
         ];
         for (wire, expected) in cases {
@@ -477,6 +517,20 @@ mod tests {
                 );
             }
         }
+        assert_eq!(
+            wire_205_body_expectation(
+                b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+            ),
+            Some(false)
+        );
+        assert_eq!(
+            wire_205_body_expectation(b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n0\r\n\r\n"),
+            Some(true)
+        );
+        assert_eq!(
+            wire_205_body_expectation(b"HTTP/1.1 205 Reset Content\r\n\r\na"),
+            Some(true)
+        );
     }
 
     #[test]
