@@ -2746,10 +2746,27 @@ def main(binary, cancellation_probe):
               "returned; a later guarded GET recovers")
         HTTP.tail_keepalive_observed.clear()
         HTTP.tail_keepalive_closed.clear()
-        keepalive_tail, after_keepalive_tail = call_sequence(binary, [
-            ("allowed.test", "no-content-204-keepalive-tail", "http"),
-            ("allowed.test", "plain", "http"),
-        ])
+        capture_path = os.environ.get("OUTBOUND_GUARD_204_PCAP")
+        capture = None
+        if capture_path:
+            archive = Path(capture_path)
+            assert archive.is_absolute() and archive.parent == Path("/tmp")
+            assert not archive.exists(), "capture path must be new"
+            capture = subprocess.Popen(
+                ["dumpcap", "-i", "lo", "-a", "duration:5", "-w", capture_path,
+                 "-f", "tcp port 80"], stderr=subprocess.PIPE, text=True)
+            time.sleep(0.2)
+            assert capture.poll() is None, "focused capture did not start"
+        try:
+            keepalive_tail, after_keepalive_tail = call_sequence(binary, [
+                ("allowed.test", "no-content-204-keepalive-tail", "http"),
+                ("allowed.test", "plain", "http"),
+            ])
+        finally:
+            if capture:
+                capture.communicate(timeout=7)
+                assert capture.returncode == 0, "focused capture failed"
+                assert archive.stat().st_size > 24, "focused capture is empty"
         assert [(item["rule"], item.get("status_code"), item.get("body_text"))
                 for item in (keepalive_tail, after_keepalive_tail)] == [
             ("EGRESS_ALLOWED", 204, ""), ("EGRESS_ALLOWED", 200, "fixture-ok"),
