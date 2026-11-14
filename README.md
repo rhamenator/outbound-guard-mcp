@@ -11,7 +11,7 @@ cargo run --locked
 
 Configure an MCP client to launch the executable over stdio with this environment variable. Its first `tools/list` result advertises `guarded_fetch`. The client must send the actual request through this tool for its policy to apply. It cannot intercept traffic sent through unrelated tools or processes. The `ai-scraping-defense` projects may connect to it optionally, as they may connect to any MCP server.
 
-HTTP 204 responses must omit `Content-Length` and `Transfer-Encoding`; either field returns `EGRESS_INVALID_FRAMING` without body text. A clean empty 204 and a zero-length 205 remain allowed. This is a conservative response-framing rule for `guarded_fetch` only.
+HTTP 204 responses must omit `Content-Length` and `Transfer-Encoding`; either field returns `EGRESS_INVALID_FRAMING` without body text. HTTP 205 responses with nonzero `Content-Length` or a decoded payload are also denied. Empty 204 and 205 responses remain allowed, including zero-length 205 framing. These are conservative response-framing rules for `guarded_fetch` only.
 
 ## Optional operator CA certificate
 

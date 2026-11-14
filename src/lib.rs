@@ -1087,6 +1087,22 @@ async fn guarded_http_fetch(
         )
         .value();
     }
+    // A 205 response may explicitly frame zero bytes, but cannot carry a
+    // nonzero declared length. Reject it before reading any peer body.
+    if response.status() == hyper::StatusCode::RESET_CONTENT
+        && response
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<u64>().ok())
+            .is_some_and(|length| length != 0)
+    {
+        return Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a 205 response with no body or a zero-length framing field.",
+        )
+        .value();
+    }
     if response
         .headers()
         .get_all(header::CONTENT_TYPE)
@@ -1230,6 +1246,15 @@ async fn guarded_http_fetch(
     }
     if let Some(denial) = guarded.flags.denial() {
         return denial.value();
+    }
+    // Chunked or close-delimited 205 content is visible only after reading.
+    // Do not return any such payload to the client.
+    if status_code == 205 && !body.is_empty() {
+        return Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a 205 response with no body or a zero-length framing field.",
+        )
+        .value();
     }
     let text = match String::from_utf8(body) {
         Ok(text) => text,
