@@ -989,6 +989,16 @@ fn response_status_framing_denial(
     None
 }
 
+fn response_status_body_denial(status: hyper::StatusCode, body: &[u8]) -> Option<Denial> {
+    if status == hyper::StatusCode::RESET_CONTENT && !body.is_empty() {
+        return Some(Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a 205 response with no body or a zero-length framing field.",
+        ));
+    }
+    None
+}
+
 // Development-only differential oracle for the production response-framing decision.
 // HeaderMap construction models headers after Hyper has parsed the wire bytes;
 // raw HTTP parsing and network behavior remain separate test boundaries.
@@ -1256,12 +1266,8 @@ async fn guarded_http_fetch(
     }
     // Chunked or close-delimited 205 content is visible only after reading.
     // Do not return any such payload to the client.
-    if status_code == 205 && !body.is_empty() {
-        return Denial::new(
-            "EGRESS_INVALID_FRAMING",
-            "Use a 205 response with no body or a zero-length framing field.",
-        )
-        .value();
+    if let Some(denial) = response_status_body_denial(response.status(), &body) {
+        return denial.value();
     }
     let text = match String::from_utf8(body) {
         Ok(text) => text,
