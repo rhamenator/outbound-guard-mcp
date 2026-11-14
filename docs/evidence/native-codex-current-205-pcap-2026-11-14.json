@@ -1,0 +1,234 @@
+{
+  "artifact_checksums_verified": true,
+  "artifact_manifest_sha256": "086777710aadaf9c5a337d7041d3decb5bf3d1209d65cd5871dd0fa67f6a0e9f",
+  "capture_path": "tests/fixtures/packet-capture/native-codex-current-205-2026-11-14.pcap",
+  "capture_sha256": "2bb2d923619811d11fa9dbf05e2bf52b0f2425186d99eda7e8054d16027e244a",
+  "client_version": "Codex CLI 0.168.0",
+  "date_utc": "2026-11-14",
+  "harness_git_blobs": {
+    "tools/client_cancellation_fixture.py": "425a72487b6ebfa7debc492fc5899c3632671c1c",
+    "tools/client_cancellation_probe.py": "5e897a9ab11f5aad07dbd65fdf938647250d10a2",
+    "tools/client_wire_bridge.py": "c66a04f6d83e605988fe3f64bcddff7b5cf7f391",
+    "tools/netns_adversarial_probe.py": "aa46aca9ed578fe0a4b73c7d5f17efd66546f946",
+    "tools/verify_native_framing_http_pcap.py": "e10a7f2b803b18e8f7f01390caa977f0b2a35645"
+  },
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/client_cancellation_probe.py": "4aa7f89da1672b21d6391c7e5ea23027a3931b9f4b45867e9f15842b674ed279",
+    "tools/client_wire_bridge.py": "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22",
+    "tools/netns_adversarial_probe.py": "6382c8744a368a53d57033efcac64c4c73177cf39d0fe27e6a0dca5776bf7ccf",
+    "tools/verify_native_framing_http_pcap.py": "042a69c2bdddc1c77ff071a68221715768b8cc17bb07b6a0771029a2981a5aff"
+  },
+  "limitations": [
+    "One finite explicit native Codex CLI skill workflow with three HTTP 205 content denials, clean 205 and approved recovery controls; not arbitrary malformed-protocol resistance.",
+    "The capture observes only controlled fixture namespace traffic, not host Codex CLI or other-tool traffic.",
+    "The checksum-verified unsigned experimental Debian package was extracted, not installed in this session.",
+    "The private raw harness log and downloaded package are not retained; this record does not replace a replay on the exact official candidate.",
+    "Automatic skill triggering, other client versions, owner acceptance and independent human review remain open.",
+    "No evidence transfers to the four separate AI Scraping Defense repositories."
+  ],
+  "native_client": {
+    "active_proxy_mode": false,
+    "alias_cname_a_queried": null,
+    "argument_mode": false,
+    "argument_probe_allowed_dns_queries": null,
+    "argument_probe_dns_queries": null,
+    "attack_mode": false,
+    "binary_sha256": "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58",
+    "blackhole_connect_seconds": null,
+    "blackhole_dropped_packets": null,
+    "bomb_mode": false,
+    "bridge_saturation": null,
+    "builtin_tools": null,
+    "client": "codex",
+    "comma_framing_mode": false,
+    "compression_loop_a_queried": null,
+    "connect_blackhole_mode": false,
+    "controlled_json_instruction_seen": null,
+    "dns_answer_boundary_mode": false,
+    "dns_answer_limit_mode": false,
+    "dns_mode": false,
+    "dns_spoof_busy_mode": false,
+    "dns_spoof_mode": false,
+    "dns_tcp_mixed_v6_mode": false,
+    "dns_tcp_private_mode": false,
+    "dns_truncated_mode": false,
+    "exfil_dns_queried": null,
+    "exfil_mode": false,
+    "explicit_skill_input_accepted": true,
+    "fallback_a_queries": null,
+    "fallback_mode": false,
+    "fixture_hits": [
+      "/plain",
+      "/reset-content-205",
+      "/reset-content-205-length",
+      "/reset-content-205-chunked",
+      "/reset-content-205-close",
+      "/plain"
+    ],
+    "forbidden_dns_names": null,
+    "frame_mode": false,
+    "framing_mode": true,
+    "header_limit_mode": false,
+    "held_encoded_mode": false,
+    "held_encoded_socket_closed": null,
+    "html_quarantine_mode": false,
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET",
+      "GET",
+      "GET",
+      "GET"
+    ],
+    "injected_argument_denials": null,
+    "injected_argument_marker_echo": null,
+    "installation_scope": "temporary project .agents/skills/outbound-guard",
+    "installed_skill_sha256": "118b54a4ef0fa7308c3cf49ab7dc1d026c95ad01aadaaa03bd3dfa6be1741ce2",
+    "interim_mode": false,
+    "interim_slow_mode": false,
+    "json_duplicate_mode": false,
+    "json_injection_mode": false,
+    "malformed_mode": false,
+    "mutant_parse_error_seen": null,
+    "native_project_read_completed": null,
+    "native_project_source_observed": true,
+    "native_skill_discovered": true,
+    "native_skill_invoked": null,
+    "native_skill_loaded": true,
+    "native_turn_completed": true,
+    "packet_capture": {
+      "capture_scope": "fixture network namespace only; host client network not captured",
+      "direct_tcp_syn_count": null,
+      "dns_query_count": 13,
+      "dns_query_destinations": [
+        "127.0.0.1:53"
+      ],
+      "eof_active_close": null,
+      "eof_approved_http_requests": null,
+      "exfil_dns_query_count": null,
+      "fallback_a_answers": null,
+      "fallback_a_query_count": null,
+      "ip_destination_entries": 93,
+      "ip_destinations": [
+        "11.0.0.1",
+        "127.0.0.1"
+      ],
+      "packet_count": 92,
+      "pcap_sha256": "2bb2d923619811d11fa9dbf05e2bf52b0f2425186d99eda7e8054d16027e244a",
+      "proxy_control_http_requests": null,
+      "proxy_tcp_syn_count": null,
+      "raw_pcap_retained": true,
+      "rebind_a_answers": null,
+      "rebind_a_query_count": null,
+      "redirect_private_dns_query_count": null,
+      "spoofed_dns_transaction_ids": null,
+      "tcp_syn_count": 6,
+      "tcp_syn_destinations": [
+        "11.0.0.1:80"
+      ],
+      "timed_out_streams_client_closed": null,
+      "tls_client_hello_streams": null,
+      "tls_pinning_sni": null,
+      "truncated_dns_responses": null,
+      "unexpected_ip_destinations": 0,
+      "unexpected_tcp_connection_attempts": 0
+    },
+    "proxy_flows": null,
+    "rebind_a_queries": null,
+    "rebind_mode": false,
+    "response_limit_mode": false,
+    "rules": [
+      "EGRESS_ALLOWED",
+      "EGRESS_ALLOWED",
+      "EGRESS_INVALID_FRAMING",
+      "EGRESS_INVALID_FRAMING",
+      "EGRESS_INVALID_FRAMING",
+      "EGRESS_ALLOWED"
+    ],
+    "saturation_mode": false,
+    "scope": "explicit named skill request; Claude Skill tool, Cursor project read, or Codex discovered skill input and completed turn; not automatic trigger reliability or proof of model adherence",
+    "setting_sources": null,
+    "skill_tool_result_success": null,
+    "skill_zip_sha256": "d3102510b37998f7a96245701c64f70751af28347b30f859c52e7eb29e435ee0",
+    "slow_http_mode": false,
+    "spoofed_dns_attempts": null,
+    "status_codes": [
+      200,
+      205,
+      200
+    ],
+    "synthetic_marker_echo": null,
+    "tcp_private_dns_queries": null,
+    "tls_handshake_a_queries": null,
+    "tls_mode": false,
+    "tls_slow_mode": false,
+    "tls_sni": null,
+    "truncated_dns_queries": null,
+    "upgrade_mode": false,
+    "url_classes": [
+      "allowed_plain",
+      "other",
+      "other",
+      "other",
+      "other",
+      "allowed_plain"
+    ]
+  },
+  "package": {
+    "binary_sha256": "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58",
+    "package_sha256": "33dbfe07d10dcc53fdbadf4b3f4bfca31ba3ee31587732dd2b75dd72012da3d7",
+    "revision": "4ed7682a38a4be3c897b221463b1f44cd777c319",
+    "version": "0.1.0~candidate.398+g4ed7682a38a4"
+  },
+  "packet_analysis": {
+    "dns_names": [
+      "1.0.0.11.in-addr.arpa",
+      "allowed.test"
+    ],
+    "dns_query_count": 13,
+    "framing_metadata_and_body": {
+      "/reset-content-205": true,
+      "/reset-content-205-chunked": true,
+      "/reset-content-205-close": true,
+      "/reset-content-205-length": true
+    },
+    "http_requests": [
+      [
+        "allowed.test",
+        "/plain"
+      ],
+      [
+        "allowed.test",
+        "/reset-content-205"
+      ],
+      [
+        "allowed.test",
+        "/reset-content-205-length"
+      ],
+      [
+        "allowed.test",
+        "/reset-content-205-chunked"
+      ],
+      [
+        "allowed.test",
+        "/reset-content-205-close"
+      ],
+      [
+        "allowed.test",
+        "/plain"
+      ]
+    ],
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "scope": "fixture namespace only",
+    "sha256": "2bb2d923619811d11fa9dbf05e2bf52b0f2425186d99eda7e8054d16027e244a",
+    "tcp_syn_count": 6
+  },
+  "raw_log_sha256": "df520649441e9220923d543ea19fdd4f9f5670add88bf519fe3f03dece9bbbe7",
+  "skill_zip_sha256": "d3102510b37998f7a96245701c64f70751af28347b30f859c52e7eb29e435ee0",
+  "source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43558437870",
+  "source_main_sha": "4ed7682a38a4be3c897b221463b1f44cd777c319"
+}
