@@ -1,0 +1,73 @@
+{
+  "base_main_sha": "a4ff70c2613d83fbea9c2fd34d6f893af4b6dae2",
+  "baseline_artifact_checksums_verified": true,
+  "baseline_binary_sha256": "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706",
+  "baseline_body_text": [
+    "",
+    "",
+    "ok",
+    "ok",
+    "ok",
+    "fixture-ok"
+  ],
+  "baseline_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43548601002",
+  "baseline_log_sha256": "9931e13836bc30790538dd17eeaeceb9b820f6fad987169359ff667206f5834a",
+  "baseline_manifest_sha256": "8f2f17e4e7c91a92aa43287feeda57dadcfb2731972d0606bce004a99e2b5d01",
+  "baseline_package_sha256": "958ed96b0312ea2e0147cd96c788b6e442a0b40c038848552f4751ebda7ea3ff",
+  "baseline_package_version": "0.1.0~candidate.396+ga4ff70c2613d",
+  "baseline_rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED"
+  ],
+  "checks": [
+    "preceding binary returned three 205 payloads to direct MCP",
+    "changed binary denied nonzero Content-Length before body read",
+    "changed binary denied nonempty chunked and close-delimited 205 payloads without returning body text",
+    "empty 205 with Content-Length: 0 and empty chunked framing remained allowed",
+    "same-session approved recovery",
+    "full route-free adversarial probe passed"
+  ],
+  "date_utc": "2026-11-14",
+  "fixture_sha256": "6382c8744a368a53d57033efcac64c4c73177cf39d0fe27e6a0dca5776bf7ccf",
+  "limitations": [
+    "The three hostile variants and two clean controls do not prove arbitrary HTTP framing resistance.",
+    "Private baseline and updated raw logs are identified by SHA-256 but are not retained in the repository; CI reruns the updated fixture.",
+    "No native-client run of the changed binary; Cursor CLI refused an attempted 204 replay with plan upgrade required and zero MCP calls.",
+    "The test observes only route-free fixture traffic. Host clients and calls via other tools were not captured.",
+    "The updated binary was a local debug build, not an installed official candidate.",
+    "No evidence transfers to the four separate AI Scraping Defense repositories."
+  ],
+  "network_scope": "route-free controlled DNS/HTTP namespace; no retained packet capture",
+  "paths": [
+    "/reset-content-205",
+    "/reset-content-205-chunked-empty",
+    "/reset-content-205-length",
+    "/reset-content-205-chunked",
+    "/reset-content-205-close",
+    "/plain"
+  ],
+  "updated_body_text": [
+    "",
+    "",
+    null,
+    null,
+    null,
+    "fixture-ok"
+  ],
+  "updated_debug_binary_sha256": "574a979a50bddebe0a58ed331c18dc190a182e40e87ad6ac061558aada8cd6e3",
+  "updated_full_probe_decisions": 2256,
+  "updated_log_sha256": "aba64515432faa3ec096cefe4abfc5bf6406b3fdd3838bb54c99e1f2ad22dc9d",
+  "updated_rules": [
+    "EGRESS_ALLOWED",
+    "EGRESS_ALLOWED",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_INVALID_FRAMING",
+    "EGRESS_ALLOWED"
+  ],
+  "updated_source_sha256": "96d733d41271b279b6b5f9015891b00437f1e13ba499c22f698ea1c3f2f6d246"
+}

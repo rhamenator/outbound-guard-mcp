@@ -455,12 +455,19 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.close_connection = True
             return
         if self.path in ("/no-content-204", "/no-content-204-length",
-                         "/no-content-204-chunked", "/reset-content-205"):
+                         "/no-content-204-chunked", "/reset-content-205",
+                         "/reset-content-205-chunked-empty", "/reset-content-205-length",
+                         "/reset-content-205-chunked",
+                         "/reset-content-205-close"):
             response = {
                 "/no-content-204": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n",
                 "/no-content-204-length": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
                 "/no-content-204-chunked": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
                 "/reset-content-205": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\n",
+                "/reset-content-205-chunked-empty": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n",
+                "/reset-content-205-length": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
+                "/reset-content-205-chunked": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
+                "/reset-content-205-close": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nok",
             }[self.path]
             self.wfile.write(response)
             self.close_connection = True
@@ -2668,25 +2675,37 @@ def main(binary, cancellation_probe):
             framing_results[path] = decision["rule"]
         print("raw HTTP version/status fixture: HTTP/1.0 200 and HTTP/1.1 206 allowed "
               "with body ok; comma-length variants denied without body; exact hits passed")
-        no_content, bad_length, bad_chunked, reset, recovered = call_sequence(binary, [
+        (no_content, bad_length, bad_chunked, reset, reset_chunked_empty,
+         reset_length, reset_chunked, reset_close, recovered) = call_sequence(binary, [
             ("allowed.test", "no-content-204", "http"),
             ("allowed.test", "no-content-204-length", "http"),
             ("allowed.test", "no-content-204-chunked", "http"),
             ("allowed.test", "reset-content-205", "http"),
+            ("allowed.test", "reset-content-205-chunked-empty", "http"),
+            ("allowed.test", "reset-content-205-length", "http"),
+            ("allowed.test", "reset-content-205-chunked", "http"),
+            ("allowed.test", "reset-content-205-close", "http"),
             ("allowed.test", "plain", "http"),
         ])
         observed_no_content = [(item["rule"], item.get("body_text")) for item in
-                               (no_content, bad_length, bad_chunked, reset, recovered)]
+                               (no_content, bad_length, bad_chunked, reset, reset_chunked_empty,
+                                reset_length, reset_chunked, reset_close, recovered)]
         assert observed_no_content == [
             ("EGRESS_ALLOWED", ""), ("EGRESS_INVALID_FRAMING", None),
             ("EGRESS_INVALID_FRAMING", None), ("EGRESS_ALLOWED", ""),
+            ("EGRESS_ALLOWED", ""),
+            ("EGRESS_INVALID_FRAMING", None), ("EGRESS_INVALID_FRAMING", None),
+            ("EGRESS_INVALID_FRAMING", None),
             ("EGRESS_ALLOWED", "fixture-ok"),
         ], observed_no_content
         assert [no_content["status_code"], reset["status_code"]] == [204, 205]
-        assert HTTP.hits[-5:] == ["/no-content-204", "/no-content-204-length",
-                                 "/no-content-204-chunked", "/reset-content-205", "/plain"]
+        assert HTTP.hits[-9:] == ["/no-content-204", "/no-content-204-length",
+                                 "/no-content-204-chunked", "/reset-content-205",
+                                 "/reset-content-205-chunked-empty",
+                                 "/reset-content-205-length", "/reset-content-205-chunked",
+                                 "/reset-content-205-close", "/plain"]
         print("no-content framing fixture: clean 204/205 and recovery allowed; "
-              "204 length/chunked traps denied without body")
+              "204 length/chunked and 205 payload traps denied without body")
         length_mutant_rules = {}
         for index, value in enumerate(INVALID_LENGTH_CORPUS):
             path = f"length-mutant-{index}"
@@ -2755,7 +2774,7 @@ def main(binary, cancellation_probe):
         assert not any(name.endswith(".search-trap.test") for name in DNS.names), DNS.names
         print("absolute DNS probe: hostile search domain and ndots:5 caused no suffixed queries; "
               "original Host/SNI and pinned destinations preserved")
-        print(f"netns adversarial probe: {1214 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
+        print(f"netns adversarial probe: {1218 + len(MIME_CASES) + len(root_tags) + credential_cases + head_cases + json_wire_cases + generated + github_cases + provider_cases + sdk_cases + dns_worker_cases + silent_cases + post_dns_cases + connect_cases + descriptor_cases + repeated_cases} MCP decisions; forbidden DNS, rebinding, and synthetic secrets opened no HTTP socket; redirect traps not followed; declared and leading mislabeled HTML denied; malformed JSON and explicit instruction-key JSON denied; TLS SNI preserved; "
               f"ambient proxy ignored; rebind A queries={DNS.rebind_a_queries}; framing={framing_results}")
     finally:
         dns.shutdown()

@@ -313,6 +313,8 @@ jobs:
       - run: npm ci --prefix tools/mcp-inspector-probe --ignore-scripts --no-audit --no-fund
       - run: echo "OUTBOUND_GUARD_TEST_SDK_DIR=$GITHUB_WORKSPACE/tools/mcp-sdk-probe" >> "$GITHUB_ENV"
       - run: bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp
+      - name: Verify HTTP 205 content regression evidence
+        run: python3 tools/verify_http_205_content_evidence.py
       - name: Verify retained HTTP version/status fixture evidence
         run: python3 tools/verify_raw_http_version_netns_evidence.py
       - name: Verify retained forged DNS transaction-ID evidence
