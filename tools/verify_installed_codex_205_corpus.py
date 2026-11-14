@@ -8,7 +8,6 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from verify_installed_claude_205_corpus import CHECKS, HARNESS, PATHS, RULES
 from verify_native_body_cancel_pcap_negative_controls import forbidden_syn
 from verify_native_framing_http_pcap import verify as verify_packets
 
@@ -21,6 +20,23 @@ PACKAGE_SHA256 = "dd36ddbcdfa25b220e58844c77a4c905755dbee038e920dee617fdba4c8be6
 BINARY_SHA256 = "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58"
 SKILL_SHA256 = "d3102510b37998f7a96245701c64f70751af28347b30f859c52e7eb29e435ee0"
 CAPTURE_SHA256 = "c8536d5ee807873aaf92cf5b7ab5292fd4a645f8c25118375ac46c4ce65a4c53"
+HARNESS = {
+    "tools/client_cancellation_fixture.py": ("425a72487b6ebfa7debc492fc5899c3632671c1c", "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550"),
+    "tools/client_cancellation_probe.py": ("5e897a9ab11f5aad07dbd65fdf938647250d10a2", "4aa7f89da1672b21d6391c7e5ea23027a3931b9f4b45867e9f15842b674ed279"),
+    "tools/client_wire_bridge.py": ("c66a04f6d83e605988fe3f64bcddff7b5cf7f391", "a00b1c09b912e08f339d559ac232e6e0637a1fa16b49a69cfa989e81705f4e22"),
+    "tools/debian_native_container_probe.py": ("67675113f9e96b85ea287e7868a1a0380c061f74", "e9f55c70330185136f3260af71280ad82ab023ba042731e05f1c583f5d0dd566"),
+    "tools/netns_adversarial_probe.py": ("aa46aca9ed578fe0a4b73c7d5f17efd66546f946", "6382c8744a368a53d57033efcac64c4c73177cf39d0fe27e6a0dca5776bf7ccf"),
+    "tools/verify_native_framing_http_pcap.py": ("e10a7f2b803b18e8f7f01390caa977f0b2a35645", "042a69c2bdddc1c77ff071a68221715768b8cc17bb07b6a0771029a2981a5aff"),
+}
+RULES = ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_INVALID_FRAMING",
+         "EGRESS_INVALID_FRAMING", "EGRESS_INVALID_FRAMING", "EGRESS_ALLOWED"]
+PATHS = ["/plain", "/reset-content-205", "/reset-content-205-length",
+         "/reset-content-205-chunked", "/reset-content-205-close", "/plain"]
+CHECKS = ["checksum", "clean_dpkg_install", "no_upgrade",
+          "native_skill_and_guarded_calls", "nonzero_length_205_denial",
+          "chunked_205_denial", "close_delimited_205_denial",
+          "no_denied_body_text", "fixture_namespace_tcp_syn_capture",
+          "approved_recovery", "package_remove", "residue"]
 
 
 def verify_record(record):
