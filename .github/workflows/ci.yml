@@ -127,6 +127,8 @@ jobs:
         run: python3 tools/verify_native_claude_205_corpus.py
       - name: Recheck current Codex CLI HTTP 205 content packets
         run: python3 tools/verify_native_codex_205_corpus.py
+      - name: Recheck installed Claude Code HTTP 205 package and packets
+        run: python3 tools/verify_installed_claude_205_corpus.py
       - name: Reject late native partial-body socket closure
         run: python3 tools/verify_native_body_cancel_pcap_negative_controls.py
       - name: Recheck current-package native slow HTTP socket closes
