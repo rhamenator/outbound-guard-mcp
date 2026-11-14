@@ -16,10 +16,15 @@ def verify(record):
     assert record["base_main_sha"] == "a4ff70c2613d83fbea9c2fd34d6f893af4b6dae2"
     assert record["baseline_ci_run"].endswith("/43548601002")
     assert record["baseline_artifact_checksums_verified"] is True
+    assert record["baseline_manifest_sha256"] == "8f2f17e4e7c91a92aa43287feeda57dadcfb2731972d0606bce004a99e2b5d01"
+    assert record["baseline_package_version"] == "0.1.0~candidate.396+ga4ff70c2613d"
     assert record["baseline_package_sha256"] == "958ed96b0312ea2e0147cd96c788b6e442a0b40c038848552f4751ebda7ea3ff"
     assert record["baseline_binary_sha256"] == "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706"
+    assert record["updated_debug_binary_sha256"] == "574a979a50bddebe0a58ed331c18dc190a182e40e87ad6ac061558aada8cd6e3"
     assert record["updated_source_sha256"] == SOURCE_SHA256
     assert record["fixture_sha256"] == FIXTURE_SHA256
+    assert record["baseline_log_sha256"] == "9931e13836bc30790538dd17eeaeceb9b820f6fad987169359ff667206f5834a"
+    assert record["updated_log_sha256"] == "aba64515432faa3ec096cefe4abfc5bf6406b3fdd3838bb54c99e1f2ad22dc9d"
     assert hashlib.sha256((ROOT / "src/lib.rs").read_bytes()).hexdigest() == SOURCE_SHA256
     assert hashlib.sha256((ROOT / "tools/netns_adversarial_probe.py").read_bytes()).hexdigest() == FIXTURE_SHA256
     assert record["paths"] == ["/reset-content-205", "/reset-content-205-chunked-empty",
