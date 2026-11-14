@@ -4,6 +4,7 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 
 from verify_native_body_cancel_pcap_negative_controls import forbidden_syn
@@ -19,6 +20,7 @@ OLD_PACKAGE = "7c248b6495e880c54540199ff4c7a26f3494da28ebeb40d8e68fac80e379382e"
 NEW_PACKAGE = "5f5d9354e7e09df17259144438f9732815ad6c9d874441b5902a419caa3ba952"
 OLD_BINARY = "c851e78a2ad2b0bb4ba9bc19917ef24bf9033c92f7a2d79a3b694db667d7a901"
 NEW_BINARY = "5fc99be48e904bc3cb26f9595627ed1183ea6bcd0f1524918fab79f8a2c4b95d"
+HARNESS_COMMIT = "913b57fb5b54bb8b69a6e8a30ef43be70ef1b893"
 DECISIONS = [
     {"url": "http://allowed.test/plain", "rule": "EGRESS_ALLOWED", "status": "SAFE"},
     {"url": "http://private.test/plain", "rule": "EGRESS_FORBIDDEN_ADDRESS", "status": "BLOCKED"},
@@ -47,7 +49,9 @@ def main() -> None:
         "tools/debian_same_container_native_http_upgrade.py",
         "tools/verify_upgrade_http_pcap.py", "tools/client_cancellation_fixture.py"}
     for name, expected in evidence["harness_sha256"].items():
-        assert digest(ROOT / name) == expected, name
+        source = subprocess.check_output(["git", "show", f"{HARNESS_COMMIT}:{name}"],
+                                         cwd=ROOT, timeout=10)
+        assert hashlib.sha256(source).hexdigest() == expected, name
     assert set(evidence["runs"]) == {"claude", "codex"}
     captures = set()
     for client, run in evidence["runs"].items():
