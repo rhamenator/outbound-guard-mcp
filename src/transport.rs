@@ -262,12 +262,15 @@ fn wire_framing_expectation(input: &[u8]) -> Option<Option<&'static str>> {
     let end = input.windows(4).position(|part| part == b"\r\n\r\n")?;
     let header = std::str::from_utf8(&input[..end]).ok()?;
     let mut lines = header.split("\r\n");
+    let status = lines.next()?;
     if !matches!(
-        lines.next()?,
+        status,
         "HTTP/1.0 200 OK"
             | "HTTP/1.1 200 OK"
             | "HTTP/1.0 206 Partial Content"
             | "HTTP/1.1 206 Partial Content"
+            | "HTTP/1.1 204 No Content"
+            | "HTTP/1.1 205 Reset Content"
     ) {
         return None;
     }
@@ -316,6 +319,16 @@ fn wire_framing_expectation(input: &[u8]) -> Option<Option<&'static str>> {
             .is_some_and(|value| !value.eq_ignore_ascii_case("chunked"))
     {
         return Some(Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"));
+    }
+    if status == "HTTP/1.1 204 No Content" && (!lengths.is_empty() || !codings.is_empty()) {
+        return Some(Some("EGRESS_INVALID_FRAMING"));
+    }
+    if status == "HTTP/1.1 205 Reset Content"
+        && lengths
+            .first()
+            .is_some_and(|value| value.parse::<u64>().is_ok_and(|length| length != 0))
+    {
+        return Some(Some("EGRESS_INVALID_FRAMING"));
     }
     Some(None)
 }
@@ -385,7 +398,8 @@ pub fn fuzz_http_wire(input: &[u8]) -> bool {
                     .expect("closed fixture response parser stalled");
             let accepted = parsed.is_ok();
             if let Ok(mut response) = parsed {
-                let actual = crate::response_framing_denial(response.headers());
+                let actual =
+                    crate::response_status_framing_denial(response.status(), response.headers());
                 if let Some(expected) = expected {
                     assert_eq!(actual.as_ref().map(|denial| denial.rule), expected);
                 }
@@ -445,6 +459,12 @@ mod tests {
             (b"HTTP/1.0 206 Partial Content\r\nContent-Length: 1, 1\r\n\r\na", Some(Some("EGRESS_INVALID_FRAMING"))),
             (b"HTTP/1.1 206 Partial Content\r\nContent-Length: 2\r\n\r\nok", Some(None)),
             (b"HTTP/1.1 206 Partial Content\r\nTransfer-Encoding: gzip, chunked\r\n\r\n", Some(Some("EGRESS_UNSUPPORTED_TRANSFER_CODING"))),
+            (b"HTTP/1.1 204 No Content\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 204 No Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 205 Reset Content\r\nContent-Length: 0\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 205 Reset Content\r\nContent-Length: 2\r\n\r\nok", Some(Some("EGRESS_INVALID_FRAMING"))),
+            (b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(None)),
             (b"HTTP/1.1 200 OK\r\nX-Other: 1\r\n\r\n", None),
         ];
         for (wire, expected) in cases {
