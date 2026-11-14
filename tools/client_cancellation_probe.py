@@ -89,14 +89,15 @@ exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
-assert framing_variant in (None,'1','comma','coding','obs-fold','version','no-content','reset-content'), 'unsupported HTTP framing replay mode'
-framing_mode=framing_variant in ('1','comma','coding','obs-fold','version','no-content','reset-content')
+assert framing_variant in (None,'1','comma','coding','obs-fold','version','no-content','reset-content','reset-content-variable'), 'unsupported HTTP framing replay mode'
+framing_mode=framing_variant in ('1','comma','coding','obs-fold','version','no-content','reset-content','reset-content-variable')
 comma_framing_mode=framing_variant=='comma'
 coding_framing_mode=framing_variant=='coding'
 obs_fold_framing_mode=framing_variant=='obs-fold'
 version_framing_mode=framing_variant=='version'
 no_content_framing_mode=framing_variant=='no-content'
 reset_content_framing_mode=framing_variant=='reset-content'
+variable_205_framing_mode=framing_variant=='reset-content-variable'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
 frame_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_MUTATION')=='1'
 frame_eof_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAME_EOF')
@@ -598,6 +599,9 @@ if skill_zip:
    elif reset_content_framing_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/reset-content-205 ; GET http://allowed.test/reset-content-205-length ; GET http://allowed.test/reset-content-205-chunked ; GET http://allowed.test/reset-content-205-close ; GET http://allowed.test/plain . The three middle 205 responses carry content forbidden by this server. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_ALLOWED']
+   elif variable_205_framing_mode:
+    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/reset-content-205 ; GET http://allowed.test/reset-content-205-chunked-empty ; GET http://allowed.test/reset-content-205-multichunk ; GET http://allowed.test/reset-content-205-close-multi ; GET http://allowed.test/plain . The two nonempty HTTP 205 responses must be denied without returning their body text. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
+    expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_ALLOWED']
    elif obs_fold_framing_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/obs-fold-length ; GET http://allowed.test/obs-fold-encoding ; GET http://allowed.test/obs-fold-connection ; GET http://allowed.test/obs-fold-extension ; GET http://allowed.test/plain . The four middle responses contain obsolete folded HTTP header lines. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
     expected_rules=['EGRESS_ALLOWED']+['EGRESS_INVALID_FRAMING']*4+['EGRESS_ALLOWED']
@@ -964,16 +968,19 @@ if skill_zip:
    assert observed_rules==expected_rules, observed_rules
    assert [e['status_code'] for e in events if 'status_code' in e]==([200,200,206,200] if version_framing_mode else
                                                                     [200,204,205,200] if no_content_framing_mode else
+                                                                    [200,205,205,200] if variable_205_framing_mode else
                                                                     [200,205,200] if reset_content_framing_mode else [200,200])
    if version_framing_mode:
     assert [e.get('body_text_present') for e in events if e.get('rule')=='EGRESS_ALLOWED']==[True]*4
-   assert [e.get('body_text_present') for e in events if e.get('rule') in {'EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING'}]==[False]*(2 if version_framing_mode or no_content_framing_mode else 3 if reset_content_framing_mode else len(expected_rules)-2)
+   assert [e.get('body_text_present') for e in events if e.get('rule') in {'EGRESS_INVALID_FRAMING','EGRESS_UNSUPPORTED_TRANSFER_CODING'}]==[False]*(2 if version_framing_mode or no_content_framing_mode or variable_205_framing_mode else 3 if reset_content_framing_mode else len(expected_rules)-2)
    expected_hits=(['/plain','/http10-ok','/http10-comma-length','/http11-partial-ok','/http11-partial-comma-length','/plain']
                   if version_framing_mode else
                   ['/plain','/no-content-204','/no-content-204-length','/no-content-204-chunked','/reset-content-205','/plain']
                   if no_content_framing_mode else
                   ['/plain','/reset-content-205','/reset-content-205-length','/reset-content-205-chunked','/reset-content-205-close','/plain']
                   if reset_content_framing_mode else
+                  ['/plain','/reset-content-205','/reset-content-205-chunked-empty','/reset-content-205-multichunk','/reset-content-205-close-multi','/plain']
+                  if variable_205_framing_mode else
                   ['/plain','/comma-length-equal','/comma-length-conflict','/repeated-chunked-coding','/plain']
                   if comma_framing_mode else
                   ['/plain','/coding-mutant-0','/coding-mutant-3','/coding-mutant-5','/plain']

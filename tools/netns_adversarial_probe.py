@@ -458,7 +458,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                          "/no-content-204-chunked", "/reset-content-205",
                          "/reset-content-205-chunked-empty", "/reset-content-205-length",
                          "/reset-content-205-chunked",
-                         "/reset-content-205-close"):
+                         "/reset-content-205-close", "/reset-content-205-multichunk",
+                         "/reset-content-205-close-multi"):
             response = {
                 "/no-content-204": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n",
                 "/no-content-204-length": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
@@ -468,6 +469,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 "/reset-content-205-length": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
                 "/reset-content-205-chunked": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
                 "/reset-content-205-close": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nok",
+                "/reset-content-205-multichunk": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nab\r\n1\r\nc\r\n0\r\n\r\n",
+                "/reset-content-205-close-multi": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nabc",
             }[self.path]
             self.wfile.write(response)
             self.close_connection = True

@@ -54,6 +54,9 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
                       ["/plain", "/reset-content-205", "/reset-content-205-length",
                        "/reset-content-205-chunked", "/reset-content-205-close", "/plain"]
                       if mode == "reset-content" else
+                      ["/plain", "/reset-content-205", "/reset-content-205-chunked-empty",
+                       "/reset-content-205-multichunk", "/reset-content-205-close-multi", "/plain"]
+                      if mode == "reset-content-variable" else
                       ["/plain", "/comma-length-equal", "/comma-length-conflict",
                        "/repeated-chunked-coding", "/plain"] if mode == "comma" else
                       ["/plain", "/coding-mutant-0", "/coding-mutant-3",
@@ -98,6 +101,13 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
                                             b"2\r\nok\r\n0\r\n\r\n"),
             "/reset-content-205-close": ([b"Content-Type: text/plain", b"Connection: close"], b"ok"),
         }
+    elif mode == "reset-content-variable":
+        expected_metadata = {
+            "/reset-content-205": ([b"Content-Type: text/plain", b"Content-Length: 0"], b""),
+            "/reset-content-205-chunked-empty": ([b"Content-Type: text/plain", b"Transfer-Encoding: chunked"], b"0\r\n\r\n"),
+            "/reset-content-205-multichunk": ([b"Content-Type: text/plain", b"Transfer-Encoding: chunked"], b"2\r\nab\r\n1\r\nc\r\n0\r\n\r\n"),
+            "/reset-content-205-close-multi": ([b"Content-Type: text/plain", b"Connection: close"], b"abc"),
+        }
     elif mode == "comma":
         expected_metadata = {
             "/comma-length-equal": ([b"Content-Length: 2, 2"], b"ok"),
@@ -139,7 +149,7 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
                               headers.startswith((b"HTTP/1.0 200 OK\r\n",
                                                   b"HTTP/1.1 200 OK\r\n"))), uri
         actual_headers = headers.split(b"\r\n")[1:]
-        checked_headers = (actual_headers if mode in ("obs-fold", "version", "no-content", "reset-content") else
+        checked_headers = (actual_headers if mode in ("obs-fold", "version", "no-content", "reset-content", "reset-content-variable") else
                            [line for line in actual_headers if line.startswith(
                                (b"Content-Length:", b"Transfer-Encoding:"))])
         assert checked_headers == expected_headers, (uri, checked_headers)
@@ -160,7 +170,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold", "version", "no-content", "reset-content"), default="framing")
+    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold", "version", "no-content", "reset-content", "reset-content-variable"), default="framing")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-framing-pcap-verify-") as directory:
