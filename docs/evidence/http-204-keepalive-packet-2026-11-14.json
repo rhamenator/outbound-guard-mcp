@@ -1,0 +1,54 @@
+{
+  "date_utc": "2026-11-14",
+  "source_main_sha": "c0d79accfbf3cb2c5c76775602e017316c95ea5f",
+  "fixture_git_blob": "57488c34207ef2a8c995447d0aecc8d25261028f",
+  "fixture_sha256": "8281d78b765a9fb2777cb692af665e067fbfa530bea8cd232e41e47d8b4afa91",
+  "tested_binary_sha256": "a9d9501749018ca47a07948be5f8c9fbffb5010b1de5a4e3079041a4f63bcd14",
+  "capture_path": "tests/fixtures/packet-capture/direct-204-keepalive-tail-2026-11-14.pcap",
+  "capture_sha256": "10fe24a3e223365c806533ec6e71b8e6d319e3b6070b2748c0390ca1608f7234",
+  "capture_tool": "dumpcap; converted to classic pcap using editcap",
+  "analysis_tool": "tshark",
+  "command": "OUTBOUND_GUARD_204_PCAP=/tmp/outbound-204-keepalive-focused.pcapng bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "log_path": "docs/evidence/http-204-keepalive-packet-2026-11-14.log.gz",
+  "log_sha256_uncompressed": "6f8d409e0ec44ebb1f071bef4368956e466324949a61d9676a8c8a34718d06c8",
+  "full_suite_mcp_decisions": 2256,
+  "analysis": {
+    "capture_sha256": "10fe24a3e223365c806533ec6e71b8e6d319e3b6070b2748c0390ca1608f7234",
+    "paths": [
+      "/no-content-204-keepalive-tail",
+      "/plain"
+    ],
+    "connections": [
+      {
+        "path": "/no-content-204-keepalive-tail",
+        "stream": 0,
+        "syn_frame": 1,
+        "request_frame": 4,
+        "server_last_data_frame": 6,
+        "client_fin_frame": 8,
+        "server_fin_frame": 9,
+        "server_data_to_client_fin_ms": 0.111
+      },
+      {
+        "path": "/plain",
+        "stream": 1,
+        "syn_frame": 11,
+        "request_frame": 14,
+        "server_last_data_frame": 18,
+        "client_fin_frame": 21,
+        "server_fin_frame": 20,
+        "server_data_to_client_fin_ms": 0.072
+      }
+    ],
+    "second_syn_after_first_final_ack_ms": 1.724,
+    "packet_scope": "fixture namespace TCP port 80 only"
+  },
+  "result": "passed",
+  "limitations": "Direct MCP stdio and controlled fixture namespace only. The capture filters TCP port 80 and cannot rule out other traffic. The malformed 204 tail is allowed with empty body text, not rejected. This proves only the observed two-stream closure and later recovery, not arbitrary response-smuggling safety, delayed tails, native clients, host-client or other-tool traffic, official-candidate readiness, owner acceptance, or any of the four separate AI Scraping Defense repository gates.",
+  "tool_versions": {
+    "dumpcap": "4.6.4",
+    "editcap": "4.6.4",
+    "tshark": "4.6.4",
+    "python": "3.14.4"
+  }
+}
