@@ -41,6 +41,7 @@ def record(direction,line):
    entry['rule']=d.get('rule')
    if 'status_code' in d:entry['status_code']=d['status_code']
    entry['body_text_present']='body_text' in d
+   if 'body_text' in d:entry['body_text_empty']=d['body_text']==''
   if m.get('error'):
    entry['protocol_error_code']=m['error'].get('code')
    entry['protocol_rule']=m['error'].get('data',{}).get('rule')

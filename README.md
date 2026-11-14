@@ -13,7 +13,7 @@ Configure an MCP client to launch the executable over stdio with this environmen
 
 HTTP 204 responses must omit `Content-Length` and `Transfer-Encoding`; either field returns `EGRESS_INVALID_FRAMING` without body text. HTTP 205 responses with nonzero `Content-Length` or a decoded payload are also denied. Empty 204 and 205 responses remain allowed, including zero-length 205 framing. These are conservative response-framing rules for `guarded_fetch` only.
 
-A 204 response with no body-framing field is treated as complete at the header boundary. A controlled server that sent unframed bytes after such a 204, including bytes shaped like a second HTTP response, received `EGRESS_ALLOWED` with empty `body_text` in the direct MCP test. Those bytes were not returned to the caller; a later guarded GET recovered. The server does not claim to detect this malformed tail. See the [route-free fixture record](docs/adversarial-netns.md#unframed-http-204-tail-boundary--2026-11-14).
+A 204 response with no body-framing field is treated as complete at the header boundary. A controlled server that sent unframed bytes after such a 204, including bytes shaped like a second HTTP response, received `EGRESS_ALLOWED` with empty `body_text` in direct MCP and installed Claude/Codex tests. Those bytes were not returned to the caller; a later guarded GET recovered. The server does not claim to detect this malformed tail. See the [route-free and native-client records](docs/adversarial-netns.md#unframed-http-204-tail-boundary--2026-11-14).
 
 ## Optional operator CA certificate
 
