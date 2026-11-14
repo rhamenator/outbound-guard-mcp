@@ -1,0 +1,22 @@
+{
+  "date_utc": "2026-11-14",
+  "source_main_sha": "e787df30b95d3457de3b00702ea306ca871196b4",
+  "fixture_sha256": "1236de11324024e72a7a95664cc7fd80b88d0240cc3c077c714f60c274e732f0",
+  "tested_binary_sha256": "a9d9501749018ca47a07948be5f8c9fbffb5010b1de5a4e3079041a4f63bcd14",
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "log_path": "docs/evidence/http-204-keepalive-tail-2026-11-14.log.gz",
+  "log_sha256_uncompressed": "60f23729ae0d58aa554b4229241fd6993f3655d08d3631a8bdbe1aade1993c3e",
+  "result": "passed",
+  "observations": {
+    "host": "allowed.test",
+    "paths": ["/no-content-204-keepalive-tail", "/plain"],
+    "malformed_response": "HTTP/1.1 204 with no Content-Length, Transfer-Encoding or Connection: close response field, followed by bytes shaped as HTTP/1.1 200 OK",
+    "client_request_connection": "close",
+    "first_decision": {"rule": "EGRESS_ALLOWED", "status_code": 204, "body_text": ""},
+    "second_decision": {"rule": "EGRESS_ALLOWED", "status_code": 200, "body_text": "fixture-ok"},
+    "fixture_observed_client_eof_within_seconds": 1,
+    "full_suite_mcp_decisions": 2256
+  },
+  "scope": "Route-free namespace, direct MCP stdio and controlled DNS/HTTP fixture; no native client, packet capture or host-client traffic observation.",
+  "limitations": "The parser accepted the malformed 204 as bodyless. This finite fixture does not prove arbitrary response-smuggling resistance, rejection of delayed tail bytes, traffic from other tools, official-candidate qualification, owner acceptance, or any of the four separate AI Scraping Defense repository gates."
+}
