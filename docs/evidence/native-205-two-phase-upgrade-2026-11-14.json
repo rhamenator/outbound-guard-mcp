@@ -1,0 +1,540 @@
+{
+  "artifact_checksums_verified": true,
+  "cases": {
+    "claude": {
+      "after": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "body_text": "",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/reset-content-205-length"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/reset-content-205-chunked"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/reset-content-205-close"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "before": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "body_text": "",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205"
+        },
+        {
+          "body_text": "ok",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205-length"
+        },
+        {
+          "body_text": "ok",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205-chunked"
+        },
+        {
+          "body_text": "ok",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205-close"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "checks": [
+        "same_container",
+        "unchanged_saved_client_config",
+        "old_native_calls",
+        "in_place_package_upgrade",
+        "new_native_calls",
+        "controlled_http_and_dns",
+        "remove",
+        "residue",
+        "route_free_fixture",
+        "pre_fix_native_205_body_leak",
+        "post_fix_native_205_denial",
+        "packet_capture_verified"
+      ],
+      "client": "2.1.323 (Claude Code)",
+      "fixture_dns_a_after": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_a_before": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_all": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_http_hits": [
+        "/plain",
+        "/reset-content-205",
+        "/reset-content-205-length",
+        "/reset-content-205-chunked",
+        "/reset-content-205-close",
+        "/plain",
+        "/plain",
+        "/reset-content-205",
+        "/reset-content-205-length",
+        "/reset-content-205-chunked",
+        "/reset-content-205-close",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "limits": [
+        "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+        "no TLS or host-client/other-tool traffic coverage",
+        "Claude native tool availability is model dependent",
+        "unsigned experimental packages, not an approved candidate"
+      ],
+      "native_client": "claude",
+      "new_installed": {
+        "binary_sha256": "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58",
+        "version": "0.1.0~candidate.401+g954b3853af68"
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58",
+        "package_sha256": "715601fd32d3f7269bb11c8fc28bffe30e92554805bb8021ef8acde61600e0f8",
+        "revision": "954b3853af68aa37afe062e1918fa59e26022a43",
+        "version": "0.1.0~candidate.401+g954b3853af68"
+      },
+      "old_installed": {
+        "binary_sha256": "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706",
+        "version": "0.1.0~candidate.396+ga4ff70c2613d"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706",
+        "package_sha256": "958ed96b0312ea2e0147cd96c788b6e442a0b40c038848552f4751ebda7ea3ff",
+        "revision": "a4ff70c2613d83fbea9c2fd34d6f893af4b6dae2",
+        "version": "0.1.0~candidate.396+ga4ff70c2613d"
+      },
+      "packet_capture": {
+        "dns_a_queries": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-length"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-chunked"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-close"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-length"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-chunked"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-close"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "reset-content",
+        "scope": "fixture namespace only",
+        "sha256": "c2dd3920460c567964072add5fa0284864d74b89f928c70990834cff5c7098fb",
+        "tcp_syn_count": 12,
+        "verified_raw_reset_content_responses": 8
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-claude-205-two-phase-upgrade-2026-11-14.pcap",
+      "platform": "Debian 12 amd64",
+      "raw_log_sha256": "7d8907e18bfb00360a5fa52c7f6c4e1709ab37eaca1e760f91713e5bca2c74f6",
+      "result": "passed",
+      "saved_mcp_config_sha256": "8645710f3cce1790724d587f311eba8911a9e1c1df35c1263ef326653f5eefcf",
+      "scenario": "reset-content"
+    },
+    "codex": {
+      "after": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "body_text": "",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/reset-content-205-length"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/reset-content-205-chunked"
+        },
+        {
+          "rule": "EGRESS_INVALID_FRAMING",
+          "status": "BLOCKED",
+          "url": "http://allowed.test/reset-content-205-close"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "before": [
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        },
+        {
+          "body_text": "",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205"
+        },
+        {
+          "body_text": "ok",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205-length"
+        },
+        {
+          "body_text": "ok",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205-chunked"
+        },
+        {
+          "body_text": "ok",
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/reset-content-205-close"
+        },
+        {
+          "rule": "EGRESS_ALLOWED",
+          "status": "SAFE",
+          "url": "http://allowed.test/plain"
+        }
+      ],
+      "checks": [
+        "same_container",
+        "unchanged_saved_client_config",
+        "old_native_calls",
+        "in_place_package_upgrade",
+        "new_native_calls",
+        "controlled_http_and_dns",
+        "remove",
+        "residue",
+        "route_free_fixture",
+        "pre_fix_native_205_body_leak",
+        "post_fix_native_205_denial",
+        "packet_capture_verified"
+      ],
+      "client": "codex-cli 0.168.0",
+      "fixture_dns_a_after": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_a_before": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_dns_all": [
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test",
+        "allowed.test"
+      ],
+      "fixture_http_hits": [
+        "/plain",
+        "/reset-content-205",
+        "/reset-content-205-length",
+        "/reset-content-205-chunked",
+        "/reset-content-205-close",
+        "/plain",
+        "/plain",
+        "/reset-content-205",
+        "/reset-content-205-length",
+        "/reset-content-205-chunked",
+        "/reset-content-205-close",
+        "/plain"
+      ],
+      "image_id": "sha256:04ecf9547b4ac317469743ee6c238aebb53e4758611822d5afccdeb8b9c62e5a",
+      "limits": [
+        "finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof",
+        "no TLS or host-client/other-tool traffic coverage",
+        "Codex approval bypass ran from private test cwd but retained host access",
+        "unsigned experimental packages, not an approved candidate"
+      ],
+      "native_client": "codex",
+      "new_installed": {
+        "binary_sha256": "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58",
+        "version": "0.1.0~candidate.401+g954b3853af68"
+      },
+      "new_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "743226888b3ae61375366778eea1e51f6ee1fecc737f36254270ddd333f26c58",
+        "package_sha256": "715601fd32d3f7269bb11c8fc28bffe30e92554805bb8021ef8acde61600e0f8",
+        "revision": "954b3853af68aa37afe062e1918fa59e26022a43",
+        "version": "0.1.0~candidate.401+g954b3853af68"
+      },
+      "old_installed": {
+        "binary_sha256": "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706",
+        "version": "0.1.0~candidate.396+ga4ff70c2613d"
+      },
+      "old_package": {
+        "app_version": "0.1.0",
+        "binary_sha256": "d3a9275325fda6f34c091909ff49349f79b438e5b81401d70f7fc2bffadd9706",
+        "package_sha256": "958ed96b0312ea2e0147cd96c788b6e442a0b40c038848552f4751ebda7ea3ff",
+        "revision": "a4ff70c2613d83fbea9c2fd34d6f893af4b6dae2",
+        "version": "0.1.0~candidate.396+ga4ff70c2613d"
+      },
+      "packet_capture": {
+        "dns_a_queries": [
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test",
+          "allowed.test"
+        ],
+        "http_requests": [
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-length"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-chunked"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-close"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-length"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-chunked"
+          ],
+          [
+            "allowed.test",
+            "/reset-content-205-close"
+          ],
+          [
+            "allowed.test",
+            "/plain"
+          ]
+        ],
+        "ip_destinations": [
+          "11.0.0.1",
+          "127.0.0.1"
+        ],
+        "scenario": "reset-content",
+        "scope": "fixture namespace only",
+        "sha256": "b241aaad7c6ccfb2be7eae311f493a1617929a7e6ba3f2432603b76d8dd8e68e",
+        "tcp_syn_count": 12,
+        "verified_raw_reset_content_responses": 8
+      },
+      "pcap_path": "tests/fixtures/packet-capture/native-codex-205-two-phase-upgrade-2026-11-14.pcap",
+      "platform": "Debian 12 amd64",
+      "raw_log_sha256": "1190d5988ce8c6179aee93f4d1bfd00b135812f2f56192ccc2aa86731c3e5cd7",
+      "result": "passed",
+      "saved_mcp_config_sha256": "c78c8cc229a1a043ffcbe91b47470177890961aceea5a62e376db7c48724e854",
+      "scenario": "reset-content"
+    }
+  },
+  "date_utc": "2026-11-14",
+  "harness_git_blobs": {
+    "tools/client_cancellation_fixture.py": "425a72487b6ebfa7debc492fc5899c3632671c1c",
+    "tools/debian_same_container_native_http_upgrade.py": "cee4eb7ba7612b8326a45ca800f18b28c6edea38",
+    "tools/netns_adversarial_probe.py": "aa46aca9ed578fe0a4b73c7d5f17efd66546f946",
+    "tools/verify_upgrade_http_pcap.py": "eae005a7504f0b9e8ba4779a4dd9805423a0467b"
+  },
+  "harness_sha256": {
+    "tools/client_cancellation_fixture.py": "44f8424d07618aece654c7d2dcbc481f6b4dbbeaf5f9bd9fc22b1a2284a33550",
+    "tools/debian_same_container_native_http_upgrade.py": "3690f0d27f6562b37a992856aa0553f0fad1369bbc5a90159589d3de9f6a8bb7",
+    "tools/netns_adversarial_probe.py": "6382c8744a368a53d57033efcac64c4c73177cf39d0fe27e6a0dca5776bf7ccf",
+    "tools/verify_upgrade_http_pcap.py": "5abd3474c8f3d8523d844c34c70cb1b5927dfc607b8ad443731d122d76b35c90"
+  },
+  "limitations": [
+    "Two finite, explicit native-client replays through one saved MCP configuration per client in disposable Debian 12 amd64 512 MiB containers; the old package leaks only the controlled fixture text ok.",
+    "The retained captures show traffic inside each controlled route-free fixture namespace; they do not observe host-client or other-tool traffic.",
+    "This tests migration of an unchanged saved client MCP configuration from an experimental pre-fix package to a changed-binary fixed package. It does not cover other configuration schemas, arbitrary upgrade paths, official candidates, other platforms or automatic skill triggering.",
+    "Codex ran with explicit approval-bypass opt-in from a private test cwd and retained host access.",
+    "The unsigned packages are experimental; owner residual-risk acceptance and independent human review remain open.",
+    "The four AI Scraping Defense repository adversarial gates remain separate."
+  ],
+  "new_artifact_manifest_sha256": "8c0e78cdbfb63bc534ea36743fd42f5afe43121213f6997a5c72acc5077b20a9",
+  "new_source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43577512079",
+  "new_source_main_sha": "954b3853af68aa37afe062e1918fa59e26022a43",
+  "old_artifact_manifest_sha256": "8f2f17e4e7c91a92aa43287feeda57dadcfb2731972d0606bce004a99e2b5d01",
+  "old_source_ci_run": "https://github.com/rhamenator/outbound-guard-mcp/actions/runs/43548601002",
+  "old_source_main_sha": "a4ff70c2613d83fbea9c2fd34d6f893af4b6dae2",
+  "result": "passed",
+  "scenario": "reset-content"
+}

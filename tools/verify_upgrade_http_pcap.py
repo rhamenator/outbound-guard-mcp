@@ -22,7 +22,7 @@ def fields(path, display_filter, *names):
 
 
 def verify(path, expected_sha256, scenario="dns"):
-    assert scenario in ("dns", "redirect", "held-encoded", "version"), "unsupported capture scenario"
+    assert scenario in ("dns", "redirect", "held-encoded", "version", "reset-content"), "unsupported capture scenario"
     data = path.read_bytes()
     assert 24 < len(data) <= 1024 * 1024, "capture size outside fixture bounds"
     digest = hashlib.sha256(data).hexdigest()
@@ -37,7 +37,7 @@ def verify(path, expected_sha256, scenario="dns"):
 def verify_fields(path, digest, scenario):
     syns = fields(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0", "ip.dst", "ipv6.dst", "tcp.dstport")
     tcp_destinations = [(ipv4 or ipv6, port) for ipv4, ipv6, port in syns]
-    syn_count_ok = len(tcp_destinations) == (2 if scenario == "dns" else 12 if scenario == "version" else 6)
+    syn_count_ok = len(tcp_destinations) == (2 if scenario == "dns" else 12 if scenario in ("version", "reset-content") else 6)
     assert syn_count_ok and \
         set(tcp_destinations) == {("11.0.0.1", "80")}, tcp_destinations
     queries = fields(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
@@ -45,9 +45,9 @@ def verify_fields(path, digest, scenario):
     a_names = [name for name, _, _ in fields(
         path, "dns.flags.response == 0 && dns.qry.type == 1", "dns.qry.name", "ip.dst", "udp.dstport")]
     expected_a_names = (["allowed.test", "private.test"] * 2 if scenario == "dns"
-                        else ["allowed.test"] * (12 if scenario == "version" else 6))
+                        else ["allowed.test"] * (12 if scenario in ("version", "reset-content") else 6))
     assert a_names == expected_a_names, a_names
-    if scenario == "version":
+    if scenario in ("version", "reset-content"):
         answers = fields(path, "dns.flags.response == 1", "dns.qry.type", "dns.qry.name",
                          "dns.a", "dns.aaaa", "dns.flags.rcode", "dns.count.answers")
         assert answers == ([
@@ -64,9 +64,28 @@ def verify_fields(path, digest, scenario):
                          if scenario == "redirect" else
                          ["/plain", "/encoded-body-hold", "/plain"] * 2
                          if scenario == "held-encoded" else
+                         ["/plain", "/reset-content-205", "/reset-content-205-length",
+                          "/reset-content-205-chunked", "/reset-content-205-close", "/plain"] * 2
+                         if scenario == "reset-content" else
                          ["/plain", "/http10-ok", "/http10-comma-length",
                           "/http11-partial-ok", "/http11-partial-comma-length", "/plain"] * 2)
     assert requests == [["allowed.test", uri] for uri in expected_requests], requests
+    reset_content_responses = 0
+    if scenario == "reset-content":
+        expected = {
+            "/reset-content-205": b"Content-Length: 0\r\n\r\n",
+            "/reset-content-205-length": b"Content-Length: 2\r\n\r\nok",
+            "/reset-content-205-chunked": b"Transfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
+            "/reset-content-205-close": b"Connection: close\r\n\r\nok",
+        }
+        streams = fields(path, "http.request", "http.request.uri", "tcp.stream")
+        for uri, stream in streams:
+            if uri in expected:
+                payload = server_payload(path, stream)
+                assert payload == (b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\n"
+                                   + expected[uri]), (uri, payload)
+                reset_content_responses += 1
+        assert reset_content_responses == 8, reset_content_responses
     version_responses = 0
     if scenario == "version":
         streams = fields(path, "http.request", "http.request.uri", "tcp.stream")
@@ -116,6 +135,8 @@ def verify_fields(path, digest, scenario):
         result["held_client_close_after_partial_response_count"] = held_closes
     if scenario == "version":
         result["verified_raw_version_responses"] = version_responses
+    if scenario == "reset-content":
+        result["verified_raw_reset_content_responses"] = reset_content_responses
     return result
 
 
@@ -123,7 +144,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--scenario", choices=("dns", "redirect", "held-encoded", "version"), default="dns")
+    parser.add_argument("--scenario", choices=("dns", "redirect", "held-encoded", "version", "reset-content"), default="dns")
     args = parser.parse_args()
     print(json.dumps(verify(args.pcap, args.sha256, args.scenario), sort_keys=True))
 

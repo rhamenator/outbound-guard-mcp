@@ -46,6 +46,15 @@ SCENARIOS = {
                  "EGRESS_ALLOWED", "EGRESS_INVALID_FRAMING", "EGRESS_ALLOWED"],
                 ["/plain", "/http10-ok", "/http10-comma-length",
                  "/http11-partial-ok", "/http11-partial-comma-length", "/plain"]),
+    "reset-content": (["http://allowed.test/plain", "http://allowed.test/reset-content-205",
+                       "http://allowed.test/reset-content-205-length",
+                       "http://allowed.test/reset-content-205-chunked",
+                       "http://allowed.test/reset-content-205-close",
+                       "http://allowed.test/plain"],
+                      ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_INVALID_FRAMING",
+                       "EGRESS_INVALID_FRAMING", "EGRESS_INVALID_FRAMING", "EGRESS_ALLOWED"],
+                      ["/plain", "/reset-content-205", "/reset-content-205-length",
+                       "/reset-content-205-chunked", "/reset-content-205-close", "/plain"]),
 }
 TOOL = "mcp__outbound_guard__guarded_fetch"
 
@@ -81,13 +90,20 @@ def replay_claude(config, output, urls, rules, prompt):
         assert decision["status"] == ("SAFE" if allowed else "BLOCKED"), decision
         assert bool(reply.get("is_error", False)) == (not allowed), reply
         if allowed:
-            assert decision["body_text"] == ("fixture-ok" if urls[index].endswith("/plain") else "ok"), decision
+            expected_body = ("fixture-ok" if urls[index].endswith("/plain") else
+                             "" if urls[index].endswith("/reset-content-205") else "ok")
+            assert decision["body_text"] == expected_body, decision
             if "/http10-" in urls[index] or "/http11-partial-" in urls[index]:
                 assert decision["status_code"] == (206 if "/http11-partial-" in urls[index] else 200), decision
+            if "/reset-content-205" in urls[index]:
+                assert decision["status_code"] == 205, decision
         else:
             assert "body_text" not in decision, decision
-        decisions.append({"url": urls[index], "rule": decision["rule"],
-                          "status": decision["status"]})
+        observed = {"url": urls[index], "rule": decision["rule"],
+                    "status": decision["status"]}
+        if "/reset-content-205" in urls[index] and allowed:
+            observed["body_text"] = decision["body_text"]
+        decisions.append(observed)
     return decisions
 
 
@@ -118,13 +134,21 @@ def replay_codex(root, output, urls, rules, prompt):
         allowed = rule == "EGRESS_ALLOWED"
         assert decision["status"] == ("SAFE" if allowed else "BLOCKED"), decision
         if allowed:
-            assert decision.get("body_text") == ("fixture-ok" if urls[index].endswith("/plain") else "ok"), decision
+            expected_body = ("fixture-ok" if urls[index].endswith("/plain") else
+                             "" if urls[index].endswith("/reset-content-205") else "ok")
+            assert decision.get("body_text") == expected_body, decision
             if "/http10-" in urls[index] or "/http11-partial-" in urls[index]:
                 assert decision["status_code"] == (206 if "/http11-partial-" in urls[index] else 200), decision
+            if "/reset-content-205" in urls[index]:
+                assert decision["status_code"] == 205, decision
         else:
             assert "body_text" not in decision, decision
-    return [{"url": urls[index], "rule": decision["rule"], "status": decision["status"]}
-            for index, decision in enumerate(decisions)]
+    observed = [{"url": urls[index], "rule": decision["rule"], "status": decision["status"]}
+                for index, decision in enumerate(decisions)]
+    for index, decision in enumerate(decisions):
+        if "/reset-content-205" in urls[index] and rules[index] == "EGRESS_ALLOWED":
+            observed[index]["body_text"] = decision["body_text"]
+    return observed
 
 
 def replay(client, root, config, phase, urls, rules, prompt):
@@ -166,7 +190,7 @@ def fixture_state(root, expected_hits, previous_dns_count, scenario):
             continue
         phase_dns = dns_a[previous_dns_count:]
         expected_dns = (["allowed.test", "private.test"] if scenario == "dns"
-                        else ["allowed.test"] * (6 if scenario == "version" else 3))
+                        else ["allowed.test"] * (6 if scenario in ("version", "reset-content") else 3))
         if hits == expected_hits and phase_dns == expected_dns:
             assert "unlisted.test" not in dns_all and \
                 (scenario != "redirect" or "private.test" not in dns_all), dns_all
@@ -190,6 +214,7 @@ def main():
                         help="Retain and verify a fixture-namespace packet capture")
     args = parser.parse_args()
     urls, rules, phase_hits = SCENARIOS[args.scenario]
+    old_rules = (["EGRESS_ALLOWED"] * len(urls) if args.scenario == "reset-content" else rules)
     prompt = (f"Use ONLY outbound_guard guarded_fetch. Make exactly {len(urls)} GET calls, "
               "in order: " + ", ".join(urls) + ". Do not use any other tools or "
               "retry. Report the actual tool results.")
@@ -279,7 +304,7 @@ def main():
                 time.sleep(0.05)
             command("docker", "exec", container, "dpkg", "-i", "/old.deb")
             old_installed = installed(container, old)
-            before = replay(args.client, root, config, "before", urls, rules, prompt)
+            before = replay(args.client, root, config, "before", urls, old_rules, prompt)
             old_fixture = fixture_state(fixture_root, phase_hits, 0, args.scenario)
             assert hashlib.sha256(config.read_bytes()).hexdigest() == config_sha
             command("docker", "exec", container, "dpkg", "-i", "/new.deb")
@@ -288,7 +313,12 @@ def main():
             after = replay(args.client, root, config, "after", urls, rules, prompt)
             new_fixture = fixture_state(fixture_root, phase_hits * 2,
                                         len(old_fixture["dns_a"]), args.scenario)
-            assert before == after
+            if args.scenario == "reset-content":
+                assert [item["body_text"] for item in before[2:5]] == ["ok"] * 3
+                assert all("body_text" not in item for item in after[2:5])
+                assert before != after
+            else:
+                assert before == after
             assert hashlib.sha256(config.read_bytes()).hexdigest() == config_sha
             command("docker", "exec", container, "dpkg", "-r", "outbound-guard-mcp")
             command("docker", "exec", container, "sh", "-ec",
@@ -324,6 +354,8 @@ def main():
                                  "old_native_calls", "in_place_package_upgrade",
                                  "new_native_calls", "controlled_http_and_dns",
                                  "remove", "residue", "route_free_fixture"] +
+                                (["pre_fix_native_205_body_leak", "post_fix_native_205_denial"]
+                                 if args.scenario == "reset-content" else []) +
                                 (["packet_capture_verified"] if capture_result else []),
                       "limits": ["finite local DNS/HTTP fixture; fixture-namespace capture is not universal socket proof" if capture_result else "finite local DNS/HTTP fixture; no packet capture or universal socket proof",
                                  "no TLS or host-client/other-tool traffic coverage",
