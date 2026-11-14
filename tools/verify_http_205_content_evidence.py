@@ -4,12 +4,14 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORD = ROOT / "docs/evidence/http-205-content-2026-11-14.json"
 HISTORICAL_SOURCE_SHA256 = "96d733d41271b279b6b5f9015891b00437f1e13ba499c22f698ea1c3f2f6d246"
 FIXTURE_SHA256 = "6382c8744a368a53d57033efcac64c4c73177cf39d0fe27e6a0dca5776bf7ccf"
+FIXTURE_GIT_BLOB = "aa46aca9ed578fe0a4b73c7d5f17efd66546f946"
 
 
 def verify(record):
@@ -27,7 +29,9 @@ def verify(record):
     assert record["fixture_sha256"] == FIXTURE_SHA256
     assert record["baseline_log_sha256"] == "9931e13836bc30790538dd17eeaeceb9b820f6fad987169359ff667206f5834a"
     assert record["updated_log_sha256"] == "aba64515432faa3ec096cefe4abfc5bf6406b3fdd3838bb54c99e1f2ad22dc9d"
-    assert hashlib.sha256((ROOT / "tools/netns_adversarial_probe.py").read_bytes()).hexdigest() == FIXTURE_SHA256
+    historical_fixture = subprocess.check_output(
+        ["git", "cat-file", "blob", FIXTURE_GIT_BLOB], cwd=ROOT, timeout=10)
+    assert hashlib.sha256(historical_fixture).hexdigest() == FIXTURE_SHA256
     assert record["paths"] == ["/reset-content-205", "/reset-content-205-chunked-empty",
                                "/reset-content-205-length", "/reset-content-205-chunked",
                                "/reset-content-205-close", "/plain"]
