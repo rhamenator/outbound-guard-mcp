@@ -35,11 +35,11 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
 
     syns = rows(path, "tcp.flags.syn == 1 && tcp.flags.ack == 0",
                 "ip.dst", "ipv6.dst", "tcp.dstport")
-    assert len(syns) == (5 if mode in ("comma", "coding") else 6) and {(ipv4 or ipv6, port) for ipv4, ipv6, port in syns} == {
+    assert len(syns) == (4 if mode == "no-content-tail" else 5 if mode in ("comma", "coding") else 6) and {(ipv4 or ipv6, port) for ipv4, ipv6, port in syns} == {
         ("11.0.0.1", "80")}, syns
 
     queries = rows(path, "dns.flags.response == 0", "dns.qry.name", "ip.dst", "udp.dstport")
-    assert len(queries) == (11 if mode in ("comma", "coding") else 13) and all(ip == "127.0.0.1" and port == "53"
+    assert len(queries) == (9 if mode == "no-content-tail" else 11 if mode in ("comma", "coding") else 13) and all(ip == "127.0.0.1" and port == "53"
                                       for _, ip, port in queries), queries
     names = {name for name, _, _ in queries}
     assert "allowed.test" in names and names <= {"allowed.test", "1.0.0.11.in-addr.arpa"}, names
@@ -51,6 +51,9 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
                       ["/plain", "/no-content-204", "/no-content-204-length",
                        "/no-content-204-chunked", "/reset-content-205", "/plain"]
                       if mode == "no-content" else
+                      ["/plain", "/no-content-204-close-body",
+                       "/no-content-204-response-smuggle", "/plain"]
+                      if mode == "no-content-tail" else
                       ["/plain", "/reset-content-205", "/reset-content-205-length",
                        "/reset-content-205-chunked", "/reset-content-205-close", "/plain"]
                       if mode == "reset-content" else
@@ -92,6 +95,12 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
             "/no-content-204-chunked": ([b"Content-Type: text/plain", b"Transfer-Encoding: chunked"],
                                            b"2\r\nok\r\n0\r\n\r\n"),
             "/reset-content-205": ([b"Content-Type: text/plain", b"Content-Length: 0"], b""),
+        }
+    elif mode == "no-content-tail":
+        expected_metadata = {
+            "/no-content-204-close-body": ([b"Content-Type: text/plain", b"Connection: close"], b"abc"),
+            "/no-content-204-response-smuggle": ([b"Content-Type: text/plain", b"Connection: close"],
+                                                    b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nxyz"),
         }
     elif mode == "reset-content":
         expected_metadata = {
@@ -149,7 +158,7 @@ def verify(path: Path, digest: str, mode: str = "framing") -> dict:
                               headers.startswith((b"HTTP/1.0 200 OK\r\n",
                                                   b"HTTP/1.1 200 OK\r\n"))), uri
         actual_headers = headers.split(b"\r\n")[1:]
-        checked_headers = (actual_headers if mode in ("obs-fold", "version", "no-content", "reset-content", "reset-content-variable") else
+        checked_headers = (actual_headers if mode in ("obs-fold", "version", "no-content", "no-content-tail", "reset-content", "reset-content-variable") else
                            [line for line in actual_headers if line.startswith(
                                (b"Content-Length:", b"Transfer-Encoding:"))])
         assert checked_headers == expected_headers, (uri, checked_headers)
@@ -170,7 +179,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("pcap", type=Path)
     parser.add_argument("sha256")
-    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold", "version", "no-content", "reset-content", "reset-content-variable"), default="framing")
+    parser.add_argument("--mode", choices=("framing", "comma", "coding", "obs-fold", "version", "no-content", "no-content-tail", "reset-content", "reset-content-variable"), default="framing")
     args = parser.parse_args()
     # The local tshark AppArmor profile reads fixture captures under /tmp.
     with tempfile.TemporaryDirectory(prefix="outbound-framing-pcap-verify-") as directory:
