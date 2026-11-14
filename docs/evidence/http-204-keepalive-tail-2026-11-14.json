@@ -1,0 +1,34 @@
+{
+  "date_utc": "2026-11-14",
+  "source_main_sha": "e787df30b95d3457de3b00702ea306ca871196b4",
+  "fixture_sha256": "24775d114570289a0fbf992ed433ad58a4ad167b415a170539534169a5c5656e",
+  "tested_binary_sha256": "a9d9501749018ca47a07948be5f8c9fbffb5010b1de5a4e3079041a4f63bcd14",
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "log_path": "docs/evidence/http-204-keepalive-tail-2026-11-14.log.gz",
+  "log_sha256_uncompressed": "643cbc5e7b5f6ab1b2b4f8b3a9266936025e5e38638381758e67e96b5d2df9fb",
+  "result": "passed",
+  "observations": {
+    "host": "allowed.test",
+    "paths": [
+      "/no-content-204-keepalive-tail",
+      "/plain"
+    ],
+    "malformed_response": "HTTP/1.1 204 with no Content-Length, Transfer-Encoding or Connection: close response field, followed by bytes shaped as HTTP/1.1 200 OK",
+    "client_request_connection": "close",
+    "first_decision": {
+      "rule": "EGRESS_ALLOWED",
+      "status_code": 204,
+      "body_text": ""
+    },
+    "second_decision": {
+      "rule": "EGRESS_ALLOWED",
+      "status_code": 200,
+      "body_text": "fixture-ok"
+    },
+    "fixture_observed_client_eof_within_seconds": 1,
+    "full_suite_mcp_decisions": 2256
+  },
+  "scope": "Route-free namespace, direct MCP stdio and controlled DNS/HTTP fixture; no native client, packet capture or host-client traffic observation. The fixture observes only client write-side EOF, not full TCP teardown.",
+  "limitations": "The parser accepted the malformed 204 as bodyless. This finite fixture does not prove arbitrary response-smuggling resistance, rejection of delayed tail bytes, traffic from other tools, official-candidate qualification, owner acceptance, or any of the four separate AI Scraping Defense repository gates.",
+  "fixture_git_blob": "6ce318d93be1065c14382a7ccbb478a5e8b746fe"
+}

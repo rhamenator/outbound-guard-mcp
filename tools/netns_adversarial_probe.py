@@ -222,6 +222,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
     cancel_started = threading.Event()
     cancel_closed = threading.Event()
     header_denial_closed = threading.Event()
+    tail_keepalive_observed = threading.Event()
+    tail_keepalive_closed = []
 
     def log_message(self, *_args):
         pass
@@ -453,6 +455,22 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.wfile.write(status + b"\r\nContent-Type: text/plain\r\nContent-Length: "
                              + length + b"\r\n\r\nok")
             self.close_connection = True
+            return
+        if self.path == "/no-content-204-keepalive-tail":
+            # Without a response Connection: close field, observe whether the
+            # peer sends another request or reaches write-side EOF. Hyper
+            # treats 204 as bodyless even with these trailing bytes.
+            self.wfile.write(b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n"
+                             b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nxyz")
+            self.wfile.flush()
+            self.connection.settimeout(1)
+            try:
+                self.tail_keepalive_closed.append(self.connection.recv(1) == b"")
+            except socket.timeout:
+                self.tail_keepalive_closed.append(False)
+            finally:
+                self.tail_keepalive_observed.set()
+                self.close_connection = True
             return
         if self.path in ("/no-content-204", "/no-content-204-length",
                          "/no-content-204-chunked", "/no-content-204-close-body",
@@ -2726,6 +2744,21 @@ def main(binary, cancellation_probe):
                                  "/no-content-204-response-smuggle", "/plain"]
         print("unframed 204 tail bytes, including a second-response shape, are not "
               "returned; a later guarded GET recovers")
+        HTTP.tail_keepalive_observed.clear()
+        HTTP.tail_keepalive_closed.clear()
+        keepalive_tail, after_keepalive_tail = call_sequence(binary, [
+            ("allowed.test", "no-content-204-keepalive-tail", "http"),
+            ("allowed.test", "plain", "http"),
+        ])
+        assert [(item["rule"], item.get("status_code"), item.get("body_text"))
+                for item in (keepalive_tail, after_keepalive_tail)] == [
+            ("EGRESS_ALLOWED", 204, ""), ("EGRESS_ALLOWED", 200, "fixture-ok"),
+        ]
+        assert HTTP.tail_keepalive_observed.wait(2), "fixture did not observe client close"
+        assert HTTP.tail_keepalive_closed == [True], HTTP.tail_keepalive_closed
+        assert HTTP.hits[-2:] == ["/no-content-204-keepalive-tail", "/plain"]
+        print("unframed 204 second-response tail without a close header: empty body, "
+              "fixture-observed client EOF within one second, approved recovery")
         length_mutant_rules = {}
         for index, value in enumerate(INVALID_LENGTH_CORPUS):
             path = f"length-mutant-{index}"
