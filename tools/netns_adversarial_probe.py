@@ -457,8 +457,9 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.close_connection = True
             return
         if self.path == "/no-content-204-keepalive-tail":
-            # No response Connection: close field: the client must retire this
-            # socket itself even though Hyper treats 204 as bodyless.
+            # Without a response Connection: close field, observe whether the
+            # peer sends another request or reaches write-side EOF. Hyper
+            # treats 204 as bodyless even with these trailing bytes.
             self.wfile.write(b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n"
                              b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nxyz")
             self.wfile.flush()
