@@ -333,8 +333,35 @@ fn wire_framing_expectation(input: &[u8]) -> Option<Option<&'static str>> {
     Some(None)
 }
 
-// Only these exact 205 bodies have an independent raw-byte body oracle. Keep
-// malformed or more general chunk streams outside this semantic comparison.
+// Decode only a strict chunked subset without using Hyper. Extensions,
+// trailers, and excessive chunk counts stay outside the semantic oracle.
+#[cfg(feature = "policy-fuzz")]
+fn strict_chunked_body_nonempty(mut body: &[u8]) -> Option<bool> {
+    let mut nonempty = false;
+    for _ in 0..32 {
+        let end = body.windows(2).position(|part| part == b"\r\n")?;
+        let size = body[..end].iter().try_fold(0usize, |size, byte| {
+            let digit = (*byte as char).to_digit(16)? as usize;
+            size.checked_mul(16)?.checked_add(digit)
+        })?;
+        if end == 0 || size > 4096 {
+            return None;
+        }
+        body = &body[end + 2..];
+        if size == 0 {
+            return (body == b"\r\n").then_some(nonempty);
+        }
+        if body.get(size..size + 2)? != b"\r\n" {
+            return None;
+        }
+        nonempty = true;
+        body = &body[size + 2..];
+    }
+    None
+}
+
+// Only exact 205 header lines enter this raw-byte body oracle. Keep malformed
+// or more general response metadata outside the semantic comparison.
 #[cfg(feature = "policy-fuzz")]
 fn wire_205_body_expectation(input: &[u8]) -> Option<bool> {
     let end = input.windows(4).position(|part| part == b"\r\n\r\n")?;
@@ -342,12 +369,10 @@ fn wire_205_body_expectation(input: &[u8]) -> Option<bool> {
     let body = &input[end + 4..];
     match header {
         b"HTTP/1.1 205 Reset Content\r\nContent-Length: 0" if body.is_empty() => Some(false),
-        b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked" => match body {
-            b"0\r\n\r\n" => Some(false),
-            b"1\r\na\r\n0\r\n\r\n" => Some(true),
-            _ => None,
-        },
-        b"HTTP/1.1 205 Reset Content" if body == b"a" => Some(true),
+        b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked" => {
+            strict_chunked_body_nonempty(body)
+        }
+        b"HTTP/1.1 205 Reset Content" => Some(!body.is_empty()),
         _ => None,
     }
 }
@@ -504,7 +529,9 @@ mod tests {
             (b"HTTP/1.1 205 Reset Content\r\nContent-Length: 2\r\n\r\nok", Some(Some("EGRESS_INVALID_FRAMING"))),
             (b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", Some(None)),
             (b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n0\r\n\r\n", Some(None)),
+            (b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nab\r\n1\r\nc\r\n0\r\n\r\n", Some(None)),
             (b"HTTP/1.1 205 Reset Content\r\n\r\na", Some(None)),
+            (b"HTTP/1.1 205 Reset Content\r\n\r\nabc", Some(None)),
             (b"HTTP/1.1 200 OK\r\nX-Other: 1\r\n\r\n", None),
         ];
         for (wire, expected) in cases {
@@ -530,6 +557,18 @@ mod tests {
         assert_eq!(
             wire_205_body_expectation(b"HTTP/1.1 205 Reset Content\r\n\r\na"),
             Some(true)
+        );
+        assert_eq!(
+            wire_205_body_expectation(b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nab\r\n1\r\nc\r\n0\r\n\r\n"),
+            Some(true)
+        );
+        assert_eq!(
+            wire_205_body_expectation(b"HTTP/1.1 205 Reset Content\r\n\r\nabc"),
+            Some(true)
+        );
+        assert_eq!(
+            wire_205_body_expectation(b"HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n1;x=y\r\na\r\n0\r\n\r\n"),
+            None
         );
     }
 

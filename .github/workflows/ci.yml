@@ -302,6 +302,8 @@ jobs:
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/status-local-corpus.tar.gz tests/fixtures/wire-fuzz/status-local-report.json --max-member-bytes 4096
       - name: Verify HTTP 205 body wire corpus
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/body-205-local-corpus.tar.gz tests/fixtures/wire-fuzz/body-205-local-report.json --max-member-bytes 4096
+      - name: Verify variable HTTP 205 body wire corpus
+        run: python3 tools/verify_fuzz_archive.py tests/fixtures/wire-fuzz/variable-205-local-corpus.tar.gz tests/fixtures/wire-fuzz/variable-205-local-report.json --max-member-bytes 4096
       - name: Verify retained DNS answer-set fuzz corpus
         run: python3 tools/verify_fuzz_archive.py tests/fixtures/dns-fuzz/local-corpus.tar.gz tests/fixtures/dns-fuzz/local-report.json --max-member-bytes 64
       - run: python3 -m unittest discover -s tests -p 'test_*.py'

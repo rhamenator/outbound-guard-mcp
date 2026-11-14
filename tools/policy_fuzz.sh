@@ -77,6 +77,9 @@ p=Path(sys.argv[1])
 (p/'reset-content-chunked-empty').write_bytes(b'HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n')
 (p/'reset-content-chunked-body').write_bytes(b'HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n0\r\n\r\n')
 (p/'reset-content-close-body').write_bytes(b'HTTP/1.1 205 Reset Content\r\n\r\na')
+(p/'reset-content-multi-chunk').write_bytes(b'HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nab\r\n1\r\nc\r\n0\r\n\r\n')
+(p/'reset-content-hex-chunk').write_bytes(b'HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\nA\r\nabcdefghij\r\n0\r\n\r\n')
+(p/'reset-content-close-multi').write_bytes(b'HTTP/1.1 205 Reset Content\r\n\r\nabc')
 SEEDS
   max_len=4096
 elif [ "$target" = http ]; then
