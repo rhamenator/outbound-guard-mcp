@@ -1,5 +1,7 @@
 # Claude Code client smoke test
 
+On 2026-11-14, Claude Code 2.1.323 explicitly invoked the installed project skill and made six guarded calls against a controlled HTTP fixture using the binary extracted from a checksum-verified experimental Debian package. Clean HTTP 204 and 205 responses were allowed; HTTP 204 responses with forbidden `Content-Length` or `Transfer-Encoding` framing were denied with `EGRESS_INVALID_FRAMING`; approved recovery succeeded. The [retained fixture-namespace packet capture](evidence/native-claude-current-204-pcap-2026-11-14.json) and CI verifier bind the native decisions to six approved HTTP streams and check a forbidden-destination negative control. The capture does not observe host Claude Code traffic or calls through other tools. The package was extracted rather than installed in this replay, and this is not official-candidate qualification.
+
 On 2026-10-19, Claude Code 2.1.301 connected to the built Outbound Guard server over stdio. A private temporary MCP configuration exposed only `guarded_fetch` to a restricted, non-persistent Claude Code session. No normal Claude Code configuration was changed, and the temporary configuration and session output were removed after the test.
 
 The real client discovered and called `mcp__outbound_guard__guarded_fetch`. A loopback URL returned `EGRESS_INVALID_HOST` with `BLOCKED`. With only `postman-echo.com` allowlisted, GET and HEAD calls to `https://postman-echo.com/get` each returned `EGRESS_ALLOWED` and HTTP 200. The public echo endpoint may change or become unavailable.
