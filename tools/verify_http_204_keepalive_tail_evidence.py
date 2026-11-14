@@ -5,12 +5,15 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORD = ROOT / "docs/evidence/http-204-keepalive-tail-2026-11-14.json"
 LINE = ("unframed 204 second-response tail without a close header: empty body, "
         "fixture-observed client EOF within one second, approved recovery")
+FIXTURE_GIT_BLOB = "6ce318d93be1065c14382a7ccbb478a5e8b746fe"
+FIXTURE_SHA256 = "24775d114570289a0fbf992ed433ad58a4ad167b415a170539534169a5c5656e"
 
 
 def check_log(log, record):
@@ -26,7 +29,13 @@ def main():
     record = json.loads(RECORD.read_text())
     assert record["date_utc"] == "2026-11-14" and record["result"] == "passed"
     assert record["source_main_sha"] == "e787df30b95d3457de3b00702ea306ca871196b4"
-    assert hashlib.sha256((ROOT / "tools/netns_adversarial_probe.py").read_bytes()).hexdigest() == record["fixture_sha256"]
+    assert record["fixture_git_blob"] == FIXTURE_GIT_BLOB
+    assert record["fixture_sha256"] == FIXTURE_SHA256
+    # The retained log belongs to this Git blob. CI separately runs the
+    # current fixture, which may gain unrelated cases later.
+    fixture = subprocess.check_output(
+        ["git", "cat-file", "blob", record["fixture_git_blob"]], cwd=ROOT, timeout=10)
+    assert hashlib.sha256(fixture).hexdigest() == record["fixture_sha256"]
     assert record["observations"]["paths"] == ["/no-content-204-keepalive-tail", "/plain"]
     assert record["observations"]["first_decision"] == {"rule": "EGRESS_ALLOWED", "status_code": 204, "body_text": ""}
     assert record["observations"]["second_decision"] == {"rule": "EGRESS_ALLOWED", "status_code": 200, "body_text": "fixture-ok"}
