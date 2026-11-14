@@ -954,6 +954,41 @@ fn response_framing_denial(headers: &hyper::HeaderMap) -> Option<Denial> {
     None
 }
 
+fn response_status_framing_denial(
+    status: hyper::StatusCode,
+    headers: &hyper::HeaderMap,
+) -> Option<Denial> {
+    if let Some(denial) = response_framing_denial(headers) {
+        return Some(denial);
+    }
+    // HTTP 204 ends at the header terminator. Framing fields on that status
+    // make the peer's claimed body length ambiguous across HTTP parsers.
+    if status == hyper::StatusCode::NO_CONTENT
+        && (headers.contains_key(header::CONTENT_LENGTH)
+            || headers.contains_key(header::TRANSFER_ENCODING))
+    {
+        return Some(Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a 204 response without body-framing headers.",
+        ));
+    }
+    // A 205 response may explicitly frame zero bytes, but cannot carry a
+    // nonzero declared length. Reject it before reading any peer body.
+    if status == hyper::StatusCode::RESET_CONTENT
+        && headers
+            .get(header::CONTENT_LENGTH)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<u64>().ok())
+            .is_some_and(|length| length != 0)
+    {
+        return Some(Denial::new(
+            "EGRESS_INVALID_FRAMING",
+            "Use a 205 response with no body or a zero-length framing field.",
+        ));
+    }
+    None
+}
+
 // Development-only differential oracle for the production response-framing decision.
 // HeaderMap construction models headers after Hyper has parsed the wire bytes;
 // raw HTTP parsing and network behavior remain separate test boundaries.
@@ -1072,36 +1107,8 @@ async fn guarded_http_fetch(
         )
         .value();
     }
-    if let Some(denial) = response_framing_denial(response.headers()) {
+    if let Some(denial) = response_status_framing_denial(response.status(), response.headers()) {
         return denial.value();
-    }
-    // HTTP 204 ends at the header terminator. Framing fields on that status
-    // make the peer's claimed body length ambiguous across HTTP parsers.
-    if response.status() == hyper::StatusCode::NO_CONTENT
-        && (response.headers().contains_key(header::CONTENT_LENGTH)
-            || response.headers().contains_key(header::TRANSFER_ENCODING))
-    {
-        return Denial::new(
-            "EGRESS_INVALID_FRAMING",
-            "Use a 204 response without body-framing headers.",
-        )
-        .value();
-    }
-    // A 205 response may explicitly frame zero bytes, but cannot carry a
-    // nonzero declared length. Reject it before reading any peer body.
-    if response.status() == hyper::StatusCode::RESET_CONTENT
-        && response
-            .headers()
-            .get(header::CONTENT_LENGTH)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.parse::<u64>().ok())
-            .is_some_and(|length| length != 0)
-    {
-        return Denial::new(
-            "EGRESS_INVALID_FRAMING",
-            "Use a 205 response with no body or a zero-length framing field.",
-        )
-        .value();
     }
     if response
         .headers()

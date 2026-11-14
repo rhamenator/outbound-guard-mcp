@@ -69,6 +69,12 @@ p=Path(sys.argv[1])
 (p/'http10-partial-comma').write_bytes(b'HTTP/1.0 206 Partial Content\r\nContent-Length: 1, 1\r\n\r\na')
 (p/'partial-valid').write_bytes(b'HTTP/1.1 206 Partial Content\r\nContent-Length: 2\r\n\r\nok')
 (p/'partial-stacked').write_bytes(b'HTTP/1.1 206 Partial Content\r\nTransfer-Encoding: gzip, chunked\r\n\r\n')
+(p/'no-content-valid').write_bytes(b'HTTP/1.1 204 No Content\r\n\r\n')
+(p/'no-content-length').write_bytes(b'HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n')
+(p/'no-content-chunked').write_bytes(b'HTTP/1.1 204 No Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n')
+(p/'reset-content-valid').write_bytes(b'HTTP/1.1 205 Reset Content\r\nContent-Length: 0\r\n\r\n')
+(p/'reset-content-length').write_bytes(b'HTTP/1.1 205 Reset Content\r\nContent-Length: 2\r\n\r\nok')
+(p/'reset-content-chunked-empty').write_bytes(b'HTTP/1.1 205 Reset Content\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n')
 SEEDS
   max_len=4096
 elif [ "$target" = http ]; then
