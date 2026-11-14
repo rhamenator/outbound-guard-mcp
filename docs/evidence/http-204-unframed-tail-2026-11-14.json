@@ -1,0 +1,30 @@
+{
+  "date_utc": "2026-11-14",
+  "tested_main_sha": "98a1ab495ba026b4d029b9e425d06599f6054069",
+  "debug_binary_sha256": "a9d9501749018ca47a07948be5f8c9fbffb5010b1de5a4e3079041a4f63bcd14",
+  "harness_file": "tools/netns_adversarial_probe.py",
+  "harness_sha256": "fab3ce686112ae68d914b8cac41751de4d75d17048e0f69901e2fdded99967d3",
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp",
+  "full_probe_log_sha256": "4527bf7d46caec5963a1f8cd89e2e897f3c1272e422c403265222ead4cc1a042",
+  "network_scope": "route-free controlled DNS/HTTP namespace; no retained packet capture",
+  "paths": [
+    "/no-content-204-close-body",
+    "/no-content-204-response-smuggle",
+    "/plain"
+  ],
+  "observed_rules": ["EGRESS_ALLOWED", "EGRESS_ALLOWED", "EGRESS_ALLOWED"],
+  "observed_body_text": ["", "", "fixture-ok"],
+  "observation": "Both 204 responses omitted Content-Length and Transfer-Encoding, declared Connection: close, and appended unframed bytes. One tail was shaped as a second HTTP response. The guard returned empty body text for both and recovered on a later approved GET.",
+  "checks": [
+    "exact fixture hit order and same-process recovery",
+    "full route-free direct MCP adversarial probe passed",
+    "cargo fmt, test, clippy, build, Python unit tests and git diff --check passed"
+  ],
+  "limitations": [
+    "This is observed acceptance with discarded tail bytes, not a fail-closed denial or proof that malformed tail bytes are detected.",
+    "The local full probe did not run the optional official MCP SDK cases because node_modules was absent; CI installs those dependencies and runs them.",
+    "No native-client replay or packet capture was retained for this new case; host-client and other-tool traffic are outside scope.",
+    "The debug binary is from the tested main commit; no official release candidate or other AI Scraping Defense repository was tested by this record.",
+    "The private local log is identified by digest but is not retained in this repository; the fixture is reproducible in CI."
+  ]
+}

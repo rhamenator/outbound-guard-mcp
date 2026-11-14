@@ -455,7 +455,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
             self.close_connection = True
             return
         if self.path in ("/no-content-204", "/no-content-204-length",
-                         "/no-content-204-chunked", "/reset-content-205",
+                         "/no-content-204-chunked", "/no-content-204-close-body",
+                         "/no-content-204-response-smuggle", "/reset-content-205",
                          "/reset-content-205-chunked-empty", "/reset-content-205-length",
                          "/reset-content-205-chunked",
                          "/reset-content-205-close", "/reset-content-205-multichunk",
@@ -464,6 +465,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                 "/no-content-204": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n",
                 "/no-content-204-length": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
                 "/no-content-204-chunked": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
+                "/no-content-204-close-body": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nabc",
+                "/no-content-204-response-smuggle": b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nxyz",
                 "/reset-content-205": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\n",
                 "/reset-content-205-chunked-empty": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n",
                 "/reset-content-205-length": b"HTTP/1.1 205 Reset Content\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok",
@@ -2709,6 +2712,20 @@ def main(binary, cancellation_probe):
                                  "/reset-content-205-close", "/plain"]
         print("no-content framing fixture: clean 204/205 and recovery allowed; "
               "204 length/chunked and 205 payload traps denied without body")
+        unframed_body, response_smuggle, after_unframed = call_sequence(binary, [
+            ("allowed.test", "no-content-204-close-body", "http"),
+            ("allowed.test", "no-content-204-response-smuggle", "http"),
+            ("allowed.test", "plain", "http"),
+        ])
+        assert [(item["rule"], item.get("body_text")) for item in
+                (unframed_body, response_smuggle, after_unframed)] == [
+            ("EGRESS_ALLOWED", ""), ("EGRESS_ALLOWED", ""),
+            ("EGRESS_ALLOWED", "fixture-ok"),
+        ]
+        assert HTTP.hits[-3:] == ["/no-content-204-close-body",
+                                 "/no-content-204-response-smuggle", "/plain"]
+        print("unframed 204 tail bytes, including a second-response shape, are not "
+              "returned; a later guarded GET recovers")
         length_mutant_rules = {}
         for index, value in enumerate(INVALID_LENGTH_CORPUS):
             path = f"length-mutant-{index}"

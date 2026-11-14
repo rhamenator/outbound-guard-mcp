@@ -13,6 +13,8 @@ Configure an MCP client to launch the executable over stdio with this environmen
 
 HTTP 204 responses must omit `Content-Length` and `Transfer-Encoding`; either field returns `EGRESS_INVALID_FRAMING` without body text. HTTP 205 responses with nonzero `Content-Length` or a decoded payload are also denied. Empty 204 and 205 responses remain allowed, including zero-length 205 framing. These are conservative response-framing rules for `guarded_fetch` only.
 
+A 204 response with no body-framing field is treated as complete at the header boundary. A controlled server that sent unframed bytes after such a 204, including bytes shaped like a second HTTP response, received `EGRESS_ALLOWED` with empty `body_text` in the direct MCP test. Those bytes were not returned to the caller; a later guarded GET recovered. The server does not claim to detect this malformed tail. See the [route-free fixture record](docs/adversarial-netns.md#unframed-http-204-tail-boundary--2026-11-14).
+
 ## Optional operator CA certificate
 
 For an approved HTTPS service using a private certificate authority, set the server environment variable `OUTBOUND_GUARD_EXTRA_CA_CERT` to an operator-controlled PEM certificate file. The server needs read permission on that regular file; it must contain exactly one certificate, be at most 64 KiB, and contain no private key. Invalid configuration stops startup. The certificate is loaded once; restart after changing it. It adds trust for all approved HTTPS hosts in that process, alongside the built-in roots, with hostname verification still required. Protect the file from modification by agents or untrusted users. The tool arguments cannot select a certificate. No client certificate authentication is implemented.
