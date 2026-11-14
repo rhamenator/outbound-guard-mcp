@@ -1,0 +1,142 @@
+{
+  "cases": {
+    "claude": {
+      "analysis": {
+        "capture_sha256": "5575e3358a472f8a90de42c708f45ccef70f914421700e3440d987d84aefbd65",
+        "paths": [
+          "/plain",
+          "/no-content-204-close-body",
+          "/no-content-204-response-smuggle",
+          "/plain"
+        ],
+        "raw_response_verified": {
+          "/no-content-204-close-body": true,
+          "/no-content-204-response-smuggle": true
+        },
+        "scope": "fixture namespace only",
+        "streams": [
+          {
+            "client_close_frame": 17,
+            "next_syn_after_close_ms": 1665.201,
+            "path": "/plain",
+            "request_frame": 11,
+            "server_data_to_client_close_ms": 0.058,
+            "server_last_data_frame": 15,
+            "syn_frame": 8,
+            "tcp_stream": 0
+          },
+          {
+            "client_close_frame": 32,
+            "next_syn_after_close_ms": 1740.338,
+            "path": "/no-content-204-close-body",
+            "request_frame": 27,
+            "server_data_to_client_close_ms": 0.108,
+            "server_last_data_frame": 29,
+            "syn_frame": 24,
+            "tcp_stream": 1
+          },
+          {
+            "client_close_frame": 46,
+            "next_syn_after_close_ms": 1493.249,
+            "path": "/no-content-204-response-smuggle",
+            "request_frame": 41,
+            "server_data_to_client_close_ms": 0.176,
+            "server_last_data_frame": 43,
+            "syn_frame": 38,
+            "tcp_stream": 2
+          },
+          {
+            "client_close_frame": 61,
+            "path": "/plain",
+            "request_frame": 55,
+            "server_data_to_client_close_ms": 0.042,
+            "server_last_data_frame": 59,
+            "syn_frame": 52,
+            "tcp_stream": 3
+          }
+        ]
+      },
+      "capture_path": "tests/fixtures/packet-capture/native-claude-204-tail-2026-11-14.pcap",
+      "capture_sha256": "5575e3358a472f8a90de42c708f45ccef70f914421700e3440d987d84aefbd65",
+      "client_version": "Claude Code 2.1.323"
+    },
+    "codex": {
+      "analysis": {
+        "capture_sha256": "0c506f6db746cee2f2a2730e7d2cef291591f51f845242b79757326156365ac8",
+        "paths": [
+          "/plain",
+          "/no-content-204-close-body",
+          "/no-content-204-response-smuggle",
+          "/plain"
+        ],
+        "raw_response_verified": {
+          "/no-content-204-close-body": true,
+          "/no-content-204-response-smuggle": true
+        },
+        "scope": "fixture namespace only",
+        "streams": [
+          {
+            "client_close_frame": 17,
+            "next_syn_after_close_ms": 2362.95,
+            "path": "/plain",
+            "request_frame": 11,
+            "server_data_to_client_close_ms": 0.05,
+            "server_last_data_frame": 15,
+            "syn_frame": 8,
+            "tcp_stream": 0
+          },
+          {
+            "client_close_frame": 31,
+            "next_syn_after_close_ms": 2540.096,
+            "path": "/no-content-204-close-body",
+            "request_frame": 27,
+            "server_data_to_client_close_ms": 0.079,
+            "server_last_data_frame": 29,
+            "syn_frame": 24,
+            "tcp_stream": 1
+          },
+          {
+            "client_close_frame": 45,
+            "next_syn_after_close_ms": 2438.331,
+            "path": "/no-content-204-response-smuggle",
+            "request_frame": 41,
+            "server_data_to_client_close_ms": 0.061,
+            "server_last_data_frame": 43,
+            "syn_frame": 38,
+            "tcp_stream": 2
+          },
+          {
+            "client_close_frame": 61,
+            "path": "/plain",
+            "request_frame": 55,
+            "server_data_to_client_close_ms": 0.059,
+            "server_last_data_frame": 59,
+            "syn_frame": 52,
+            "tcp_stream": 3
+          }
+        ]
+      },
+      "capture_path": "tests/fixtures/packet-capture/native-codex-204-tail-2026-11-14.pcap",
+      "capture_sha256": "0c506f6db746cee2f2a2730e7d2cef291591f51f845242b79757326156365ac8",
+      "client_version": "codex-cli 0.168.0"
+    }
+  },
+  "date_utc": "2026-11-14",
+  "limitations": [
+    "Retrospective analysis of two finite retained native-client fixture-namespace captures; no new live client session or arbitrary-wire campaign.",
+    "A 204 with unframed trailing bytes was allowed with empty body text. The measured close only shows that these tested tail bytes were not reinterpreted on a later guarded connection.",
+    "Capture excludes host-client traffic and traffic sent through other tools.",
+    "Does not test every TCP timing or kernel state, proxy intermediary, package upgrade, official candidate, or any of the four separate AI Scraping Defense repositories."
+  ],
+  "negative_control": "Shift client-direction FIN frames on both malformed-204 TCP streams six seconds later, recompute the pcap SHA-256, and require the semantic close-timing oracle to reject each mutant.",
+  "prior_native_evidence": "docs/evidence/native-installed-http-204-tail-2026-11-14.json",
+  "result": "passed",
+  "scenario": "retrospective-native-http-204-tail-connection-isolation",
+  "analysis_source_main_sha": "248ff22ce343de2976326af4e7fc9f091e5ab7af",
+  "tested_binary_main_sha": "7d66c584216fae55f787f29e2647a1ece733e592",
+  "tested_package_sha256": "5cff70ba7012ca7624827c1c6c5a95b55be1ba3b5f85677406812256f49918f7",
+  "tool_versions": {
+    "python": "Python 3.14.4",
+    "tshark": "TShark (Wireshark) 4.6.4."
+  }
+}
