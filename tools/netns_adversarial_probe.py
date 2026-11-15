@@ -456,11 +456,15 @@ class HTTP(http.server.BaseHTTPRequestHandler):
                              + length + b"\r\n\r\nok")
             self.close_connection = True
             return
-        if self.path == "/no-content-204-keepalive-tail":
-            # Without a response Connection: close field, observe whether the
-            # peer sends another request or reaches write-side EOF. Hyper
-            # treats 204 as bodyless even with these trailing bytes.
-            self.wfile.write(b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n"
+        if self.path in ("/no-content-204-keepalive-tail",
+                         "/no-content-204-explicit-keepalive-tail"):
+            # Compare an absent close field with an explicit keep-alive field.
+            # Observe whether the peer sends another request or reaches EOF.
+            # Hyper treats 204 as bodyless even with these trailing bytes.
+            connection = (b"Connection: keep-alive\r\n" if self.path.endswith("explicit-keepalive-tail")
+                          else b"")
+            self.wfile.write(b"HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n"
+                             + connection + b"\r\n"
                              b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nxyz")
             self.wfile.flush()
             self.connection.settimeout(1)
@@ -2775,6 +2779,21 @@ def main(binary, cancellation_probe):
         assert HTTP.tail_keepalive_closed == [True], HTTP.tail_keepalive_closed
         assert HTTP.hits[-2:] == ["/no-content-204-keepalive-tail", "/plain"]
         print("unframed 204 second-response tail without a close header: empty body, "
+              "fixture-observed client EOF within one second, approved recovery")
+        HTTP.tail_keepalive_observed.clear()
+        HTTP.tail_keepalive_closed.clear()
+        explicit_tail, after_explicit_tail = call_sequence(binary, [
+            ("allowed.test", "no-content-204-explicit-keepalive-tail", "http"),
+            ("allowed.test", "plain", "http"),
+        ])
+        assert [(item["rule"], item.get("status_code"), item.get("body_text"))
+                for item in (explicit_tail, after_explicit_tail)] == [
+            ("EGRESS_ALLOWED", 204, ""), ("EGRESS_ALLOWED", 200, "fixture-ok"),
+        ]
+        assert HTTP.tail_keepalive_observed.wait(2), "fixture did not observe client close"
+        assert HTTP.tail_keepalive_closed == [True], HTTP.tail_keepalive_closed
+        assert HTTP.hits[-2:] == ["/no-content-204-explicit-keepalive-tail", "/plain"]
+        print("unframed 204 second-response tail with explicit keep-alive: empty body, "
               "fixture-observed client EOF within one second, approved recovery")
         length_mutant_rules = {}
         for index, value in enumerate(INVALID_LENGTH_CORPUS):

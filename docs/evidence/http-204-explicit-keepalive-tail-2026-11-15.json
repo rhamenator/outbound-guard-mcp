@@ -1,0 +1,35 @@
+{
+  "date_utc": "2026-11-15",
+  "source_main_sha": "4c2866fa74d8047792bf70440ad5f0cb37e04542",
+  "fixture_git_blob": "a66dd7b73cba61df80609397d40dfe435ff2f186",
+  "fixture_sha256": "2fbd29f693fa660581eb6476986bef97eb5b1544df2c4ac26d78ce08b97e2e99",
+  "tested_binary_sha256": "a9d9501749018ca47a07948be5f8c9fbffb5010b1de5a4e3079041a4f63bcd14",
+  "command": "bash tools/netns_adversarial_probe.sh target/debug/outbound-guard-mcp target/debug/examples/cancel_fetch_probe",
+  "log_path": "docs/evidence/http-204-explicit-keepalive-tail-2026-11-15.log.gz",
+  "log_sha256_uncompressed": "96c655f49060fc75ded66c5d04de742498bd93fff58335d318016b8e83fe4628",
+  "result": "passed",
+  "observations": {
+    "paths": [
+      "/no-content-204-explicit-keepalive-tail",
+      "/plain"
+    ],
+    "first_decision": {
+      "rule": "EGRESS_ALLOWED",
+      "status_code": 204,
+      "body_text": ""
+    },
+    "second_decision": {
+      "rule": "EGRESS_ALLOWED",
+      "status_code": 200,
+      "body_text": "fixture-ok"
+    },
+    "fixture_observed_client_eof_within_seconds": 1,
+    "full_suite_mcp_decisions": 2256
+  },
+  "limitations": [
+    "Fixture observed write-side EOF only; no packet capture for this explicit-header case",
+    "Malformed 204 tail was accepted with empty body",
+    "Direct MCP only; no native-client, host-client or other-tool coverage",
+    "No official candidate, owner acceptance or cross-repository gate closure"
+  ]
+}
