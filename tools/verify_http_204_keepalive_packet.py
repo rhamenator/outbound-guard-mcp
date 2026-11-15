@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 
 from verify_native_framing_http_pcap import rows, server_payload
+from verify_native_body_cancel_pcap_negative_controls import forbidden_syn
 from verify_native_slow_close_negative_controls import late_close
 
 
@@ -135,7 +136,15 @@ def main():
             assert PATHS[0] in str(error), error
         else:
             raise AssertionError("six-second late close passed the packet oracle")
-    print("direct MCP 204 keepalive-tail packet isolation and late-close control passed")
+        mutant = forbidden_syn(CAPTURE.read_bytes())
+        temporary.write_bytes(mutant)
+        try:
+            analyze(temporary, hashlib.sha256(mutant).hexdigest())
+        except AssertionError as error:
+            assert "169.254.169.254" in str(error), error
+        else:
+            raise AssertionError("metadata-address SYN passed the packet oracle")
+    print("direct MCP 204 keepalive-tail isolation, late-close and forbidden-SYN controls passed")
 
 
 if __name__ == "__main__":
