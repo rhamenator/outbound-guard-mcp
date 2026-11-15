@@ -28,7 +28,9 @@ def checksum(data: bytes) -> int:
 
 def forbidden_syn(data: bytes) -> bytes:
     """Retarget one valid fixture SYN to the metadata address, fixing checksums."""
-    assert data[:4] == b"\xd4\xc3\xb2\xa1" and struct.unpack_from("<I", data, 20)[0] == 276
+    assert data[:4] == b"\xd4\xc3\xb2\xa1"
+    linktype = struct.unpack_from("<I", data, 20)[0]
+    assert linktype in (1, 276), linktype
     changed = bytearray(data)
     offset = 24
     mutated = False
@@ -37,7 +39,9 @@ def forbidden_syn(data: bytes) -> bytes:
         assert captured == original
         start, end = offset + 16, offset + 16 + captured
         frame = changed[start:end]
-        ip = 20  # Linux SLL2 link header
+        ip = 14 if linktype == 1 else 20  # Ethernet or Linux SLL2 link header
+        if linktype == 1:
+            assert frame[12:14] == b"\x08\x00", "expected Ethernet IPv4"
         if (frame[ip] >> 4 == 4 and frame[ip + 9] == 6
                 and frame[ip + 16:ip + 20] == b"\x0b\x00\x00\x01"):
             ihl = (frame[ip] & 15) * 4
