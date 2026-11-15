@@ -1,6 +1,6 @@
 # Exact-candidate release evidence
 
-Status: experimental; no official pre-1.0 release candidate or stable release approved. [Tracking issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) is the durable owner decision record. [QUALITY_BAR.md](QUALITY_BAR.md) remains authoritative; this index does not waive or narrow its criteria.
+Status: experimental; no official pre-1.0 release candidate or stable release approved. [Tracking issue #65](https://github.com/rhamenator/outbound-guard-mcp/issues/65) is the durable owner decision record; the [exact-candidate review template](CANDIDATE_ACCEPTANCE_RECORD.md) lists the identity, evidence, risk and explicit decision fields that must be completed there. [QUALITY_BAR.md](QUALITY_BAR.md) remains authoritative; this index does not waive or narrow its criteria.
 
 An [authenticated current Cursor CLI ACP replay](evidence/native-cursor-current-control-2026-11-12.json) exercised the checksum-verified exact-main `8527ca1` package binary with one advertised `guarded_fetch` tool, a slow-response denial, approved GET, loopback denial and approved HEAD. Cursor acknowledged control cancellation without sending MCP cancellation; the fixture socket closed at the server deadline. The separate skill attempt was inconclusive. This finite host-client control result has no packet capture, desktop UI test, official-candidate qualification or coverage of traffic sent through other tools. The four AI Scraping Defense gates remain separate.
 
