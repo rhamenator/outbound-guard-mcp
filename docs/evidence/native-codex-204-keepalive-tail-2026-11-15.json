@@ -1,0 +1,151 @@
+{
+  "date_utc": "2026-11-15",
+  "result": "passed_codex_only",
+  "source_main_sha": "6490e709dc822ada363685eb515ec75398aff11e",
+  "client_probe_git_blob": "7aa06b0784fd69ecec24160658f8b7735b3da3c3",
+  "fixture_git_blob": "a66dd7b73cba61df80609397d40dfe435ff2f186",
+  "tested_binary_sha256": "a9d9501749018ca47a07948be5f8c9fbffb5010b1de5a4e3079041a4f63bcd14",
+  "skill_zip_sha256": "fd92e70ba571cfd8cb14ad7fe2a934107d42a6bd578346d0308103a2be2d0d0e",
+  "client_version": "codex-cli 0.168.0",
+  "capture_path": "tests/fixtures/packet-capture/native-codex-204-keepalive-tail-2026-11-15.pcap",
+  "capture_sha256": "13cf9faa5eb876542af699edf5b98bdde8a2cc62bba3b80492712ff1e40d8c88",
+  "log_path": "docs/evidence/native-codex-204-keepalive-tail-2026-11-15.log.gz",
+  "log_sha256_uncompressed": "5eaff60eef462a04c174170ff58f7ff5701aa91f143d77bd2bc02f2d99e1c75b",
+  "decisions": {
+    "rules": [
+      "EGRESS_ALLOWED",
+      "EGRESS_ALLOWED",
+      "EGRESS_ALLOWED",
+      "EGRESS_ALLOWED"
+    ],
+    "status_codes": [
+      200,
+      204,
+      204,
+      200
+    ],
+    "fixture_hits": [
+      "/plain",
+      "/no-content-204-keepalive-tail",
+      "/no-content-204-explicit-keepalive-tail",
+      "/plain"
+    ],
+    "http_methods": [
+      "GET",
+      "GET",
+      "GET",
+      "GET"
+    ]
+  },
+  "skill": {
+    "loaded": true,
+    "discovered": true,
+    "explicit_input_accepted": true,
+    "turn_completed": true
+  },
+  "packet_summary": {
+    "capture_scope": "fixture network namespace only; host client network not captured",
+    "tcp_syn_count": 4,
+    "tcp_syn_destinations": [
+      "11.0.0.1:80"
+    ],
+    "proxy_tcp_syn_count": null,
+    "direct_tcp_syn_count": null,
+    "proxy_control_http_requests": null,
+    "dns_query_count": 9,
+    "dns_query_destinations": [
+      "127.0.0.1:53"
+    ],
+    "truncated_dns_responses": null,
+    "spoofed_dns_transaction_ids": null,
+    "rebind_a_query_count": null,
+    "rebind_a_answers": null,
+    "fallback_a_query_count": null,
+    "fallback_a_answers": null,
+    "exfil_dns_query_count": null,
+    "redirect_private_dns_query_count": null,
+    "eof_approved_http_requests": null,
+    "eof_active_close": null,
+    "timed_out_streams_client_closed": null,
+    "tls_client_hello_streams": null,
+    "tls_pinning_sni": null,
+    "packet_count": 63,
+    "ip_destination_entries": 64,
+    "ip_destinations": [
+      "11.0.0.1",
+      "127.0.0.1"
+    ],
+    "unexpected_ip_destinations": 0,
+    "unexpected_tcp_connection_attempts": 0,
+    "pcap_sha256": "13cf9faa5eb876542af699edf5b98bdde8a2cc62bba3b80492712ff1e40d8c88",
+    "raw_pcap_retained": true
+  },
+  "analysis": {
+    "capture_sha256": "13cf9faa5eb876542af699edf5b98bdde8a2cc62bba3b80492712ff1e40d8c88",
+    "paths": [
+      "/plain",
+      "/no-content-204-keepalive-tail",
+      "/no-content-204-explicit-keepalive-tail",
+      "/plain"
+    ],
+    "streams": [
+      {
+        "path": "/plain",
+        "tcp_stream": 0,
+        "syn_frame": 8,
+        "request_frame": 11,
+        "server_last_data_frame": 15,
+        "client_close_frame": 18,
+        "server_data_to_client_close_ms": 0.102,
+        "next_syn_after_close_ms": 2112.04
+      },
+      {
+        "path": "/no-content-204-keepalive-tail",
+        "tcp_stream": 1,
+        "syn_frame": 24,
+        "request_frame": 27,
+        "server_last_data_frame": 29,
+        "client_close_frame": 31,
+        "server_data_to_client_close_ms": 0.113,
+        "next_syn_after_close_ms": 2120.222
+      },
+      {
+        "path": "/no-content-204-explicit-keepalive-tail",
+        "tcp_stream": 2,
+        "syn_frame": 38,
+        "request_frame": 41,
+        "server_last_data_frame": 43,
+        "client_close_frame": 45,
+        "server_data_to_client_close_ms": 0.241,
+        "next_syn_after_close_ms": 2420.06
+      },
+      {
+        "path": "/plain",
+        "tcp_stream": 3,
+        "syn_frame": 52,
+        "request_frame": 55,
+        "server_last_data_frame": 59,
+        "client_close_frame": 62,
+        "server_data_to_client_close_ms": 0.298
+      }
+    ],
+    "raw_response_verified": {
+      "/no-content-204-keepalive-tail": true,
+      "/no-content-204-explicit-keepalive-tail": true
+    },
+    "scope": "fixture namespace only"
+  },
+  "claude_attempt": {
+    "result": "incomplete_before_guarded_call",
+    "client_version": "Claude Code 2.1.323",
+    "reason": "native client returned one client error; no fixture hit or guarded call observed",
+    "counts_as_coverage": false
+  },
+  "limitations": [
+    "Fixture namespace capture only; host client traffic and other tools not observed",
+    "Both malformed 204 tails were allowed with empty body; this is connection isolation evidence, not parser denial",
+    "No package install, upgrade or uninstall in this host-client replay",
+    "Claude attempt made no guarded calls and is not counted as coverage",
+    "No official-candidate or owner acceptance; four AI Scraping Defense gates separate"
+  ]
+}

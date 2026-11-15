@@ -21,6 +21,8 @@ HASHES = {
 }
 PATHS = ["/plain", "/no-content-204-close-body",
          "/no-content-204-response-smuggle", "/plain"]
+KEEPALIVE_PATHS = ["/plain", "/no-content-204-keepalive-tail",
+                   "/no-content-204-explicit-keepalive-tail", "/plain"]
 
 
 def one_event(path, display_filter, *fields):
@@ -29,11 +31,13 @@ def one_event(path, display_filter, *fields):
     return result[0]
 
 
-def analyze(path, digest):
-    verified = verify_framing(path, digest, "no-content-tail")
+def analyze(path, digest, mode="no-content-tail"):
+    assert mode in ("no-content-tail", "no-content-keepalive-tail")
+    expected_paths = KEEPALIVE_PATHS if mode == "no-content-keepalive-tail" else PATHS
+    verified = verify_framing(path, digest, mode)
     requests = rows(path, "http.request", "frame.number", "frame.time_relative",
                     "tcp.stream", "http.request.uri")
-    assert [item[3] for item in requests] == PATHS, requests
+    assert [item[3] for item in requests] == expected_paths, requests
     streams = [item[2] for item in requests]
     assert len(streams) == len(set(streams)) == 4, streams
     result = []
@@ -73,7 +77,7 @@ def analyze(path, digest):
             entry["next_syn_after_close_ms"] = float(
                 (Decimal(next_syn_time) - Decimal(close_time)) * 1000)
         result.append(entry)
-    return {"capture_sha256": digest, "paths": PATHS,
+    return {"capture_sha256": digest, "paths": expected_paths,
             "streams": result, "raw_response_verified": verified["framing_metadata_and_body"],
             "scope": "fixture namespace only"}
 

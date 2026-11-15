@@ -129,6 +129,8 @@ jobs:
         run: python3 tools/verify_native_204_tail_corpus.py
       - name: Recheck HTTP 204 tail connection isolation
         run: python3 tools/verify_native_204_tail_connection.py
+      - name: Recheck native Codex HTTP 204 keep-alive tail packets
+        run: python3 tools/verify_native_codex_204_keepalive_tail.py
       - name: Recheck route-free HTTP 204 keepalive-tail evidence
         run: python3 tools/verify_http_204_keepalive_tail_evidence.py
       - name: Recheck explicit keep-alive HTTP 204 tail evidence

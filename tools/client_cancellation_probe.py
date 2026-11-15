@@ -25,6 +25,8 @@ Set OUTBOUND_GUARD_CLIENT_FRAMING=coding for seeded unsupported transfer-coding 
 Set OUTBOUND_GUARD_CLIENT_FRAMING=version for HTTP/1.0 and 206 status framing cases.
 Set OUTBOUND_GUARD_CLIENT_FRAMING=no-content for HTTP 204 body-framing denials.
 Set OUTBOUND_GUARD_CLIENT_FRAMING=no-content-tail for accepted HTTP 204 unframed-tail observation.
+Set OUTBOUND_GUARD_CLIENT_FRAMING=no-content-keepalive-tail for a native HTTP 204
+second-response tail with an explicit response keep-alive header.
 Set OUTBOUND_GUARD_CLIENT_FRAMING=reset-content for HTTP 205 payload denials.
 Set OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT=1 for fixed-length and chunked body caps.
 Set OUTBOUND_GUARD_CLIENT_FRAME_MUTATION=1 to inject one invalid MCP frame
@@ -90,14 +92,15 @@ exfil_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_EXFIL')=='1'
 rebind_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_REBIND')=='1'
 malformed_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_MALFORMED')=='1'
 framing_variant=os.environ.get('OUTBOUND_GUARD_CLIENT_FRAMING')
-assert framing_variant in (None,'1','comma','coding','obs-fold','version','no-content','no-content-tail','reset-content','reset-content-variable'), 'unsupported HTTP framing replay mode'
-framing_mode=framing_variant in ('1','comma','coding','obs-fold','version','no-content','no-content-tail','reset-content','reset-content-variable')
+assert framing_variant in (None,'1','comma','coding','obs-fold','version','no-content','no-content-tail','no-content-keepalive-tail','reset-content','reset-content-variable'), 'unsupported HTTP framing replay mode'
+framing_mode=framing_variant in ('1','comma','coding','obs-fold','version','no-content','no-content-tail','no-content-keepalive-tail','reset-content','reset-content-variable')
 comma_framing_mode=framing_variant=='comma'
 coding_framing_mode=framing_variant=='coding'
 obs_fold_framing_mode=framing_variant=='obs-fold'
 version_framing_mode=framing_variant=='version'
 no_content_framing_mode=framing_variant=='no-content'
-no_content_tail_mode=framing_variant=='no-content-tail'
+keepalive_204_tail_mode=framing_variant=='no-content-keepalive-tail'
+no_content_tail_mode=framing_variant in ('no-content-tail','no-content-keepalive-tail')
 reset_content_framing_mode=framing_variant=='reset-content'
 variable_205_framing_mode=framing_variant=='reset-content-variable'
 response_limit_mode=os.environ.get('OUTBOUND_GUARD_CLIENT_RESPONSE_LIMIT')=='1'
@@ -599,7 +602,10 @@ if skill_zip:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/no-content-204 ; GET http://allowed.test/no-content-204-length ; GET http://allowed.test/no-content-204-chunked ; GET http://allowed.test/reset-content-205 ; GET http://allowed.test/plain . The two middle HTTP 204 responses carry forbidden body-framing fields. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
     expected_rules=['EGRESS_ALLOWED','EGRESS_ALLOWED','EGRESS_INVALID_FRAMING','EGRESS_INVALID_FRAMING','EGRESS_ALLOWED','EGRESS_ALLOWED']
    elif no_content_tail_mode:
-    skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/no-content-204-close-body ; GET http://allowed.test/no-content-204-response-smuggle ; GET http://allowed.test/plain . The operator approved allowed.test. Make every call once, even if a response is surprising. Do not retry or use any other tool. Report the actual results.'
+    skill_prompt=(
+     'First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/no-content-204-keepalive-tail ; GET http://allowed.test/no-content-204-explicit-keepalive-tail ; GET http://allowed.test/plain . The operator approved allowed.test. Make every call once, even if a response is surprising. Do not retry or use any other tool. Report the actual results.'
+     if keepalive_204_tail_mode else
+     'First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these four calls in order: GET http://allowed.test/plain ; GET http://allowed.test/no-content-204-close-body ; GET http://allowed.test/no-content-204-response-smuggle ; GET http://allowed.test/plain . The operator approved allowed.test. Make every call once, even if a response is surprising. Do not retry or use any other tool. Report the actual results.')
     expected_rules=['EGRESS_ALLOWED']*4
    elif reset_content_framing_mode:
     skill_prompt='First invoke the outbound-guard skill using the Skill tool. In this disposable controlled HTTP fixture, use ONLY guarded_fetch for these six calls in order: GET http://allowed.test/plain ; GET http://allowed.test/reset-content-205 ; GET http://allowed.test/reset-content-205-length ; GET http://allowed.test/reset-content-205-chunked ; GET http://allowed.test/reset-content-205-close ; GET http://allowed.test/plain . The three middle 205 responses carry content forbidden by this server. The operator approved allowed.test. Make each call once even after a denial. Do not retry or use any other tool. Report actual results.'
@@ -988,6 +994,8 @@ if skill_zip:
                   if version_framing_mode else
                   ['/plain','/no-content-204','/no-content-204-length','/no-content-204-chunked','/reset-content-205','/plain']
                   if no_content_framing_mode else
+                  ['/plain','/no-content-204-keepalive-tail','/no-content-204-explicit-keepalive-tail','/plain']
+                  if keepalive_204_tail_mode else
                   ['/plain','/no-content-204-close-body','/no-content-204-response-smuggle','/plain']
                   if no_content_tail_mode else
                   ['/plain','/reset-content-205','/reset-content-205-length','/reset-content-205-chunked','/reset-content-205-close','/plain']
